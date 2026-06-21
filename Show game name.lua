@@ -4,14 +4,15 @@ local MarketplaceService = game:GetService("MarketplaceService")
 local player = Players.LocalPlayer
 local placeId = game.PlaceId
 local guiName = "CurrentGameInfoUI"
+local gameNameText = "กำลังโหลดข้อมูล..." -- ตัวแปรสำหรับเก็บชื่อเกมไว้รอตอนกด Copy
 
--- เลือกตำแหน่งวาง UI (ใช้ gethui() หรือ CoreGui เพื่อซ่อน UI จากเกม, ถ้าไม่มีให้ไปใส่ใน PlayerGui)
+-- เลือกตำแหน่งวาง UI (ซ่อนจากเกม)
 local targetGui = (gethui and gethui()) or game:GetService("CoreGui")
 if not targetGui then
 	targetGui = player:WaitForChild("PlayerGui")
 end
 
--- ลบ UI เก่าทิ้งถ้ามีการกดรันซ้ำ
+-- ลบ UI เก่าทิ้ง
 if targetGui:FindFirstChild(guiName) then
 	targetGui[guiName]:Destroy()
 end
@@ -22,47 +23,63 @@ screenGui.Name = guiName
 screenGui.ResetOnSpawn = false
 screenGui.Parent = targetGui
 
--- สร้างกรอบหน้าต่างหลัก (Frame)
+-- สร้างกรอบหน้าต่างหลัก (Frame) ปรับขนาดให้เล็กกะทัดรัดลง
 local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 250, 0, 80)
-mainFrame.Position = UDim2.new(0.5, -125, 0.1, 0) -- ไว้ด้านบนตรงกลาง เพื่อไม่ให้บัง UI หลักของเกม
+mainFrame.Size = UDim2.new(0, 220, 0, 65) 
+mainFrame.Position = UDim2.new(0.5, -110, 0.1, 0)
 mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 mainFrame.BorderSizePixel = 0
 mainFrame.Active = true
-mainFrame.Draggable = true -- ทำให้สามารถใช้เมาส์ลากหน้าต่างย้ายไปมาได้
+mainFrame.Draggable = true
 mainFrame.Parent = screenGui
 
 local corner = Instance.new("UICorner")
-corner.CornerRadius = UDim.new(0, 8)
+corner.CornerRadius = UDim.new(0, 6)
 corner.Parent = mainFrame
 
--- สร้างปุ่มปิด (Close Button)
+-- ปุ่มปิด (X) ขยับและย่อขนาดให้พอดีมุมขวาบน
 local closeBtn = Instance.new("TextButton")
-closeBtn.Size = UDim2.new(0, 30, 0, 30)
-closeBtn.Position = UDim2.new(1, -35, 0, 5)
+closeBtn.Size = UDim2.new(0, 20, 0, 20)
+closeBtn.Position = UDim2.new(1, -25, 0, 5)
 closeBtn.BackgroundColor3 = Color3.fromRGB(220, 60, 60)
 closeBtn.Text = "X"
 closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 closeBtn.Font = Enum.Font.GothamBold
-closeBtn.TextSize = 14
+closeBtn.TextSize = 12
 closeBtn.Parent = mainFrame
 
 local closeCorner = Instance.new("UICorner")
-closeCorner.CornerRadius = UDim.new(0, 6)
+closeCorner.CornerRadius = UDim.new(0, 4)
 closeCorner.Parent = closeBtn
 
--- สร้างข้อความบอกชื่อเกม (TextLabel)
+-- ข้อความบอกชื่อเกม
 local infoLabel = Instance.new("TextLabel")
-infoLabel.Size = UDim2.new(1, -50, 1, 0)
-infoLabel.Position = UDim2.new(0, 10, 0, 0)
+infoLabel.Size = UDim2.new(1, -30, 0, 35)
+infoLabel.Position = UDim2.new(0, 10, 0, 5)
 infoLabel.BackgroundTransparency = 1
-infoLabel.Text = "กำลังโหลดชื่อเกม..."
+infoLabel.Text = "กำลังโหลด..."
 infoLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 infoLabel.Font = Enum.Font.GothamMedium
-infoLabel.TextSize = 14
+infoLabel.TextSize = 13
 infoLabel.TextXAlignment = Enum.TextXAlignment.Left
+infoLabel.TextYAlignment = Enum.TextYAlignment.Top
 infoLabel.TextWrapped = true
 infoLabel.Parent = mainFrame
+
+-- สร้างปุ่ม Copy (มุมขวาล่าง)
+local copyBtn = Instance.new("TextButton")
+copyBtn.Size = UDim2.new(0, 50, 0, 20)
+copyBtn.Position = UDim2.new(1, -55, 1, -25) -- ตั้งให้อยู่มุมขวาล่าง
+copyBtn.BackgroundColor3 = Color3.fromRGB(60, 120, 220)
+copyBtn.Text = "Copy"
+copyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+copyBtn.Font = Enum.Font.GothamBold
+copyBtn.TextSize = 12
+copyBtn.Parent = mainFrame
+
+local copyCorner = Instance.new("UICorner")
+copyCorner.CornerRadius = UDim.new(0, 4)
+copyCorner.Parent = copyBtn
 
 -- ฟังก์ชันดึงข้อมูลชื่อเกม
 local function updateGameName()
@@ -72,17 +89,36 @@ local function updateGameName()
 		end)
 		
 		if success and info then
-			infoLabel.Text = "กำลังเล่น:\n" .. info.Name
+			gameNameText = info.Name
 		else
-			infoLabel.Text = "กำลังเล่น:\nPlace ID " .. tostring(placeId)
+			gameNameText = "Place ID: " .. tostring(placeId)
 		end
+		infoLabel.Text = "กำลังเล่น:\n" .. gameNameText
 	end
 end
 
--- เรียกใช้ฟังก์ชันดึงชื่อแบบไม่ให้สคริปต์ค้าง (spawn)
+-- รันการดึงข้อมูล
 task.spawn(updateGameName)
 
--- ฟังก์ชันปิดหน้าต่าง
+-- โค้ดเมื่อกดปุ่มปิด (X)
 closeBtn.MouseButton1Click:Connect(function()
 	screenGui:Destroy()
+end)
+
+-- โค้ดเมื่อกดปุ่ม Copy
+copyBtn.MouseButton1Click:Connect(function()
+	if setclipboard then
+		setclipboard(gameNameText) -- ก๊อปปี้ชื่อเกมลง Clipboard ของ Windows/มือถือ
+		
+		-- เปลี่ยนข้อความชั่วคราวให้รู้ว่าก๊อปปี้แล้ว
+		copyBtn.Text = "Copied!"
+		copyBtn.BackgroundColor3 = Color3.fromRGB(46, 204, 113) -- เปลี่ยนเป็นสีเขียว
+		task.wait(1.5)
+		copyBtn.Text = "Copy"
+		copyBtn.BackgroundColor3 = Color3.fromRGB(60, 120, 220) -- กลับมาเป็นสีฟ้า
+	else
+		-- กรณี Executor ไม่รองรับ setclipboard
+		copyBtn.Text = "Error"
+		copyBtn.BackgroundColor3 = Color3.fromRGB(220, 60, 60)
+	end
 end)
