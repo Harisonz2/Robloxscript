@@ -46,8 +46,9 @@ local state = {
 	-- Full Bright backup
 	fbBackup = nil,
 
-	-- save spot
-	savedPosition = nil,
+	-- Save Spots (Slot 1 & 2)
+	savedPosition1 = nil,
+	savedPosition2 = nil,
 	
 	-- ESP
 	espFolder = nil
@@ -382,7 +383,7 @@ local function makeScreenGui()
 end
 
 local function makeFrame(parent)
-	local FRAME_HEIGHT = 440 
+	local FRAME_HEIGHT = 480 
     
 	local f = Instance.new("Frame")
 	f.Name = "Container"
@@ -531,7 +532,7 @@ local function makeFrame(parent)
 	versionLabel.Size = UDim2.new(0, 60, 0, 18)
 	versionLabel.Position = UDim2.new(1, -70, 1, -24)
 	versionLabel.BackgroundTransparency = 1
-	versionLabel.Text = "v2.2"
+	versionLabel.Text = "v2.3"
 	versionLabel.TextColor3 = Color3.fromRGB(100,200,255)
 	versionLabel.Font = Enum.Font.GothamBold
 	versionLabel.TextSize = 12
@@ -575,7 +576,7 @@ local function makeToggle(parent, y, labelText, defaultOn)
 	return lbl, btn, apply
 end
 
--- WalkSpeed Section (ช่องกรอกตัวเลข + เปิด/ปิด)
+-- WalkSpeed Section
 local function makeSpeedSection(parent, y)
 	local _, onOffBtn, onOffApply = makeToggle(parent, y, "🏃 Speed Control", false)
 
@@ -632,7 +633,7 @@ local function makeSpeedSection(parent, y)
 	end)
 end
 
--- TP Walk Section (ช่องกรอกตัวเลข + เปิด/ปิด)
+-- TP Walk Section
 local function makeTPWalkSection(parent, y)
 	local _, onOffBtn, onOffApply = makeToggle(parent, y, "🚶 TP Walk", false)
 
@@ -678,6 +679,47 @@ local function makeTPWalkSection(parent, y)
 		onOffApply(state.tpWalkEnabled)
 		applyTPWalk(state.tpWalkEnabled)
 	end)
+end
+
+-- Save Spot Button Creator (Slot 1 & 2)
+local function makeSaveSpotButton(parent, y, slotNumber)
+	local btn = Instance.new("TextButton")
+	btn.Size = UDim2.new(1, -20, 0, 28)
+	btn.Position = UDim2.new(0, 10, 0, y)
+	btn.BackgroundColor3 = Color3.fromRGB(60,60,70)
+	btn.TextColor3 = Color3.fromRGB(255,255,255)
+	btn.Font = Enum.Font.GothamBold
+	btn.TextSize = 13
+	btn.Text = "📍 Save Spot " .. slotNumber
+	btn.Parent = parent
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 6)
+	corner.Parent = btn
+
+	btn.MouseButton1Click:Connect(function()
+		local key = "savedPosition" .. slotNumber
+		if state[key] then
+			local char = player.Character or player.CharacterAdded:Wait()
+			local root = char:FindFirstChild("HumanoidRootPart")
+			if root then
+				root.CFrame = CFrame.new(state[key])
+			end
+			state[key] = nil
+			btn.Text = "📍 Save Spot " .. slotNumber
+			btn.BackgroundColor3 = Color3.fromRGB(60,60,70)
+		else
+			local char = player.Character or player.CharacterAdded:Wait()
+			local root = char:FindFirstChild("HumanoidRootPart")
+			if root then
+				state[key] = root.Position
+				btn.Text = "🚀 Teleport to Spot " .. slotNumber
+				btn.BackgroundColor3 = Color3.fromRGB(50,150,50)
+			end
+		end
+	end)
+
+	return btn
 end
 
 -- ================== BUILD UI ==================
@@ -740,47 +782,9 @@ btnFPS.MouseButton1Click:Connect(function()
 	applyFPSBooster(state.fpsBooster)
 end)
 
--- ================== SAVE SPOT BUTTON ==================
-local saveBtn = Instance.new("TextButton")
-saveBtn.Size = UDim2.new(1, -20, 0, 30)
-saveBtn.Position = UDim2.new(0, 10, 0, y0 + 205) 
-saveBtn.BackgroundColor3 = Color3.fromRGB(60,60,70)
-saveBtn.TextColor3 = Color3.fromRGB(255,255,255)
-saveBtn.Font = Enum.Font.GothamBold
-saveBtn.TextSize = 13
-saveBtn.Text = "📍 Save Spot"
-saveBtn.Parent = state.frame
-
-local saveBtnCorner = Instance.new("UICorner")
-saveBtnCorner.CornerRadius = UDim.new(0, 6)
-saveBtnCorner.Parent = saveBtn
-
-local function savePosition()
-	local char = player.Character or player.CharacterAdded:Wait()
-	local root = char:WaitForChild("HumanoidRootPart")
-	state.savedPosition = root.Position
-	saveBtn.Text = "🚀 Teleport to Saved Spot"
-	saveBtn.BackgroundColor3 = Color3.fromRGB(50,150,50)
-end
-
-local function teleportToSavedSpot()
-	if state.savedPosition then
-		local char = player.Character or player.CharacterAdded:Wait()
-		local root = char:WaitForChild("HumanoidRootPart")
-		root.CFrame = CFrame.new(state.savedPosition)
-		state.savedPosition = nil
-		saveBtn.Text = "📍 Save Spot"
-		saveBtn.BackgroundColor3 = Color3.fromRGB(60,60,70)
-	end
-end
-
-saveBtn.MouseButton1Click:Connect(function()
-	if state.savedPosition then
-		teleportToSavedSpot()
-	else
-		savePosition()
-	end
-end)
+-- ================== SAVE SPOT BUTTONS ==================
+makeSaveSpotButton(state.frame, y0 + 205, 1)
+makeSaveSpotButton(state.frame, y0 + 238, 2)
 
 -- ================== FEATURES ==================
 UserInputService.JumpRequest:Connect(function()
@@ -804,5 +808,5 @@ end)
 state.baseWalkSpeed = humanoid and humanoid.WalkSpeed or 16
 state.baseMaxHealth = humanoid and humanoid.MaxHealth or 100
 
-print("✅ Phumipad Toolbox v2.2 loaded successfully!")
-print("📝 Features: Custom WalkSpeed Box, TP Walk, Potato FPS Booster")
+print("✅ Phumipad Toolbox v2.3 loaded successfully!")
+print("📝 Features: Dual Save Spot (Slot 1 & 2), Custom WalkSpeed, TP Walk, Potato FPS Booster")
