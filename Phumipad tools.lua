@@ -19,7 +19,7 @@ local state = {
 	baseWalkSpeed = 16,
 
 	tpWalkEnabled = false,
-	tpWalkSpeed = 2,
+	tpWalkSpeed = 1,
 
 	-- Toggles
 	instantInteract = false,
@@ -513,7 +513,7 @@ local function applyTPWalk(on)
 		state._tpWalkConn = RunService.Heartbeat:Connect(function(delta)
 			if state.tpWalkEnabled and humanoid and hrp and humanoid.Health > 0 then
 				if humanoid.MoveDirection.Magnitude > 0 then
-					local mult = tonumber(state.tpWalkSpeed) or 2
+					local mult = tonumber(state.tpWalkSpeed) or 1
 					hrp.CFrame = hrp.CFrame + (humanoid.MoveDirection * (mult * 15 * delta))
 				end
 			end
@@ -737,17 +737,17 @@ player.CharacterAdded:Connect(function(char)
 	if state.fullBright    then applyFullBright(true) end
 end)
 
--- ================== MODERN MINIMAL UI ==================
+-- ================== MODERN MINIMAL UI (ItsDraco) ==================
 local sg = Instance.new("ScreenGui")
-sg.Name = "PhumipadMinimalToolbox"
+sg.Name = "ItsDracoMinimalToolbox"
 sg.ResetOnSpawn = false
 sg.Parent = playerGui
 
 -- Main Window
 local f = Instance.new("Frame")
 f.Name = "MainFrame"
-f.Size = UDim2.new(0, 250, 0, 400)
-f.Position = UDim2.new(0.04, 0, 0.45, -200)
+f.Size = UDim2.new(0, 250, 0, 420)
+f.Position = UDim2.new(0.04, 0, 0.45, -210)
 f.BackgroundColor3 = Color3.fromRGB(18, 19, 24)
 f.BorderSizePixel = 0
 f.Active = true
@@ -762,6 +762,81 @@ local stroke = Instance.new("UIStroke")
 stroke.Color = Color3.fromRGB(45, 48, 60)
 stroke.Thickness = 1
 stroke.Parent = f
+
+-- Floating Dock Button (ปุ่มหลบข้างจอแบบแยกระหว่างแตะกับลาก)
+local openBtn = Instance.new("TextButton")
+openBtn.Name = "SideOpenButton"
+openBtn.Size = UDim2.new(0, 95, 0, 32)
+openBtn.Position = UDim2.new(0, 10, 0.5, -16)
+openBtn.BackgroundColor3 = Color3.fromRGB(24, 26, 33)
+openBtn.BorderSizePixel = 0
+openBtn.Text = "⚡ ItsDraco"
+openBtn.TextColor3 = Color3.fromRGB(100, 200, 255)
+openBtn.Font = Enum.Font.GothamBold
+openBtn.TextSize = 12
+openBtn.Visible = false
+openBtn.Active = true
+openBtn.Parent = sg
+
+local openCorner = Instance.new("UICorner")
+openCorner.CornerRadius = UDim.new(0, 8)
+openCorner.Parent = openBtn
+
+local openStroke = Instance.new("UIStroke")
+openStroke.Color = Color3.fromRGB(50, 55, 75)
+openStroke.Thickness = 1
+openStroke.Parent = openBtn
+
+-- ระบบลากปุ่มหลบข้างจอ (ป้องกันไม่ให้หน้าต่างเด้งตอนลาก)
+do
+	local dragging = false
+	local dragStart = nil
+	local startPos = nil
+	local hasMoved = false
+	local DRAG_THRESHOLD = 6 -- เคลื่อนที่เกิน 6 พิกเซลจะถือว่าเป็นการลาก
+
+	openBtn.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			dragging = true
+			hasMoved = false
+			dragStart = input.Position
+			startPos = openBtn.Position
+
+			input.Changed:Connect(function()
+				if input.UserInputState == Enum.UserInputState.End then
+					dragging = false
+				end
+			end)
+		end
+	end)
+
+	openBtn.InputChanged:Connect(function(input)
+		if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+			local delta = input.Position - dragStart
+			if delta.Magnitude > DRAG_THRESHOLD then
+				hasMoved = true
+			end
+			if hasMoved then
+				openBtn.Position = UDim2.new(
+					startPos.X.Scale, startPos.X.Offset + delta.X,
+					startPos.Y.Scale, startPos.Y.Offset + delta.Y
+				)
+			end
+		end
+	end)
+
+	openBtn.InputEnded:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			if not hasMoved then
+				-- แตะสั้นๆ อยู่กับที่: แสดงหน้าต่าง
+				openBtn.Visible = false
+				f.Visible = true
+			end
+			dragging = false
+			hasMoved = false
+		end
+	end)
+end
 
 -- Top Bar
 local bar = Instance.new("Frame")
@@ -780,7 +855,7 @@ local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, -70, 1, 0)
 title.Position = UDim2.new(0, 12, 0, 0)
 title.BackgroundTransparency = 1
-title.Text = "Phumipad  •  v2.6"
+title.Text = "ItsDraco  •  v2.7"
 title.TextColor3 = Color3.fromRGB(230, 235, 245)
 title.Font = Enum.Font.GothamBold
 title.TextSize = 12
@@ -816,6 +891,11 @@ closeCorner.CornerRadius = UDim.new(0, 5)
 closeCorner.Parent = closeBtn
 
 closeBtn.MouseButton1Click:Connect(function() sg:Destroy() end)
+
+miniBtn.MouseButton1Click:Connect(function()
+	f.Visible = false
+	openBtn.Visible = true
+end)
 
 -- Scroll Container
 local scroll = Instance.new("ScrollingFrame")
@@ -901,25 +981,6 @@ do
 		end
 	end)
 end
-
--- Minimize Logic
-local minimized = false
-local restoreSize = f.Size
-miniBtn.MouseButton1Click:Connect(function()
-	minimized = not minimized
-	if minimized then
-		restoreSize = f.Size
-		scroll.Visible = false
-		resizeGrip.Visible = false
-		f.Size = UDim2.new(f.Size.X.Scale, f.Size.X.Offset, 0, 36)
-		miniBtn.Text = "+"
-	else
-		scroll.Visible = true
-		resizeGrip.Visible = true
-		f.Size = restoreSize
-		miniBtn.Text = "—"
-	end
-end)
 
 -- UI Generators
 local currentOrder = 0
@@ -1112,7 +1173,6 @@ end, function(val)
 	state.tpWalkSpeed = val
 end)
 
--- ปุ่ม Fly Script (V3)
 addActionButton("🕊️ Open Fly GUI (V3)", function()
 	launchFlyScript()
 end)
@@ -1166,14 +1226,30 @@ addToggleRow("Potato FPS", state.fpsBooster, function(_, render)
 	applyFPSBooster(state.fpsBooster)
 end)
 
--- [3] Save Spots
+-- [3] Save Spots & Clear Buttons
 addCategory("Waypoints")
 
 local spotGrid = Instance.new("Frame")
-spotGrid.Size = UDim2.new(1, 0, 0, 28)
+spotGrid.Size = UDim2.new(1, 0, 0, 26)
 spotGrid.BackgroundTransparency = 1
 spotGrid.LayoutOrder = getOrder()
 spotGrid.Parent = scroll
+
+local clearGrid = Instance.new("Frame")
+clearGrid.Size = UDim2.new(1, 0, 0, 24)
+clearGrid.BackgroundTransparency = 1
+clearGrid.LayoutOrder = getOrder()
+clearGrid.Parent = scroll
+
+local spotButtons = {}
+
+local function resetSpotUI(slot)
+	state["savedPosition" .. slot] = nil
+	if spotButtons[slot] then
+		spotButtons[slot].Text = "📍 Spot " .. slot
+		spotButtons[slot].BackgroundColor3 = Color3.fromRGB(34, 36, 46)
+	end
+end
 
 local function makeGridSpotBtn(slot, posX, sizeX)
 	local btn = Instance.new("TextButton")
@@ -1191,15 +1267,15 @@ local function makeGridSpotBtn(slot, posX, sizeX)
 	bCorner.CornerRadius = UDim.new(0, 6)
 	bCorner.Parent = btn
 
+	spotButtons[slot] = btn
+
 	btn.MouseButton1Click:Connect(function()
 		local key = "savedPosition" .. slot
 		if state[key] then
 			local char = player.Character or player.CharacterAdded:Wait()
 			local root = char:FindFirstChild("HumanoidRootPart")
 			if root then root.CFrame = CFrame.new(state[key]) end
-			state[key] = nil
-			btn.Text = "📍 Spot " .. slot
-			btn.BackgroundColor3 = Color3.fromRGB(34, 36, 46)
+			resetSpotUI(slot)
 		else
 			local char = player.Character or player.CharacterAdded:Wait()
 			local root = char:FindFirstChild("HumanoidRootPart")
@@ -1212,8 +1288,32 @@ local function makeGridSpotBtn(slot, posX, sizeX)
 	end)
 end
 
+local function makeGridClearBtn(slot, posX, sizeX)
+	local btn = Instance.new("TextButton")
+	btn.Size = UDim2.new(sizeX, -4, 1, 0)
+	btn.Position = UDim2.new(posX, 0, 0, 0)
+	btn.BackgroundColor3 = Color3.fromRGB(160, 40, 45)
+	btn.BorderSizePixel = 0
+	btn.Text = "🗑️ Clear " .. slot
+	btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	btn.Font = Enum.Font.GothamBold
+	btn.TextSize = 10
+	btn.Parent = clearGrid
+
+	local bCorner = Instance.new("UICorner")
+	bCorner.CornerRadius = UDim.new(0, 6)
+	bCorner.Parent = btn
+
+	btn.MouseButton1Click:Connect(function()
+		resetSpotUI(slot)
+	end)
+end
+
 makeGridSpotBtn(1, 0, 0.5)
 makeGridSpotBtn(2, 0.5, 0.5)
+
+makeGridClearBtn(1, 0, 0.5)
+makeGridClearBtn(2, 0.5, 0.5)
 
 -- ================== HOOKS ==================
 UserInputService.JumpRequest:Connect(function()
