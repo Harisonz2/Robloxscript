@@ -4,7 +4,6 @@ local UserInputService = game:GetService("UserInputService")
 local ProximityPromptService = game:GetService("ProximityPromptService")
 local Workspace = game:GetService("Workspace")
 local Lighting = game:GetService("Lighting")
-local CoreGui = game:GetService("CoreGui")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -14,12 +13,11 @@ local state = {
 	ui = nil,
 	frame = nil,
 
-	-- Speed
+	-- Speed & Movement
 	speedEnabled = false,
 	speedValue = 16,
 	baseWalkSpeed = 16,
 
-	-- TP Walk
 	tpWalkEnabled = false,
 	tpWalkSpeed = 2,
 
@@ -35,7 +33,7 @@ local state = {
 
 	baseMaxHealth = 100,
 
-	-- runtime conns
+	-- Runtime connections
 	_noclipConn = nil,
 	_antiRDConns = {},
 	_fbConn = nil,
@@ -43,22 +41,17 @@ local state = {
 	_tpWalkConn = nil,
 	_fpsConn = nil,
 
-	-- Full Bright backup
+	-- FullBright & Positions
 	fbBackup = nil,
-
-	-- Save Spots (Slot 1 & 2)
 	savedPosition1 = nil,
-	savedPosition2 = nil,
-	
-	-- ESP
-	espFolder = nil
+	savedPosition2 = nil
 }
 
 local character = player.Character or player.CharacterAdded:Wait()
 local humanoid  = character:WaitForChild("Humanoid")
 local hrp       = character:WaitForChild("HumanoidRootPart")
 
--- ================== HELPERS ==================
+-- ================== CORE LOGIC ==================
 local function applyGodMode(on)
 	if not humanoid then return end
 	if on then
@@ -96,7 +89,6 @@ local function applyNoclip(on)
 	end
 end
 
--- TP Walk
 local function applyTPWalk(on)
 	if state._tpWalkConn then
 		state._tpWalkConn:Disconnect()
@@ -114,7 +106,6 @@ local function applyTPWalk(on)
 	end
 end
 
--- FPS Booster (Potato PC)
 local function applyFPSBooster(on)
 	if on then
 		pcall(function()
@@ -122,7 +113,6 @@ local function applyFPSBooster(on)
 			Lighting.GlobalShadows = false
 			Lighting.FogEnd = 9e9
 			Lighting.ShadowSoftness = 0
-
 			for _, fx in ipairs(Lighting:GetChildren()) do
 				if fx:IsA("PostEffect") or fx:IsA("BloomEffect") or fx:IsA("ColorCorrectionEffect")
 					or fx:IsA("SunRaysEffect") or fx:IsA("BlurEffect") or fx:IsA("DepthOfFieldEffect") then
@@ -148,7 +138,6 @@ local function applyFPSBooster(on)
 		for _, item in ipairs(Workspace:GetDescendants()) do
 			potatoify(item)
 		end
-
 		state._fpsConn = Workspace.DescendantAdded:Connect(potatoify)
 	else
 		if state._fpsConn then
@@ -166,11 +155,8 @@ local function applyFPSBooster(on)
 	end
 end
 
--- AntiRagdoll helpers
 local function clearAntiRDConns()
-	for _, c in ipairs(state._antiRDConns) do
-		pcall(function() c:Disconnect() end)
-	end
+	for _, c in ipairs(state._antiRDConns) do pcall(function() c:Disconnect() end) end
 	state._antiRDConns = {}
 end
 
@@ -197,11 +183,9 @@ local function applyAntiRagdoll(on)
 	if not hum then return end
 
 	handleBadState(hum, hum:GetState())
-
 	table.insert(state._antiRDConns, hum.StateChanged:Connect(function(_, newState)
 		handleBadState(hum, newState)
 	end))
-
 	for _, d in ipairs(Workspace:GetDescendants()) do
 		if d:IsA("Seat") then
 			table.insert(state._antiRDConns, d:GetPropertyChangedSignal("Occupant"):Connect(function()
@@ -213,13 +197,9 @@ local function applyAntiRagdoll(on)
 			end))
 		end
 	end
-
-	table.insert(state._antiRDConns, hum.Died:Connect(function()
-		clearAntiRDConns()
-	end))
+	table.insert(state._antiRDConns, hum.Died:Connect(function() clearAntiRDConns() end))
 end
 
--- Full Bright
 local function _setFullBrightColors()
 	Lighting.Ambient = Color3.new(1,1,1)
 	Lighting.ColorShift_Bottom = Color3.new(1,1,1)
@@ -238,18 +218,12 @@ local function applyFullBright(on)
 			OutdoorAmbient = Lighting.OutdoorAmbient
 		}
 	end
-
-	if state._fbConn then
-		state._fbConn:Disconnect()
-		state._fbConn = nil
-	end
+	if state._fbConn then state._fbConn:Disconnect(); state._fbConn = nil end
 
 	if on then
 		_setFullBrightColors()
 		state._fbConn = Lighting.Changed:Connect(function()
-			if state.fullBright then
-				_setFullBrightColors()
-			end
+			if state.fullBright then _setFullBrightColors() end
 		end)
 	else
 		local b = state.fbBackup
@@ -263,22 +237,19 @@ local function applyFullBright(on)
 	end
 end
 
--- ================== ESP SYSTEM ==================
 local function createESP(plr)
 	if plr == player then return end
-	
 	local function addESPToChar(char)
 		pcall(function()
 			if char:FindFirstChild("ESPBox") then return end
-			
 			local root = char:WaitForChild("HumanoidRootPart", 5)
 			if not root then return end
 
 			local box = Instance.new("BoxHandleAdornment")
 			box.Name = "ESPBox"
 			box.Size = root.Size * 1.2
-			box.Color3 = Color3.fromRGB(255, 0, 0)
-			box.Transparency = 0.7
+			box.Color3 = Color3.fromRGB(255, 75, 75)
+			box.Transparency = 0.65
 			box.AlwaysOnTop = true
 			box.ZIndex = 10
 			box.Adornee = root
@@ -287,33 +258,27 @@ local function createESP(plr)
 			local billboard = Instance.new("BillboardGui")
 			billboard.Name = "ESPName"
 			billboard.Adornee = char:WaitForChild("Head", 5)
-			billboard.Size = UDim2.new(0, 200, 0, 50)
-			billboard.StudsOffset = Vector3.new(0, 3, 0)
+			billboard.Size = UDim2.new(0, 160, 0, 30)
+			billboard.StudsOffset = Vector3.new(0, 2.5, 0)
 			billboard.AlwaysOnTop = true
 			billboard.Parent = char:WaitForChild("Head", 5)
 
 			local nameLabel = Instance.new("TextLabel")
 			nameLabel.Size = UDim2.new(1, 0, 1, 0)
 			nameLabel.BackgroundTransparency = 1
-			nameLabel.Text = plr.Name
+			nameLabel.Text = plr.DisplayName or plr.Name
 			nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-			nameLabel.TextStrokeTransparency = 0.5
-			nameLabel.Font = Enum.Font.SourceSansBold
-			nameLabel.TextSize = 16
+			nameLabel.TextStrokeTransparency = 0.6
+			nameLabel.Font = Enum.Font.GothamBold
+			nameLabel.TextSize = 12
 			nameLabel.Parent = billboard
 		end)
 	end
 
-	if plr.Character then
-		addESPToChar(plr.Character)
-	end
-	
+	if plr.Character then addESPToChar(plr.Character) end
 	local conn = plr.CharacterAdded:Connect(function(char)
-		if state.esp then
-			addESPToChar(char)
-		end
+		if state.esp then addESPToChar(char) end
 	end)
-	
 	table.insert(state._espConns, conn)
 end
 
@@ -322,39 +287,27 @@ local function removeESP()
 		if plr.Character then
 			pcall(function()
 				local root = plr.Character:FindFirstChild("HumanoidRootPart")
-				if root and root:FindFirstChild("ESPBox") then
-					root.ESPBox:Destroy()
-				end
+				if root and root:FindFirstChild("ESPBox") then root.ESPBox:Destroy() end
 				local head = plr.Character:FindFirstChild("Head")
-				if head and head:FindFirstChild("ESPName") then
-					head.ESPName:Destroy()
-				end
+				if head and head:FindFirstChild("ESPName") then head.ESPName:Destroy() end
 			end)
 		end
 	end
 end
 
 local function applyESP(on)
-	for _, conn in ipairs(state._espConns) do
-		pcall(function() conn:Disconnect() end)
-	end
+	for _, conn in ipairs(state._espConns) do pcall(function() conn:Disconnect() end) end
 	state._espConns = {}
-	
 	if on then
-		for _, plr in ipairs(Players:GetPlayers()) do
-			createESP(plr)
-		end
+		for _, plr in ipairs(Players:GetPlayers()) do createESP(plr) end
 		table.insert(state._espConns, Players.PlayerAdded:Connect(function(plr)
-			if state.esp then
-				createESP(plr)
-			end
+			if state.esp then createESP(plr) end
 		end))
 	else
 		removeESP()
 	end
 end
 
--- ================== CHARACTER REFRESH ==================
 player.CharacterAdded:Connect(function(char)
 	character = char
 	humanoid  = char:WaitForChild("Humanoid")
@@ -363,430 +316,457 @@ player.CharacterAdded:Connect(function(char)
 	state.baseWalkSpeed = humanoid.WalkSpeed
 	state.baseMaxHealth = humanoid.MaxHealth
 
-	if state.speedEnabled then
-		humanoid.WalkSpeed = tonumber(state.speedValue) or 16
-	end
+	if state.speedEnabled  then humanoid.WalkSpeed = tonumber(state.speedValue) or 16 end
 	if state.tpWalkEnabled then applyTPWalk(true) end
-	if state.godMode      then applyGodMode(true) end
-	if state.noclip       then applyNoclip(true) end
-	if state.antiRagdoll  then applyAntiRagdoll(true) end
-	if state.fullBright   then applyFullBright(true) end
+	if state.godMode       then applyGodMode(true) end
+	if state.noclip        then applyNoclip(true) end
+	if state.antiRagdoll   then applyAntiRagdoll(true) end
+	if state.fullBright    then applyFullBright(true) end
 end)
 
--- ================== UI BUILDERS ==================
-local function makeScreenGui()
-	local sg = Instance.new("ScreenGui")
-	sg.Name = "PhumipadToolboxGui"
-	sg.ResetOnSpawn = false
-	sg.Parent = playerGui
-	return sg
-end
+-- ================== MODERN MINIMAL UI ==================
+local sg = Instance.new("ScreenGui")
+sg.Name = "PhumipadMinimalToolbox"
+sg.ResetOnSpawn = false
+sg.Parent = playerGui
 
-local function makeFrame(parent)
-	local FRAME_HEIGHT = 480 
-    
-	local f = Instance.new("Frame")
-	f.Name = "Container"
-	f.Size = UDim2.new(0, 240, 0, FRAME_HEIGHT)
-	f.Position = UDim2.new(0.03, 0, 0.5, -FRAME_HEIGHT / 2)
-	f.BackgroundColor3 = Color3.fromRGB(25,25,30)
-	f.BorderSizePixel = 0
-	f.Active = true
-	f.Parent = parent
+-- Main Window
+local f = Instance.new("Frame")
+f.Name = "MainFrame"
+f.Size = UDim2.new(0, 250, 0, 380)
+f.Position = UDim2.new(0.04, 0, 0.45, -190)
+f.BackgroundColor3 = Color3.fromRGB(18, 19, 24)
+f.BorderSizePixel = 0
+f.Active = true
+f.ClipsDescendants = true
+f.Parent = sg
 
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 8)
-	corner.Parent = f
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 10)
+corner.Parent = f
 
-	local padding = Instance.new("UIPadding")
-	padding.PaddingTop = UDim.new(0, 8)
-	padding.PaddingBottom = UDim.new(0, 8)
-	padding.PaddingLeft = UDim.new(0, 10)
-	padding.PaddingRight = UDim.new(0, 10)
-	padding.Parent = f
+local stroke = Instance.new("UIStroke")
+stroke.Color = Color3.fromRGB(45, 48, 60)
+stroke.Thickness = 1
+stroke.Parent = f
 
-	-- Title bar
-	local bar = Instance.new("Frame")
-	bar.Name = "TitleBar"
-	bar.Size = UDim2.new(1, -20, 0, 32)
-	bar.Position = UDim2.new(0, 10, 0, 8)
-	bar.BackgroundColor3 = Color3.fromRGB(35,35,42)
-	bar.BorderSizePixel = 0
-	bar.Active = true
-	bar.Parent = f
+-- Top Bar
+local bar = Instance.new("Frame")
+bar.Name = "TopBar"
+bar.Size = UDim2.new(1, 0, 0, 36)
+bar.BackgroundColor3 = Color3.fromRGB(24, 26, 33)
+bar.BorderSizePixel = 0
+bar.Active = true
+bar.Parent = f
 
-	local barCorner = Instance.new("UICorner")
-	barCorner.CornerRadius = UDim.new(0, 6)
-	barCorner.Parent = bar
+local barCorner = Instance.new("UICorner")
+barCorner.CornerRadius = UDim.new(0, 10)
+barCorner.Parent = bar
 
-	local title = Instance.new("TextLabel")
-	title.Size = UDim2.new(1, -70, 1, 0)
-	title.Position = UDim2.new(0, 8, 0, 0)
-	title.BackgroundTransparency = 1
-	title.Text = "⚡ Phumipad Toolbox"
-	title.TextColor3 = Color3.fromRGB(100,200,255)
-	title.Font = Enum.Font.GothamBold
-	title.TextSize = 13 
-	title.TextXAlignment = Enum.TextXAlignment.Left
-	title.Parent = bar
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, -70, 1, 0)
+title.Position = UDim2.new(0, 12, 0, 0)
+title.BackgroundTransparency = 1
+title.Text = "Phumipad  •  v2.5"
+title.TextColor3 = Color3.fromRGB(230, 235, 245)
+title.Font = Enum.Font.GothamBold
+title.TextSize = 12
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.Parent = bar
 
-	local miniBtn = Instance.new("TextButton")
-	miniBtn.Size = UDim2.new(0, 26, 0, 24)
-	miniBtn.Position = UDim2.new(1, -62, 0, 4)
-	miniBtn.BackgroundColor3 = Color3.fromRGB(50,50,60)
-	miniBtn.BorderSizePixel = 0
-	miniBtn.Text = "−"
-	miniBtn.TextColor3 = Color3.fromRGB(255,255,255)
-	miniBtn.Font = Enum.Font.GothamBold
-	miniBtn.TextSize = 18
-	miniBtn.Parent = bar
+local miniBtn = Instance.new("TextButton")
+miniBtn.Size = UDim2.new(0, 22, 0, 22)
+miniBtn.Position = UDim2.new(1, -54, 0, 7)
+miniBtn.BackgroundColor3 = Color3.fromRGB(36, 38, 48)
+miniBtn.BorderSizePixel = 0
+miniBtn.Text = "—"
+miniBtn.TextColor3 = Color3.fromRGB(180, 185, 200)
+miniBtn.Font = Enum.Font.GothamBold
+miniBtn.TextSize = 11
+miniBtn.Parent = bar
+local miniCorner = Instance.new("UICorner")
+miniCorner.CornerRadius = UDim.new(0, 5)
+miniCorner.Parent = miniBtn
 
-	local miniBtnCorner = Instance.new("UICorner")
-	miniBtnCorner.CornerRadius = UDim.new(0, 4)
-	miniBtnCorner.Parent = miniBtn
+local closeBtn = Instance.new("TextButton")
+closeBtn.Size = UDim2.new(0, 22, 0, 22)
+closeBtn.Position = UDim2.new(1, -28, 0, 7)
+closeBtn.BackgroundColor3 = Color3.fromRGB(190, 45, 55)
+closeBtn.BorderSizePixel = 0
+closeBtn.Text = "✕"
+closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeBtn.Font = Enum.Font.GothamBold
+closeBtn.TextSize = 11
+closeBtn.Parent = bar
+local closeCorner = Instance.new("UICorner")
+closeCorner.CornerRadius = UDim.new(0, 5)
+closeCorner.Parent = closeBtn
 
-	local closeBtn = Instance.new("TextButton")
-	closeBtn.Size = UDim2.new(0, 26, 0, 24)
-	closeBtn.Position = UDim2.new(1, -32, 0, 4)
-	closeBtn.BackgroundColor3 = Color3.fromRGB(200,50,50)
-	closeBtn.BorderSizePixel = 0
-	closeBtn.Text = "✕"
-	closeBtn.TextColor3 = Color3.fromRGB(255,255,255)
-	closeBtn.Font = Enum.Font.GothamBold
-	closeBtn.TextSize = 16
-	closeBtn.Parent = bar
+closeBtn.MouseButton1Click:Connect(function() sg:Destroy() end)
 
-	local closeBtnCorner = Instance.new("UICorner")
-	closeBtnCorner.CornerRadius = UDim.new(0, 4)
-	closeBtnCorner.Parent = closeBtn
+-- Scroll Container
+local scroll = Instance.new("ScrollingFrame")
+scroll.Name = "Content"
+scroll.Size = UDim2.new(1, 0, 1, -36)
+scroll.Position = UDim2.new(0, 0, 0, 36)
+scroll.BackgroundTransparency = 1
+scroll.BorderSizePixel = 0
+scroll.ScrollBarThickness = 3
+scroll.ScrollBarImageColor3 = Color3.fromRGB(65, 70, 90)
+scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+scroll.Parent = f
 
-	closeBtn.MouseButton1Click:Connect(function() parent:Destroy() end)
+local layout = Instance.new("UIListLayout")
+layout.SortOrder = Enum.SortOrder.LayoutOrder
+layout.Padding = UDim.new(0, 5)
+layout.Parent = scroll
 
-	-- minimize
-	local function setContentVisible(v)
-		for _, child in ipairs(f:GetChildren()) do
-			if child:IsA("GuiObject") and child ~= bar and child ~= padding and child ~= corner then
-				child.Visible = v
-			end
-		end
-	end
-	local minimized = false
-	local originalSize = f.Size
-	miniBtn.MouseButton1Click:Connect(function()
-		minimized = not minimized
-		if minimized then
-			originalSize = f.Size
-			setContentVisible(false)
-			f.Size = UDim2.new(f.Size.X.Scale, f.Size.X.Offset, 0, 52)
-			miniBtn.Text = "+"
-		else
-			setContentVisible(true)
-			f.Size = originalSize
-			miniBtn.Text = "−"
+local scrollPadding = Instance.new("UIPadding")
+scrollPadding.PaddingTop = UDim.new(0, 8)
+scrollPadding.PaddingBottom = UDim.new(0, 14)
+scrollPadding.PaddingLeft = UDim.new(0, 10)
+scrollPadding.PaddingRight = UDim.new(0, 10)
+scrollPadding.Parent = scroll
+
+-- Resize Handle (Bottom-Right Corner)
+local resizeGrip = Instance.new("TextButton")
+resizeGrip.Name = "ResizeGrip"
+resizeGrip.Size = UDim2.new(0, 14, 0, 14)
+resizeGrip.Position = UDim2.new(1, -14, 1, -14)
+resizeGrip.BackgroundTransparency = 1
+resizeGrip.Text = "◢"
+resizeGrip.TextColor3 = Color3.fromRGB(90, 95, 115)
+resizeGrip.TextSize = 11
+resizeGrip.Font = Enum.Font.GothamBold
+resizeGrip.ZIndex = 50
+resizeGrip.Parent = f
+
+-- Drag Window
+do
+	local dragging, dragStart, startPos = false, nil, nil
+	bar.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			dragging = true
+			dragStart = input.Position
+			startPos = f.Position
+			input.Changed:Connect(function()
+				if input.UserInputState == Enum.UserInputState.End then dragging = false end
+			end)
 		end
 	end)
-
-	-- drag
-	do
-		local dragging, dragStart, startPos = false, nil, nil
-		bar.InputBegan:Connect(function(input)
-			if input.UserInputType == Enum.UserInputType.MouseButton1
-			or input.UserInputType == Enum.UserInputType.Touch then
-				dragging = true
-				dragStart = input.Position
-				startPos = f.Position
-				input.Changed:Connect(function()
-					if input.UserInputState == Enum.UserInputState.End then
-						dragging = false
-					end
-				end)
-			end
-		end)
-		bar.InputChanged:Connect(function(input)
-			if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement
-			or input.UserInputType == Enum.UserInputType.Touch) then
-				local delta = input.Position - dragStart
-				f.Position = UDim2.new(
-					startPos.X.Scale, startPos.X.Offset + delta.X,
-					startPos.Y.Scale, startPos.Y.Offset + delta.Y
-				)
-			end
-		end)
-	end
-
-	-- Footer
-	local signature = Instance.new("TextLabel")
-	signature.Name = "signature"
-	signature.Size = UDim2.new(0, 150, 0, 18)
-	signature.Position = UDim2.new(0, 10, 1, -24)
-	signature.BackgroundTransparency = 1
-	signature.Text = "Made by Phumipad"
-	signature.TextColor3 = Color3.fromRGB(150,150,150)
-	signature.Font = Enum.Font.GothamSemibold
-	signature.TextSize = 12
-	signature.TextXAlignment = Enum.TextXAlignment.Left
-	signature.Parent = f
-
-	local versionLabel = Instance.new("TextLabel")
-	versionLabel.Name = "versionLabel"
-	versionLabel.Size = UDim2.new(0, 60, 0, 18)
-	versionLabel.Position = UDim2.new(1, -70, 1, -24)
-	versionLabel.BackgroundTransparency = 1
-	versionLabel.Text = "v2.3"
-	versionLabel.TextColor3 = Color3.fromRGB(100,200,255)
-	versionLabel.Font = Enum.Font.GothamBold
-	versionLabel.TextSize = 12
-	versionLabel.TextXAlignment = Enum.TextXAlignment.Right
-	versionLabel.Parent = f
-
-	return f
+	bar.InputChanged:Connect(function(input)
+		if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+			local delta = input.Position - dragStart
+			f.Position = UDim2.new(
+				startPos.X.Scale, startPos.X.Offset + delta.X,
+				startPos.Y.Scale, startPos.Y.Offset + delta.Y
+			)
+		end
+	end)
 end
 
-local function makeToggle(parent, y, labelText, defaultOn)
+-- Resize Window Logic
+do
+	local resizing, resizeStart, startSize = false, nil, nil
+	resizeGrip.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			resizing = true
+			resizeStart = input.Position
+			startSize = f.AbsoluteSize
+			input.Changed:Connect(function()
+				if input.UserInputState == Enum.UserInputState.End then resizing = false end
+			end)
+		end
+	end)
+	UserInputService.InputChanged:Connect(function(input)
+		if resizing and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+			local delta = input.Position - resizeStart
+			local targetW = math.clamp(startSize.X + delta.X, 220, 500)
+			local targetH = math.clamp(startSize.Y + delta.Y, 200, 700)
+			f.Size = UDim2.new(0, targetW, 0, targetH)
+		end
+	end)
+end
+
+-- Minimize Logic
+local minimized = false
+local restoreSize = f.Size
+miniBtn.MouseButton1Click:Connect(function()
+	minimized = not minimized
+	if minimized then
+		restoreSize = f.Size
+		scroll.Visible = false
+		resizeGrip.Visible = false
+		f.Size = UDim2.new(f.Size.X.Scale, f.Size.X.Offset, 0, 36)
+		miniBtn.Text = "+"
+	else
+		scroll.Visible = true
+		resizeGrip.Visible = true
+		f.Size = restoreSize
+		miniBtn.Text = "—"
+	end
+end)
+
+-- UI Generator Helpers
+local currentOrder = 0
+local function getOrder() currentOrder = currentOrder + 1; return currentOrder end
+
+local function addCategory(name)
 	local lbl = Instance.new("TextLabel")
-	lbl.Size = UDim2.new(0.55, 0, 0, 22)
-	lbl.Position = UDim2.new(0, 10, 0, y)
+	lbl.Size = UDim2.new(1, 0, 0, 16)
 	lbl.BackgroundTransparency = 1
-	lbl.Text = labelText
-	lbl.TextColor3 = Color3.fromRGB(220,220,220)
-	lbl.Font = Enum.Font.Gotham
-	lbl.TextSize = 13
+	lbl.Text = name:upper()
+	lbl.TextColor3 = Color3.fromRGB(100, 105, 125)
+	lbl.Font = Enum.Font.GothamBold
+	lbl.TextSize = 10
 	lbl.TextXAlignment = Enum.TextXAlignment.Left
-	lbl.Parent = parent
+	lbl.LayoutOrder = getOrder()
+	lbl.Parent = scroll
+end
+
+local function addToggleRow(name, defaultOn, onClick)
+	local row = Instance.new("Frame")
+	row.Size = UDim2.new(1, 0, 0, 28)
+	row.BackgroundColor3 = Color3.fromRGB(24, 25, 33)
+	row.BorderSizePixel = 0
+	row.LayoutOrder = getOrder()
+	row.Parent = scroll
+
+	local rCorner = Instance.new("UICorner")
+	rCorner.CornerRadius = UDim.new(0, 6)
+	rCorner.Parent = row
+
+	local lbl = Instance.new("TextLabel")
+	lbl.Size = UDim2.new(1, -55, 1, 0)
+	lbl.Position = UDim2.new(0, 8, 0, 0)
+	lbl.BackgroundTransparency = 1
+	lbl.Text = name
+	lbl.TextColor3 = Color3.fromRGB(215, 220, 230)
+	lbl.Font = Enum.Font.GothamMedium
+	lbl.TextSize = 12
+	lbl.TextXAlignment = Enum.TextXAlignment.Left
+	lbl.Parent = row
 
 	local btn = Instance.new("TextButton")
-	btn.Size = UDim2.new(0, 60, 0, 22)
-	btn.Position = UDim2.new(1, -70, 0, y)
+	btn.Size = UDim2.new(0, 42, 0, 20)
+	btn.Position = UDim2.new(1, -48, 0.5, -10)
 	btn.BorderSizePixel = 0
 	btn.Font = Enum.Font.GothamBold
-	btn.TextSize = 12
-	btn.Parent = parent
+	btn.TextSize = 10
+	btn.Parent = row
 
-	local btnCorner = Instance.new("UICorner")
-	btnCorner.CornerRadius = UDim.new(0, 6)
-	btnCorner.Parent = btn
+	local bCorner = Instance.new("UICorner")
+	bCorner.CornerRadius = UDim.new(0, 5)
+	bCorner.Parent = btn
 
-	local function apply(v)
+	local function render(v)
 		btn.Text = v and "ON" or "OFF"
-		btn.BackgroundColor3 = v and Color3.fromRGB(50,180,50) or Color3.fromRGB(80,80,90)
-		btn.TextColor3 = v and Color3.fromRGB(255,255,255) or Color3.fromRGB(180,180,180)
+		btn.BackgroundColor3 = v and Color3.fromRGB(46, 175, 100) or Color3.fromRGB(45, 48, 60)
+		btn.TextColor3 = v and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(160, 165, 180)
 	end
-	apply(defaultOn)
-
-	return lbl, btn, apply
-end
-
--- WalkSpeed Section
-local function makeSpeedSection(parent, y)
-	local _, onOffBtn, onOffApply = makeToggle(parent, y, "🏃 Speed Control", false)
-
-	local inputLbl = Instance.new("TextLabel")
-	inputLbl.Size = UDim2.new(0.55, 0, 0, 22)
-	inputLbl.Position = UDim2.new(0, 10, 0, y + 25)
-	inputLbl.BackgroundTransparency = 1
-	inputLbl.Text = "WalkSpeed:"
-	inputLbl.TextColor3 = Color3.fromRGB(180,180,180)
-	inputLbl.Font = Enum.Font.Gotham
-	inputLbl.TextSize = 12
-	inputLbl.TextXAlignment = Enum.TextXAlignment.Left
-	inputLbl.Parent = parent
-
-	local box = Instance.new("TextBox")
-	box.Size = UDim2.new(0, 60, 0, 22)
-	box.Position = UDim2.new(1, -70, 0, y + 25)
-	box.BackgroundColor3 = Color3.fromRGB(45,45,55)
-	box.BorderSizePixel = 0
-	box.Text = tostring(state.speedValue)
-	box.TextColor3 = Color3.fromRGB(255,255,255)
-	box.PlaceholderText = "16"
-	box.Font = Enum.Font.GothamBold
-	box.TextSize = 12
-	box.ClearTextOnFocus = false
-	box.Parent = parent
-
-	local boxCorner = Instance.new("UICorner")
-	boxCorner.CornerRadius = UDim.new(0, 6)
-	boxCorner.Parent = box
-
-	box.FocusLost:Connect(function()
-		local num = tonumber(box.Text)
-		if num and num >= 0 then
-			state.speedValue = num
-			if state.speedEnabled and humanoid then
-				humanoid.WalkSpeed = num
-			end
-		else
-			box.Text = tostring(state.speedValue)
-		end
-	end)
-
-	onOffBtn.MouseButton1Click:Connect(function()
-		state.speedEnabled = not state.speedEnabled
-		onOffApply(state.speedEnabled)
-		if humanoid then
-			if state.speedEnabled then
-				humanoid.WalkSpeed = tonumber(state.speedValue) or 16
-			else
-				humanoid.WalkSpeed = state.baseWalkSpeed
-			end
-		end
-	end)
-end
-
--- TP Walk Section
-local function makeTPWalkSection(parent, y)
-	local _, onOffBtn, onOffApply = makeToggle(parent, y, "🚶 TP Walk", false)
-
-	local inputLbl = Instance.new("TextLabel")
-	inputLbl.Size = UDim2.new(0.55, 0, 0, 22)
-	inputLbl.Position = UDim2.new(0, 10, 0, y + 25)
-	inputLbl.BackgroundTransparency = 1
-	inputLbl.Text = "TP Multiplier:"
-	inputLbl.TextColor3 = Color3.fromRGB(180,180,180)
-	inputLbl.Font = Enum.Font.Gotham
-	inputLbl.TextSize = 12
-	inputLbl.TextXAlignment = Enum.TextXAlignment.Left
-	inputLbl.Parent = parent
-
-	local box = Instance.new("TextBox")
-	box.Size = UDim2.new(0, 60, 0, 22)
-	box.Position = UDim2.new(1, -70, 0, y + 25)
-	box.BackgroundColor3 = Color3.fromRGB(45,45,55)
-	box.BorderSizePixel = 0
-	box.Text = tostring(state.tpWalkSpeed)
-	box.TextColor3 = Color3.fromRGB(255,255,255)
-	box.PlaceholderText = "2"
-	box.Font = Enum.Font.GothamBold
-	box.TextSize = 12
-	box.ClearTextOnFocus = false
-	box.Parent = parent
-
-	local boxCorner = Instance.new("UICorner")
-	boxCorner.CornerRadius = UDim.new(0, 6)
-	boxCorner.Parent = box
-
-	box.FocusLost:Connect(function()
-		local num = tonumber(box.Text)
-		if num and num > 0 then
-			state.tpWalkSpeed = num
-		else
-			box.Text = tostring(state.tpWalkSpeed)
-		end
-	end)
-
-	onOffBtn.MouseButton1Click:Connect(function()
-		state.tpWalkEnabled = not state.tpWalkEnabled
-		onOffApply(state.tpWalkEnabled)
-		applyTPWalk(state.tpWalkEnabled)
-	end)
-end
-
--- Save Spot Button Creator (Slot 1 & 2)
-local function makeSaveSpotButton(parent, y, slotNumber)
-	local btn = Instance.new("TextButton")
-	btn.Size = UDim2.new(1, -20, 0, 28)
-	btn.Position = UDim2.new(0, 10, 0, y)
-	btn.BackgroundColor3 = Color3.fromRGB(60,60,70)
-	btn.TextColor3 = Color3.fromRGB(255,255,255)
-	btn.Font = Enum.Font.GothamBold
-	btn.TextSize = 13
-	btn.Text = "📍 Save Spot " .. slotNumber
-	btn.Parent = parent
-
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 6)
-	corner.Parent = btn
+	render(defaultOn)
 
 	btn.MouseButton1Click:Connect(function()
-		local key = "savedPosition" .. slotNumber
+		onClick(btn, render)
+	end)
+end
+
+local function addInputToggleRow(name, defaultVal, defaultOn, onToggle, onValChange)
+	local row = Instance.new("Frame")
+	row.Size = UDim2.new(1, 0, 0, 30)
+	row.BackgroundColor3 = Color3.fromRGB(24, 25, 33)
+	row.BorderSizePixel = 0
+	row.LayoutOrder = getOrder()
+	row.Parent = scroll
+
+	local rCorner = Instance.new("UICorner")
+	rCorner.CornerRadius = UDim.new(0, 6)
+	rCorner.Parent = row
+
+	local lbl = Instance.new("TextLabel")
+	lbl.Size = UDim2.new(0.48, 0, 1, 0)
+	lbl.Position = UDim2.new(0, 8, 0, 0)
+	lbl.BackgroundTransparency = 1
+	lbl.Text = name
+	lbl.TextColor3 = Color3.fromRGB(215, 220, 230)
+	lbl.Font = Enum.Font.GothamMedium
+	lbl.TextSize = 12
+	lbl.TextXAlignment = Enum.TextXAlignment.Left
+	lbl.Parent = row
+
+	local box = Instance.new("TextBox")
+	box.Size = UDim2.new(0, 38, 0, 20)
+	box.Position = UDim2.new(1, -94, 0.5, -10)
+	box.BackgroundColor3 = Color3.fromRGB(34, 36, 46)
+	box.BorderSizePixel = 0
+	box.Text = tostring(defaultVal)
+	box.TextColor3 = Color3.fromRGB(240, 240, 250)
+	box.Font = Enum.Font.GothamBold
+	box.TextSize = 11
+	box.ClearTextOnFocus = false
+	box.Parent = row
+
+	local boxCorner = Instance.new("UICorner")
+	boxCorner.CornerRadius = UDim.new(0, 5)
+	boxCorner.Parent = box
+
+	local btn = Instance.new("TextButton")
+	btn.Size = UDim2.new(0, 42, 0, 20)
+	btn.Position = UDim2.new(1, -48, 0.5, -10)
+	btn.BorderSizePixel = 0
+	btn.Font = Enum.Font.GothamBold
+	btn.TextSize = 10
+	btn.Parent = row
+
+	local bCorner = Instance.new("UICorner")
+	bCorner.CornerRadius = UDim.new(0, 5)
+	bCorner.Parent = btn
+
+	local function render(v)
+		btn.Text = v and "ON" or "OFF"
+		btn.BackgroundColor3 = v and Color3.fromRGB(46, 175, 100) or Color3.fromRGB(45, 48, 60)
+		btn.TextColor3 = v and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(160, 165, 180)
+	end
+	render(defaultOn)
+
+	box.FocusLost:Connect(function()
+		local n = tonumber(box.Text)
+		if n and n >= 0 then
+			onValChange(n)
+		else
+			box.Text = tostring(defaultVal)
+		end
+	end)
+
+	btn.MouseButton1Click:Connect(function()
+		onToggle(btn, render)
+	end)
+end
+
+-- ================== POPULATE ITEMS ==================
+
+-- [1] Movement
+addCategory("Movement")
+
+addInputToggleRow("Walk Speed", state.speedValue, state.speedEnabled, function(_, render)
+	state.speedEnabled = not state.speedEnabled
+	render(state.speedEnabled)
+	if humanoid then
+		humanoid.WalkSpeed = state.speedEnabled and (tonumber(state.speedValue) or 16) or state.baseWalkSpeed
+	end
+end, function(val)
+	state.speedValue = val
+	if state.speedEnabled and humanoid then humanoid.WalkSpeed = val end
+end)
+
+addInputToggleRow("TP Walk", state.tpWalkSpeed, state.tpWalkEnabled, function(_, render)
+	state.tpWalkEnabled = not state.tpWalkEnabled
+	render(state.tpWalkEnabled)
+	applyTPWalk(state.tpWalkEnabled)
+end, function(val)
+	state.tpWalkSpeed = val
+end)
+
+-- [2] Utilities
+addCategory("Utilities")
+
+addToggleRow("Instant Interact", state.instantInteract, function(_, render)
+	state.instantInteract = not state.instantInteract
+	render(state.instantInteract)
+end)
+
+addToggleRow("Infinite Jump", state.infiniteJump, function(_, render)
+	state.infiniteJump = not state.infiniteJump
+	render(state.infiniteJump)
+end)
+
+addToggleRow("God Mode", state.godMode, function(_, render)
+	state.godMode = not state.godMode
+	render(state.godMode)
+	applyGodMode(state.godMode)
+end)
+
+addToggleRow("Noclip", state.noclip, function(_, render)
+	state.noclip = not state.noclip
+	render(state.noclip)
+	applyNoclip(state.noclip)
+end)
+
+addToggleRow("Anti Ragdoll", state.antiRagdoll, function(_, render)
+	state.antiRagdoll = not state.antiRagdoll
+	render(state.antiRagdoll)
+	applyAntiRagdoll(state.antiRagdoll)
+end)
+
+addToggleRow("Full Bright", state.fullBright, function(_, render)
+	state.fullBright = not state.fullBright
+	render(state.fullBright)
+	applyFullBright(state.fullBright)
+end)
+
+addToggleRow("Player ESP", state.esp, function(_, render)
+	state.esp = not state.esp
+	render(state.esp)
+	applyESP(state.esp)
+end)
+
+addToggleRow("Potato FPS", state.fpsBooster, function(_, render)
+	state.fpsBooster = not state.fpsBooster
+	render(state.fpsBooster)
+	applyFPSBooster(state.fpsBooster)
+end)
+
+-- [3] Save Spots (2-Column Grid)
+addCategory("Waypoints")
+
+local spotGrid = Instance.new("Frame")
+spotGrid.Size = UDim2.new(1, 0, 0, 28)
+spotGrid.BackgroundTransparency = 1
+spotGrid.LayoutOrder = getOrder()
+spotGrid.Parent = scroll
+
+local function makeGridSpotBtn(slot, posX, sizeX)
+	local btn = Instance.new("TextButton")
+	btn.Size = UDim2.new(sizeX, -4, 1, 0)
+	btn.Position = UDim2.new(posX, 0, 0, 0)
+	btn.BackgroundColor3 = Color3.fromRGB(34, 36, 46)
+	btn.BorderSizePixel = 0
+	btn.Text = "📍 Spot " .. slot
+	btn.TextColor3 = Color3.fromRGB(220, 225, 235)
+	btn.Font = Enum.Font.GothamBold
+	btn.TextSize = 11
+	btn.Parent = spotGrid
+
+	local bCorner = Instance.new("UICorner")
+	bCorner.CornerRadius = UDim.new(0, 6)
+	bCorner.Parent = btn
+
+	btn.MouseButton1Click:Connect(function()
+		local key = "savedPosition" .. slot
 		if state[key] then
 			local char = player.Character or player.CharacterAdded:Wait()
 			local root = char:FindFirstChild("HumanoidRootPart")
-			if root then
-				root.CFrame = CFrame.new(state[key])
-			end
+			if root then root.CFrame = CFrame.new(state[key]) end
 			state[key] = nil
-			btn.Text = "📍 Save Spot " .. slotNumber
-			btn.BackgroundColor3 = Color3.fromRGB(60,60,70)
+			btn.Text = "📍 Spot " .. slot
+			btn.BackgroundColor3 = Color3.fromRGB(34, 36, 46)
 		else
 			local char = player.Character or player.CharacterAdded:Wait()
 			local root = char:FindFirstChild("HumanoidRootPart")
 			if root then
 				state[key] = root.Position
-				btn.Text = "🚀 Teleport to Spot " .. slotNumber
-				btn.BackgroundColor3 = Color3.fromRGB(50,150,50)
+				btn.Text = "🚀 Go " .. slot
+				btn.BackgroundColor3 = Color3.fromRGB(46, 175, 100)
 			end
 		end
 	end)
-
-	return btn
 end
 
--- ================== BUILD UI ==================
-state.ui = makeScreenGui()
-state.frame = makeFrame(state.ui)
+makeGridSpotBtn(1, 0, 0.5)
+makeGridSpotBtn(2, 0.5, 0.5)
 
--- Speed section (y = 44)
-makeSpeedSection(state.frame, 44)
-
--- TP Walk section (y = 96)
-makeTPWalkSection(state.frame, 96)
-
--- Toggles section (y0 = 150)
-local y0 = 150
-local _, btnInstant, applyInstant  = makeToggle(state.frame, y0,        "⚡ Instant Interact", false)
-local _, btnInfJump, applyInf      = makeToggle(state.frame, y0+25,     "🦘 Infinite Jump",    false)
-local _, btnGod, applyGodBtn       = makeToggle(state.frame, y0+50,     "🛡️ God Mode",         false)
-local _, btnNoclip, applyNC        = makeToggle(state.frame, y0+75,     "👻 Noclip",           false)
-local _, btnAntiRD, applyAntiRDBtn = makeToggle(state.frame, y0+100,    "🚫 Anti Ragdoll",     false)
-local _, btnFullB, applyFullBBtn   = makeToggle(state.frame, y0+125,    "💡 Full Bright",      false)
-local _, btnESP, applyESPBtn       = makeToggle(state.frame, y0+150,    "👁️ ESP",              false)
-local _, btnFPS, applyFPSBtn       = makeToggle(state.frame, y0+175,    "🥔 FPS Booster",      false)
-
-btnInstant.MouseButton1Click:Connect(function()
-	state.instantInteract = not state.instantInteract
-	applyInstant(state.instantInteract)
-end)
-btnInfJump.MouseButton1Click:Connect(function()
-	state.infiniteJump = not state.infiniteJump
-	applyInf(state.infiniteJump)
-end)
-btnGod.MouseButton1Click:Connect(function()
-	state.godMode = not state.godMode
-	applyGodBtn(state.godMode)
-	applyGodMode(state.godMode)
-end)
-btnNoclip.MouseButton1Click:Connect(function()
-	state.noclip = not state.noclip
-	applyNC(state.noclip)
-	applyNoclip(state.noclip)
-end)
-btnAntiRD.MouseButton1Click:Connect(function()
-	state.antiRagdoll = not state.antiRagdoll
-	applyAntiRDBtn(state.antiRagdoll)
-	applyAntiRagdoll(state.antiRagdoll)
-end)
-btnFullB.MouseButton1Click:Connect(function()
-	state.fullBright = not state.fullBright
-	applyFullBBtn(state.fullBright)
-	applyFullBright(state.fullBright)
-end)
-btnESP.MouseButton1Click:Connect(function()
-	state.esp = not state.esp
-	applyESPBtn(state.esp)
-	applyESP(state.esp)
-end)
-btnFPS.MouseButton1Click:Connect(function()
-	state.fpsBooster = not state.fpsBooster
-	applyFPSBtn(state.fpsBooster)
-	applyFPSBooster(state.fpsBooster)
-end)
-
--- ================== SAVE SPOT BUTTONS ==================
-makeSaveSpotButton(state.frame, y0 + 205, 1)
-makeSaveSpotButton(state.frame, y0 + 238, 2)
-
--- ================== FEATURES ==================
+-- ================== HOOKS ==================
 UserInputService.JumpRequest:Connect(function()
 	if state.infiniteJump and humanoid and humanoid.Health > 0 then
 		humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
@@ -807,6 +787,3 @@ end)
 
 state.baseWalkSpeed = humanoid and humanoid.WalkSpeed or 16
 state.baseMaxHealth = humanoid and humanoid.MaxHealth or 100
-
-print("✅ Phumipad Toolbox v2.3 loaded successfully!")
-print("📝 Features: Dual Save Spot (Slot 1 & 2), Custom WalkSpeed, TP Walk, Potato FPS Booster")
