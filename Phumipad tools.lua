@@ -51,6 +51,421 @@ local character = player.Character or player.CharacterAdded:Wait()
 local humanoid  = character:WaitForChild("Humanoid")
 local hrp       = character:WaitForChild("HumanoidRootPart")
 
+-- ================== FLY SCRIPT FUNCTION ==================
+local function launchFlyScript()
+	local existing = playerGui:FindFirstChild("FlyGuiV3_Main")
+	if existing then
+		existing:Destroy()
+		return
+	end
+
+	local main = Instance.new("ScreenGui")
+	local Frame = Instance.new("Frame")
+	local up = Instance.new("TextButton")
+	local down = Instance.new("TextButton")
+	local onof = Instance.new("TextButton")
+	local TextLabel = Instance.new("TextLabel")
+	local plus = Instance.new("TextButton")
+	local speed = Instance.new("TextLabel")
+	local mine = Instance.new("TextButton")
+	local closebutton = Instance.new("TextButton")
+	local mini = Instance.new("TextButton")
+	local mini2 = Instance.new("TextButton")
+
+	main.Name = "FlyGuiV3_Main"
+	main.Parent = playerGui
+	main.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+	main.ResetOnSpawn = false
+
+	Frame.Parent = main
+	Frame.BackgroundColor3 = Color3.fromRGB(163, 255, 137)
+	Frame.BorderColor3 = Color3.fromRGB(103, 221, 213)
+	Frame.Position = UDim2.new(0.1, 0, 0.38, 0)
+	Frame.Size = UDim2.new(0, 190, 0, 57)
+	Frame.Active = true
+	Frame.Draggable = true
+
+	up.Name = "up"
+	up.Parent = Frame
+	up.BackgroundColor3 = Color3.fromRGB(79, 255, 152)
+	up.Size = UDim2.new(0, 44, 0, 28)
+	up.Font = Enum.Font.SourceSans
+	up.Text = "UP"
+	up.TextColor3 = Color3.fromRGB(0, 0, 0)
+	up.TextSize = 14
+
+	down.Name = "down"
+	down.Parent = Frame
+	down.BackgroundColor3 = Color3.fromRGB(215, 255, 121)
+	down.Position = UDim2.new(0, 0, 0.491, 0)
+	down.Size = UDim2.new(0, 44, 0, 28)
+	down.Font = Enum.Font.SourceSans
+	down.Text = "DOWN"
+	down.TextColor3 = Color3.fromRGB(0, 0, 0)
+	down.TextSize = 14
+
+	onof.Name = "onof"
+	onof.Parent = Frame
+	onof.BackgroundColor3 = Color3.fromRGB(255, 249, 74)
+	onof.Position = UDim2.new(0.702, 0, 0.491, 0)
+	onof.Size = UDim2.new(0, 56, 0, 28)
+	onof.Font = Enum.Font.SourceSans
+	onof.Text = "fly"
+	onof.TextColor3 = Color3.fromRGB(0, 0, 0)
+	onof.TextSize = 14
+
+	TextLabel.Parent = Frame
+	TextLabel.BackgroundColor3 = Color3.fromRGB(242, 60, 255)
+	TextLabel.Position = UDim2.new(0.469, 0, 0, 0)
+	TextLabel.Size = UDim2.new(0, 100, 0, 28)
+	TextLabel.Font = Enum.Font.SourceSans
+	TextLabel.Text = "FLY GUI V3"
+	TextLabel.TextColor3 = Color3.fromRGB(0, 0, 0)
+	TextLabel.TextScaled = true
+	TextLabel.TextSize = 14
+	TextLabel.TextWrapped = true
+
+	plus.Name = "plus"
+	plus.Parent = Frame
+	plus.BackgroundColor3 = Color3.fromRGB(133, 145, 255)
+	plus.Position = UDim2.new(0.231, 0, 0, 0)
+	plus.Size = UDim2.new(0, 45, 0, 28)
+	plus.Font = Enum.Font.SourceSans
+	plus.Text = "+"
+	plus.TextColor3 = Color3.fromRGB(0, 0, 0)
+	plus.TextScaled = true
+	plus.TextSize = 14
+	plus.TextWrapped = true
+
+	speed.Name = "speed"
+	speed.Parent = Frame
+	speed.BackgroundColor3 = Color3.fromRGB(255, 85, 0)
+	speed.Position = UDim2.new(0.468, 0, 0.491, 0)
+	speed.Size = UDim2.new(0, 44, 0, 28)
+	speed.Font = Enum.Font.SourceSans
+	speed.Text = "1"
+	speed.TextColor3 = Color3.fromRGB(0, 0, 0)
+	speed.TextScaled = true
+	speed.TextSize = 14
+	speed.TextWrapped = true
+
+	mine.Name = "mine"
+	mine.Parent = Frame
+	mine.BackgroundColor3 = Color3.fromRGB(123, 255, 247)
+	mine.Position = UDim2.new(0.231, 0, 0.491, 0)
+	mine.Size = UDim2.new(0, 45, 0, 29)
+	mine.Font = Enum.Font.SourceSans
+	mine.Text = "-"
+	mine.TextColor3 = Color3.fromRGB(0, 0, 0)
+	mine.TextScaled = true
+	mine.TextSize = 14
+	mine.TextWrapped = true
+
+	closebutton.Name = "Close"
+	closebutton.Parent = Frame
+	closebutton.BackgroundColor3 = Color3.fromRGB(225, 25, 0)
+	closebutton.Font = Enum.Font.SourceSans
+	closebutton.Size = UDim2.new(0, 45, 0, 28)
+	closebutton.Text = "X"
+	closebutton.TextSize = 30
+	closebutton.Position = UDim2.new(0, 0, -1, 27)
+
+	mini.Name = "minimize"
+	mini.Parent = Frame
+	mini.BackgroundColor3 = Color3.fromRGB(192, 150, 230)
+	mini.Font = Enum.Font.SourceSans
+	mini.Size = UDim2.new(0, 45, 0, 28)
+	mini.Text = "-"
+	mini.TextSize = 40
+	mini.Position = UDim2.new(0, 44, -1, 27)
+
+	mini2.Name = "minimize2"
+	mini2.Parent = Frame
+	mini2.BackgroundColor3 = Color3.fromRGB(192, 150, 230)
+	mini2.Font = Enum.Font.SourceSans
+	mini2.Size = UDim2.new(0, 45, 0, 28)
+	mini2.Text = "+"
+	mini2.TextSize = 40
+	mini2.Position = UDim2.new(0, 44, -1, 57)
+	mini2.Visible = false
+
+	local speeds = 1
+	local speaker = player
+	local nowe = false
+	local tpwalking = false
+
+	pcall(function()
+		game:GetService("StarterGui"):SetCore("SendNotification", { 
+			Title = "FLY GUI V3",
+			Text = "BY XNEO",
+			Icon = "rbxthumb://type=Asset&id=5107182114&w=150&h=150",
+			Duration = 5
+		})
+	end)
+
+	onof.MouseButton1Down:Connect(function()
+		if nowe == true then
+			nowe = false
+			local char = speaker.Character
+			local hum = char and char:FindFirstChildOfClass("Humanoid")
+			if hum then
+				hum:SetStateEnabled(Enum.HumanoidStateType.Climbing, true)
+				hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, true)
+				hum:SetStateEnabled(Enum.HumanoidStateType.Flying, true)
+				hum:SetStateEnabled(Enum.HumanoidStateType.Freefall, true)
+				hum:SetStateEnabled(Enum.HumanoidStateType.GettingUp, true)
+				hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
+				hum:SetStateEnabled(Enum.HumanoidStateType.Landed, true)
+				hum:SetStateEnabled(Enum.HumanoidStateType.Physics, true)
+				hum:SetStateEnabled(Enum.HumanoidStateType.PlatformStanding, true)
+				hum:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, true)
+				hum:SetStateEnabled(Enum.HumanoidStateType.Running, true)
+				hum:SetStateEnabled(Enum.HumanoidStateType.RunningNoPhysics, true)
+				hum:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
+				hum:SetStateEnabled(Enum.HumanoidStateType.StrafingNoPhysics, true)
+				hum:SetStateEnabled(Enum.HumanoidStateType.Swimming, true)
+				hum:ChangeState(Enum.HumanoidStateType.RunningNoPhysics)
+			end
+		else 
+			nowe = true
+			for i = 1, speeds do
+				task.spawn(function()
+					local hb = game:GetService("RunService").Heartbeat	
+					tpwalking = true
+					local c = speaker.Character
+					local h = c and c:FindFirstChildWhichIsA("Humanoid")
+					while tpwalking and hb:Wait() and c and h and h.Parent do
+						if h.MoveDirection.Magnitude > 0 then
+							c:TranslateBy(h.MoveDirection)
+						end
+					end
+				end)
+			end
+
+			local char = speaker.Character
+			if char and char:FindFirstChild("Animate") then
+				char.Animate.Disabled = true
+			end
+			local hum = char and (char:FindFirstChildOfClass("Humanoid") or char:FindFirstChildOfClass("AnimationController"))
+			if hum then
+				for _, v in next, hum:GetPlayingAnimationTracks() do
+					v:AdjustSpeed(0)
+				end
+				hum:SetStateEnabled(Enum.HumanoidStateType.Climbing, false)
+				hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+				hum:SetStateEnabled(Enum.HumanoidStateType.Flying, false)
+				hum:SetStateEnabled(Enum.HumanoidStateType.Freefall, false)
+				hum:SetStateEnabled(Enum.HumanoidStateType.GettingUp, false)
+				hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, false)
+				hum:SetStateEnabled(Enum.HumanoidStateType.Landed, false)
+				hum:SetStateEnabled(Enum.HumanoidStateType.Physics, false)
+				hum:SetStateEnabled(Enum.HumanoidStateType.PlatformStanding, false)
+				hum:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+				hum:SetStateEnabled(Enum.HumanoidStateType.Running, false)
+				hum:SetStateEnabled(Enum.HumanoidStateType.RunningNoPhysics, false)
+				hum:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
+				hum:SetStateEnabled(Enum.HumanoidStateType.StrafingNoPhysics, false)
+				hum:SetStateEnabled(Enum.HumanoidStateType.Swimming, false)
+				hum:ChangeState(Enum.HumanoidStateType.Swimming)
+			end
+		end
+
+		local char = speaker.Character
+		local hum = char and char:FindFirstChildOfClass("Humanoid")
+		if not hum then return end
+
+		if hum.RigType == Enum.HumanoidRigType.R6 then
+			local torso = char:FindFirstChild("Torso")
+			if not torso then return end
+			local ctrl = {f = 0, b = 0, l = 0, r = 0}
+			local lastctrl = {f = 0, b = 0, l = 0, r = 0}
+			local maxspeed = 50
+			local currentSpd = 0
+
+			local bg = Instance.new("BodyGyro", torso)
+			bg.P = 9e4
+			bg.maxTorque = Vector3.new(9e9, 9e9, 9e9)
+			bg.cframe = torso.CFrame
+			local bv = Instance.new("BodyVelocity", torso)
+			bv.velocity = Vector3.new(0, 0.1, 0)
+			bv.maxForce = Vector3.new(9e9, 9e9, 9e9)
+
+			if nowe == true then hum.PlatformStand = true end
+
+			while nowe == true or hum.Health == 0 do
+				RunService.RenderStepped:Wait()
+				if ctrl.l + ctrl.r ~= 0 or ctrl.f + ctrl.b ~= 0 then
+					currentSpd = currentSpd + 0.5 + (currentSpd / maxspeed)
+					if currentSpd > maxspeed then currentSpd = maxspeed end
+				elseif not (ctrl.l + ctrl.r ~= 0 or ctrl.f + ctrl.b ~= 0) and currentSpd ~= 0 then
+					currentSpd = currentSpd - 1
+					if currentSpd < 0 then currentSpd = 0 end
+				end
+				if (ctrl.l + ctrl.r) ~= 0 or (ctrl.f + ctrl.b) ~= 0 then
+					bv.velocity = ((Workspace.CurrentCamera.CoordinateFrame.lookVector * (ctrl.f + ctrl.b)) + ((Workspace.CurrentCamera.CoordinateFrame * CFrame.new(ctrl.l + ctrl.r, (ctrl.f + ctrl.b) * 0.2, 0).p) - Workspace.CurrentCamera.CoordinateFrame.p)) * currentSpd
+					lastctrl = {f = ctrl.f, b = ctrl.b, l = ctrl.l, r = ctrl.r}
+				elseif (ctrl.l + ctrl.r) == 0 and (ctrl.f + ctrl.b) == 0 and currentSpd ~= 0 then
+					bv.velocity = ((Workspace.CurrentCamera.CoordinateFrame.lookVector * (lastctrl.f + lastctrl.b)) + ((Workspace.CurrentCamera.CoordinateFrame * CFrame.new(lastctrl.l + lastctrl.r, (lastctrl.f + lastctrl.b) * 0.2, 0).p) - Workspace.CurrentCamera.CoordinateFrame.p)) * currentSpd
+				else
+					bv.velocity = Vector3.new(0, 0, 0)
+				end
+				bg.cframe = Workspace.CurrentCamera.CoordinateFrame * CFrame.Angles(-math.rad((ctrl.f + ctrl.b) * 50 * currentSpd / maxspeed), 0, 0)
+			end
+			bg:Destroy()
+			bv:Destroy()
+			hum.PlatformStand = false
+			if char:FindFirstChild("Animate") then char.Animate.Disabled = false end
+			tpwalking = false
+		else
+			local upperTorso = char:FindFirstChild("UpperTorso")
+			if not upperTorso then return end
+			local ctrl = {f = 0, b = 0, l = 0, r = 0}
+			local lastctrl = {f = 0, b = 0, l = 0, r = 0}
+			local maxspeed = 50
+			local currentSpd = 0
+
+			local bg = Instance.new("BodyGyro", upperTorso)
+			bg.P = 9e4
+			bg.maxTorque = Vector3.new(9e9, 9e9, 9e9)
+			bg.cframe = upperTorso.CFrame
+			local bv = Instance.new("BodyVelocity", upperTorso)
+			bv.velocity = Vector3.new(0, 0.1, 0)
+			bv.maxForce = Vector3.new(9e9, 9e9, 9e9)
+
+			if nowe == true then hum.PlatformStand = true end
+
+			while nowe == true or hum.Health == 0 do
+				task.wait()
+				if ctrl.l + ctrl.r ~= 0 or ctrl.f + ctrl.b ~= 0 then
+					currentSpd = currentSpd + 0.5 + (currentSpd / maxspeed)
+					if currentSpd > maxspeed then currentSpd = maxspeed end
+				elseif not (ctrl.l + ctrl.r ~= 0 or ctrl.f + ctrl.b ~= 0) and currentSpd ~= 0 then
+					currentSpd = currentSpd - 1
+					if currentSpd < 0 then currentSpd = 0 end
+				end
+				if (ctrl.l + ctrl.r) ~= 0 or (ctrl.f + ctrl.b) ~= 0 then
+					bv.velocity = ((Workspace.CurrentCamera.CoordinateFrame.lookVector * (ctrl.f + ctrl.b)) + ((Workspace.CurrentCamera.CoordinateFrame * CFrame.new(ctrl.l + ctrl.r, (ctrl.f + ctrl.b) * 0.2, 0).p) - Workspace.CurrentCamera.CoordinateFrame.p)) * currentSpd
+					lastctrl = {f = ctrl.f, b = ctrl.b, l = ctrl.l, r = ctrl.r}
+				elseif (ctrl.l + ctrl.r) == 0 and (ctrl.f + ctrl.b) == 0 and currentSpd ~= 0 then
+					bv.velocity = ((Workspace.CurrentCamera.CoordinateFrame.lookVector * (lastctrl.f + lastctrl.b)) + ((Workspace.CurrentCamera.CoordinateFrame * CFrame.new(lastctrl.l + lastctrl.r, (lastctrl.f + lastctrl.b) * 0.2, 0).p) - Workspace.CurrentCamera.CoordinateFrame.p)) * currentSpd
+				else
+					bv.velocity = Vector3.new(0, 0, 0)
+				end
+				bg.cframe = Workspace.CurrentCamera.CoordinateFrame * CFrame.Angles(-math.rad((ctrl.f + ctrl.b) * 50 * currentSpd / maxspeed), 0, 0)
+			end
+			bg:Destroy()
+			bv:Destroy()
+			hum.PlatformStand = false
+			if char:FindFirstChild("Animate") then char.Animate.Disabled = false end
+			tpwalking = false
+		end
+	end)
+
+	local tis
+	up.MouseButton1Down:Connect(function()
+		tis = up.MouseEnter:Connect(function()
+			while tis do
+				task.wait()
+				local root = speaker.Character and speaker.Character:FindFirstChild("HumanoidRootPart")
+				if root then root.CFrame = root.CFrame * CFrame.new(0, 1, 0) end
+			end
+		end)
+	end)
+	up.MouseLeave:Connect(function()
+		if tis then tis:Disconnect(); tis = nil end
+	end)
+
+	local dis
+	down.MouseButton1Down:Connect(function()
+		dis = down.MouseEnter:Connect(function()
+			while dis do
+				task.wait()
+				local root = speaker.Character and speaker.Character:FindFirstChild("HumanoidRootPart")
+				if root then root.CFrame = root.CFrame * CFrame.new(0, -1, 0) end
+			end
+		end)
+	end)
+	down.MouseLeave:Connect(function()
+		if dis then dis:Disconnect(); dis = nil end
+	end)
+
+	plus.MouseButton1Down:Connect(function()
+		speeds = speeds + 1
+		speed.Text = tostring(speeds)
+		if nowe == true then
+			tpwalking = false
+			for i = 1, speeds do
+				task.spawn(function()
+					local hb = game:GetService("RunService").Heartbeat	
+					tpwalking = true
+					local c = speaker.Character
+					local h = c and c:FindFirstChildWhichIsA("Humanoid")
+					while tpwalking and hb:Wait() and c and h and h.Parent do
+						if h.MoveDirection.Magnitude > 0 then
+							c:TranslateBy(h.MoveDirection)
+						end
+					end
+				end)
+			end
+		end
+	end)
+
+	mine.MouseButton1Down:Connect(function()
+		if speeds == 1 then
+			speed.Text = "cannot be less than 1"
+			task.wait(1)
+			speed.Text = tostring(speeds)
+		else
+			speeds = speeds - 1
+			speed.Text = tostring(speeds)
+			if nowe == true then
+				tpwalking = false
+				for i = 1, speeds do
+					task.spawn(function()
+						local hb = game:GetService("RunService").Heartbeat	
+						tpwalking = true
+						local c = speaker.Character
+						local h = c and c:FindFirstChildWhichIsA("Humanoid")
+						while tpwalking and hb:Wait() and c and h and h.Parent do
+							if h.MoveDirection.Magnitude > 0 then
+								c:TranslateBy(h.MoveDirection)
+							end
+						end
+					end)
+				end
+			end
+		end
+	end)
+
+	closebutton.MouseButton1Click:Connect(function() main:Destroy() end)
+
+	mini.MouseButton1Click:Connect(function()
+		up.Visible = false
+		down.Visible = false
+		onof.Visible = false
+		plus.Visible = false
+		speed.Visible = false
+		mine.Visible = false
+		mini.Visible = false
+		mini2.Visible = true
+		Frame.BackgroundTransparency = 1
+		closebutton.Position = UDim2.new(0, 0, -1, 57)
+	end)
+
+	mini2.MouseButton1Click:Connect(function()
+		up.Visible = true
+		down.Visible = true
+		onof.Visible = true
+		plus.Visible = true
+		speed.Visible = true
+		mine.Visible = true
+		mini.Visible = true
+		mini2.Visible = false
+		Frame.BackgroundTransparency = 0 
+		closebutton.Position = UDim2.new(0, 0, -1, 27)
+	end)
+end
+
 -- ================== CORE LOGIC ==================
 local function applyGodMode(on)
 	if not humanoid then return end
@@ -147,9 +562,7 @@ local function applyFPSBooster(on)
 		pcall(function()
 			Lighting.GlobalShadows = true
 			for _, fx in ipairs(Lighting:GetChildren()) do
-				if fx:IsA("PostEffect") then
-					fx.Enabled = true
-				end
+				if fx:IsA("PostEffect") then fx.Enabled = true end
 			end
 		end)
 	end
@@ -333,8 +746,8 @@ sg.Parent = playerGui
 -- Main Window
 local f = Instance.new("Frame")
 f.Name = "MainFrame"
-f.Size = UDim2.new(0, 250, 0, 380)
-f.Position = UDim2.new(0.04, 0, 0.45, -190)
+f.Size = UDim2.new(0, 250, 0, 400)
+f.Position = UDim2.new(0.04, 0, 0.45, -200)
 f.BackgroundColor3 = Color3.fromRGB(18, 19, 24)
 f.BorderSizePixel = 0
 f.Active = true
@@ -367,7 +780,7 @@ local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, -70, 1, 0)
 title.Position = UDim2.new(0, 12, 0, 0)
 title.BackgroundTransparency = 1
-title.Text = "Phumipad  •  v2.5"
+title.Text = "Phumipad  •  v2.6"
 title.TextColor3 = Color3.fromRGB(230, 235, 245)
 title.Font = Enum.Font.GothamBold
 title.TextSize = 12
@@ -429,7 +842,7 @@ scrollPadding.PaddingLeft = UDim.new(0, 10)
 scrollPadding.PaddingRight = UDim.new(0, 10)
 scrollPadding.Parent = scroll
 
--- Resize Handle (Bottom-Right Corner)
+-- Resize Handle
 local resizeGrip = Instance.new("TextButton")
 resizeGrip.Name = "ResizeGrip"
 resizeGrip.Size = UDim2.new(0, 14, 0, 14)
@@ -508,7 +921,7 @@ miniBtn.MouseButton1Click:Connect(function()
 	end
 end)
 
--- UI Generator Helpers
+-- UI Generators
 local currentOrder = 0
 local function getOrder() currentOrder = currentOrder + 1; return currentOrder end
 
@@ -523,6 +936,37 @@ local function addCategory(name)
 	lbl.TextXAlignment = Enum.TextXAlignment.Left
 	lbl.LayoutOrder = getOrder()
 	lbl.Parent = scroll
+end
+
+local function addActionButton(name, onClick)
+	local row = Instance.new("Frame")
+	row.Size = UDim2.new(1, 0, 0, 28)
+	row.BackgroundColor3 = Color3.fromRGB(24, 25, 33)
+	row.BorderSizePixel = 0
+	row.LayoutOrder = getOrder()
+	row.Parent = scroll
+
+	local rCorner = Instance.new("UICorner")
+	rCorner.CornerRadius = UDim.new(0, 6)
+	rCorner.Parent = row
+
+	local btn = Instance.new("TextButton")
+	btn.Size = UDim2.new(1, -8, 1, -6)
+	btn.Position = UDim2.new(0, 4, 0, 3)
+	btn.BackgroundColor3 = Color3.fromRGB(36, 38, 48)
+	btn.BorderSizePixel = 0
+	btn.Text = name
+	btn.TextColor3 = Color3.fromRGB(220, 225, 235)
+	btn.Font = Enum.Font.GothamBold
+	btn.TextSize = 11
+	btn.Parent = row
+
+	local bCorner = Instance.new("UICorner")
+	bCorner.CornerRadius = UDim.new(0, 5)
+	bCorner.Parent = btn
+
+	btn.MouseButton1Click:Connect(onClick)
+	return btn
 end
 
 local function addToggleRow(name, defaultOn, onClick)
@@ -668,6 +1112,11 @@ end, function(val)
 	state.tpWalkSpeed = val
 end)
 
+-- ปุ่ม Fly Script (V3)
+addActionButton("🕊️ Open Fly GUI (V3)", function()
+	launchFlyScript()
+end)
+
 -- [2] Utilities
 addCategory("Utilities")
 
@@ -717,7 +1166,7 @@ addToggleRow("Potato FPS", state.fpsBooster, function(_, render)
 	applyFPSBooster(state.fpsBooster)
 end)
 
--- [3] Save Spots (2-Column Grid)
+-- [3] Save Spots
 addCategory("Waypoints")
 
 local spotGrid = Instance.new("Frame")
