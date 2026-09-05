@@ -4,6 +4,7 @@ local UserInputService = game:GetService("UserInputService")
 local ProximityPromptService = game:GetService("ProximityPromptService")
 local Workspace = game:GetService("Workspace")
 local Lighting = game:GetService("Lighting")
+local CoreGui = game:GetService("CoreGui")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -466,6 +467,186 @@ local function launchFlyScript()
 	end)
 end
 
+-- ================== PLAYER TELEPORT SCRIPT FUNCTION ==================
+local function launchPlayerTeleportScript()
+	local targetContainer = pcall(function() return CoreGui end) and CoreGui or playerGui
+	local existing = targetContainer:FindFirstChild("TeleportUI")
+	if existing then
+		existing:Destroy()
+		return
+	end
+
+	local teleportTarget = nil
+
+	local ScreenGui = Instance.new("ScreenGui")
+	ScreenGui.Name = "TeleportUI"
+	ScreenGui.ResetOnSpawn = false
+	ScreenGui.Parent = targetContainer
+
+	local MainFrame = Instance.new("Frame")
+	MainFrame.Size = UDim2.new(0, 250, 0, 300)
+	MainFrame.Position = UDim2.new(0.5, -125, 0.4, 0)
+	MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+	MainFrame.BorderSizePixel = 2
+	MainFrame.ClipsDescendants = true
+	MainFrame.Parent = ScreenGui
+
+	local TopBar = Instance.new("Frame")
+	TopBar.Size = UDim2.new(1, 0, 0, 30)
+	TopBar.Position = UDim2.new(0, 0, 0, 0)
+	TopBar.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+	TopBar.BorderSizePixel = 0
+	TopBar.Parent = MainFrame
+
+	local Title = Instance.new("TextLabel")
+	Title.Size = UDim2.new(1, -60, 1, 0)
+	Title.Position = UDim2.new(0, 10, 0, 0)
+	Title.BackgroundTransparency = 1
+	Title.Text = "Player Teleport GUI"
+	Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+	Title.TextXAlignment = Enum.TextXAlignment.Left
+	Title.Font = Enum.Font.GothamBold
+	Title.TextSize = 14
+	Title.Parent = TopBar
+
+	local MinButton = Instance.new("TextButton")
+	MinButton.Size = UDim2.new(0, 30, 0, 30)
+	MinButton.Position = UDim2.new(1, -60, 0, 0)
+	MinButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+	MinButton.BorderSizePixel = 0
+	MinButton.Text = "-"
+	MinButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+	MinButton.Font = Enum.Font.GothamBold
+	MinButton.TextSize = 18
+	MinButton.Parent = TopBar
+
+	local CloseButton = Instance.new("TextButton")
+	CloseButton.Size = UDim2.new(0, 30, 0, 30)
+	CloseButton.Position = UDim2.new(1, -30, 0, 0)
+	CloseButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+	CloseButton.BorderSizePixel = 0
+	CloseButton.Text = "X"
+	CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+	CloseButton.Font = Enum.Font.GothamBold
+	CloseButton.TextSize = 14
+	CloseButton.Parent = TopBar
+
+	local ContentFrame = Instance.new("Frame")
+	ContentFrame.Size = UDim2.new(1, 0, 0, 270)
+	ContentFrame.Position = UDim2.new(0, 0, 0, 30)
+	ContentFrame.BackgroundTransparency = 1
+	ContentFrame.Parent = MainFrame
+
+	local ScrollingFrame = Instance.new("ScrollingFrame")
+	ScrollingFrame.Size = UDim2.new(1, -10, 1, -45)
+	ScrollingFrame.Position = UDim2.new(0, 5, 0, 5)
+	ScrollingFrame.CanvasSize = UDim2.new(0, 0, 5, 0)
+	ScrollingFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+	ScrollingFrame.BorderSizePixel = 0
+	ScrollingFrame.Parent = ContentFrame
+
+	local UIListLayout = Instance.new("UIListLayout")
+	UIListLayout.Parent = ScrollingFrame
+	UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	UIListLayout.Padding = UDim.new(0, 2)
+
+	local TPButton = Instance.new("TextButton")
+	TPButton.Size = UDim2.new(1, -10, 0, 30)
+	TPButton.Position = UDim2.new(0, 5, 1, -35)
+	TPButton.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
+	TPButton.BorderSizePixel = 0
+	TPButton.Text = "Teleport"
+	TPButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+	TPButton.Font = Enum.Font.GothamBold
+	TPButton.TextSize = 14
+	TPButton.Parent = ContentFrame
+
+	local function updatePlayerList()
+		for _, child in pairs(ScrollingFrame:GetChildren()) do
+			if child:IsA("TextButton") then
+				child:Destroy()
+			end
+		end
+		for _, plr in pairs(Players:GetPlayers()) do
+			if plr ~= player then
+				local PlayerButton = Instance.new("TextButton")
+				PlayerButton.Size = UDim2.new(1, 0, 0, 25)
+				PlayerButton.Text = plr.Name
+				PlayerButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+				PlayerButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+				PlayerButton.Font = Enum.Font.Gotham
+				PlayerButton.TextSize = 12
+				PlayerButton.Parent = ScrollingFrame
+
+				PlayerButton.MouseButton1Click:Connect(function()
+					teleportTarget = plr.Character and plr.Character:FindFirstChild("HumanoidRootPart")
+					TPButton.Text = "Teleport to: " .. plr.Name
+				end)
+			end
+		end
+	end
+
+	TPButton.MouseButton1Click:Connect(function()
+		if teleportTarget and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+			player.Character.HumanoidRootPart.CFrame = teleportTarget.CFrame + Vector3.new(0, 3, 0)
+		end
+	end)
+
+	local pAdded = Players.PlayerAdded:Connect(updatePlayerList)
+	local pRemoved = Players.PlayerRemoving:Connect(updatePlayerList)
+	updatePlayerList()
+
+	CloseButton.MouseButton1Click:Connect(function()
+		pAdded:Disconnect()
+		pRemoved:Disconnect()
+		ScreenGui:Destroy()
+	end)
+
+	local tpMinimized = false
+	MinButton.MouseButton1Click:Connect(function()
+		tpMinimized = not tpMinimized
+		if tpMinimized then
+			MinButton.Text = "+"
+			MainFrame:TweenSize(UDim2.new(0, 250, 0, 30), "Out", "Quart", 0.3, true)
+		else
+			MinButton.Text = "-"
+			MainFrame:TweenSize(UDim2.new(0, 250, 0, 300), "Out", "Quart", 0.3, true)
+		end
+	end)
+
+	local dragging, dragInput, dragStart, startPos
+	local function update(input)
+		local delta = input.Position - dragStart
+		MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+	end
+
+	TopBar.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			dragging = true
+			dragStart = input.Position
+			startPos = MainFrame.Position
+
+			input.Changed:Connect(function()
+				if input.UserInputState == Enum.UserInputState.End then
+					dragging = false
+				end
+			end)
+		end
+	end)
+
+	TopBar.InputChanged:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+			dragInput = input
+		end
+	end)
+
+	UserInputService.InputChanged:Connect(function(input)
+		if input == dragInput and dragging then
+			update(input)
+		end
+	end)
+end
+
 -- ================== CORE LOGIC ==================
 local function applyGodMode(on)
 	if not humanoid then return end
@@ -853,7 +1034,7 @@ local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, -70, 1, 0)
 title.Position = UDim2.new(0, 12, 0, 0)
 title.BackgroundTransparency = 1
-title.Text = "ItsDraco  •  v2.7"
+title.Text = "ItsDraco  •  v2.8"
 title.TextColor3 = Color3.fromRGB(230, 235, 245)
 title.Font = Enum.Font.GothamBold
 title.TextSize = 12
@@ -1181,6 +1362,11 @@ addActionButton("⏱️ Anti AFK", function()
 	pcall(function()
 		loadstring(game:HttpGet("https://raw.githubusercontent.com/hassanxzayn-lua/Anti-afk/main/antiafkbyhassanxzyn"))()
 	end)
+end)
+
+-- ปุ่ม Player Teleport
+addActionButton("👥 Player Teleport", function()
+	launchPlayerTeleportScript()
 end)
 
 -- [2] Utilities
