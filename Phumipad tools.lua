@@ -763,7 +763,7 @@ stroke.Color = Color3.fromRGB(45, 48, 60)
 stroke.Thickness = 1
 stroke.Parent = f
 
--- Floating Dock Button (ปุ่มหลบข้างจอแบบแยกระหว่างแตะกับลาก)
+-- Floating Dock Button
 local openBtn = Instance.new("TextButton")
 openBtn.Name = "SideOpenButton"
 openBtn.Size = UDim2.new(0, 95, 0, 32)
@@ -787,13 +787,12 @@ openStroke.Color = Color3.fromRGB(50, 55, 75)
 openStroke.Thickness = 1
 openStroke.Parent = openBtn
 
--- ระบบลากปุ่มหลบข้างจอ (ป้องกันไม่ให้หน้าต่างเด้งตอนลาก)
 do
 	local dragging = false
 	local dragStart = nil
 	local startPos = nil
 	local hasMoved = false
-	local DRAG_THRESHOLD = 6 -- เคลื่อนที่เกิน 6 พิกเซลจะถือว่าเป็นการลาก
+	local DRAG_THRESHOLD = 6
 
 	openBtn.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -828,7 +827,6 @@ do
 	openBtn.InputEnded:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 			if not hasMoved then
-				-- แตะสั้นๆ อยู่กับที่: แสดงหน้าต่าง
 				openBtn.Visible = false
 				f.Visible = true
 			end
@@ -1173,8 +1171,16 @@ end, function(val)
 	state.tpWalkSpeed = val
 end)
 
+-- ปุ่ม Fly Script (V3)
 addActionButton("🕊️ Open Fly GUI (V3)", function()
 	launchFlyScript()
+end)
+
+-- ปุ่ม Anti AFK
+addActionButton("⏱️ Anti AFK", function()
+	pcall(function()
+		loadstring(game:HttpGet("https://raw.githubusercontent.com/hassanxzayn-lua/Anti-afk/main/antiafkbyhassanxzyn"))()
+	end)
 end)
 
 -- [2] Utilities
