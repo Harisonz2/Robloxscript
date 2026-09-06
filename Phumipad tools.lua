@@ -869,9 +869,9 @@ local function createESP(plr)
 			if not root or not head then return end
 
 			local isAlly = isTeammate(plr)
-			local teamCol = isAlly and Color3.fromRGB(0, 160, 255) or Color3.fromRGB(255, 50, 50)
+			local teamCol = isAlly and Color3.fromRGB(0, 160, 255) or Color3.fromRGB(255, 35, 35)
 
-			-- Highlight แบบ AlwaysOnTop แต่จะเปิดทำงานเฉพาะตอนอยู่นอกสายตา
+			-- Highlight: เรนเดอร์ทะลุกำแพงเฉพาะเมื่ออยู่นอกสายตา
 			local hl = Instance.new("Highlight")
 			hl.Name = "DracoESPHighlight"
 			hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
@@ -883,27 +883,28 @@ local function createESP(plr)
 			hl.Adornee = char
 			hl.Parent = char
 
-			-- ป้ายชื่อ + ระยะห่าง
+			-- BillboardGui: ยกสูงจากศีรษะ 4.2 Studs เพื่อไม่ให้บังตัวละคร
 			local bb = Instance.new("BillboardGui")
 			bb.Name = "DracoESPName"
 			bb.Adornee = head
-			bb.Size = UDim2.new(0, 200, 0, 36)
-			bb.StudsOffset = Vector3.new(0, 2.5, 0)
+			bb.Size = UDim2.new(0, 260, 0, 52)
+			bb.StudsOffset = Vector3.new(0, 4.2, 0)
 			bb.AlwaysOnTop = true
 			bb.LightInfluence = 0
 			bb.MaxDistance = 10000
 			bb.Parent = head
 
+			-- ป้ายชื่อ + ระยะห่าง (ตัวอักษรสีขาว ขอบ Stroke สีแดงหนาชัดเจน)
 			local label = Instance.new("TextLabel")
 			label.Name = "ESPLabel"
 			label.Size = UDim2.new(1, 0, 1, 0)
 			label.BackgroundTransparency = 1
 			label.Text = plr.DisplayName or plr.Name
-			label.TextColor3 = teamCol
-			label.TextStrokeTransparency = 0
-			label.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+			label.TextColor3 = Color3.fromRGB(255, 255, 255) -- อักษรสีขาว
+			label.TextStrokeTransparency = 0 -- ขอบทึบชัดเจน
+			label.TextStrokeColor3 = isAlly and Color3.fromRGB(0, 140, 255) or Color3.fromRGB(255, 25, 25) -- ขอบสีแดง (ทีมตัวเองขอบฟ้า)
 			label.Font = Enum.Font.GothamBold
-			label.TextSize = 12
+			label.TextSize = 16 -- ขนาดตัวอักษรใหญ่ชัดเจน
 			label.Parent = bb
 		end)
 	end
@@ -943,7 +944,7 @@ local function applyESP(on)
 			if state.esp then createESP(plr) end
 		end))
 
-		-- Render Loop: Raycast ตรวจสอบสายตาและระยะห่างแบบเรียลไทม์
+		-- Render Loop: Raycast อัปเดตการแสดงผลและคำนวณระยะห่าง
 		table.insert(state._espConns, RunService.RenderStepped:Connect(function()
 			if not state.esp then return end
 			local myChar = player.Character
@@ -955,16 +956,15 @@ local function applyESP(on)
 					local head = plr.Character:FindFirstChild("Head")
 					local targetPart = head or root
 					local isAlly = isTeammate(plr)
-					local teamCol = isAlly and Color3.fromRGB(0, 160, 255) or Color3.fromRGB(255, 50, 50)
+					local strokeCol = isAlly and Color3.fromRGB(0, 140, 255) or Color3.fromRGB(255, 25, 25)
 
-					-- Raycast เช็คว่าอยู่หลังกำแพงหรือไม่
+					-- เช็คกำแพงบัง
 					local occluded = isPlayerOccluded(plr.Character, targetPart)
 
 					local hl = plr.Character:FindFirstChild("DracoESPHighlight")
 					if hl then
-						hl.FillColor = teamCol
-						hl.OutlineColor = teamCol
-						-- แสดงสีเมื่ออยู่นอกสายตา (หลังกำแพง) และปิดการย้อมสีเมื่ออยู่ในสายตา
+						hl.FillColor = strokeCol
+						hl.OutlineColor = strokeCol
 						hl.Enabled = occluded
 					end
 
@@ -973,7 +973,8 @@ local function applyESP(on)
 						if bb then
 							local label = bb:FindFirstChild("ESPLabel")
 							if label then
-								label.TextColor3 = teamCol
+								label.TextColor3 = Color3.fromRGB(255, 255, 255)
+								label.TextStrokeColor3 = strokeCol
 								if myHrp and root then
 									local dist = math.floor((myHrp.Position - root.Position).Magnitude)
 									label.Text = string.format("%s\n[%d studs]", plr.DisplayName or plr.Name, dist)
@@ -1123,7 +1124,7 @@ local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, -70, 1, 0)
 title.Position = UDim2.new(0, 12, 0, 0)
 title.BackgroundTransparency = 1
-title.Text = "ItsDraco  •  v3.0"
+title.Text = "ItsDraco  •  v3.1"
 title.TextColor3 = Color3.fromRGB(230, 235, 245)
 title.Font = Enum.Font.GothamBold
 title.TextSize = 12
