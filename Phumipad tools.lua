@@ -1752,8 +1752,8 @@ sg.Parent = playerGui
 -- Main Window
 local f = Instance.new("Frame")
 f.Name = "MainFrame"
-f.Size = UDim2.new(0, 275, 0, 450)
-f.Position = UDim2.new(0.04, 0, 0.45, -225)
+f.Size = UDim2.new(0, 275, 0, 300)
+f.Position = UDim2.new(0.04, 0, 0.45, -150)
 f.BackgroundColor3 = Color3.fromRGB(12, 14, 20)
 f.BorderSizePixel = 0
 f.Active = true
@@ -1932,7 +1932,7 @@ local statusCard = Instance.new("Frame")
 statusCard.Size = UDim2.new(1, 0, 0, 56)
 statusCard.BackgroundColor3 = Color3.fromRGB(20, 24, 34)
 statusCard.BorderSizePixel = 0
-statusCard.LayoutOrder = 0 -- ให้อยู่บนสุดเหนือ Movement
+statusCard.LayoutOrder = 0
 statusCard.Parent = scroll
 
 local scCorner = Instance.new("UICorner")
@@ -1944,7 +1944,6 @@ scStroke.Color = Color3.fromRGB(45, 55, 75)
 scStroke.Thickness = 1
 scStroke.Parent = statusCard
 
--- ชื่อเกม
 local gameNameLabel = Instance.new("TextLabel")
 gameNameLabel.Size = UDim2.new(1, -64, 0, 18)
 gameNameLabel.Position = UDim2.new(0, 8, 0, 6)
@@ -1957,7 +1956,6 @@ gameNameLabel.TextXAlignment = Enum.TextXAlignment.Left
 gameNameLabel.TextTruncate = Enum.TextTruncate.AtEnd
 gameNameLabel.Parent = statusCard
 
--- ปุ่ม COPY ต่อท้ายชื่อเกม
 local copyHeaderBtn = Instance.new("TextButton")
 copyHeaderBtn.Name = "CopyHeaderButton"
 copyHeaderBtn.Size = UDim2.new(0, 46, 0, 18)
@@ -2016,7 +2014,6 @@ kickWarningLabel.TextSize = 10
 kickWarningLabel.TextXAlignment = Enum.TextXAlignment.Right
 kickWarningLabel.Parent = statusCard
 
--- Status Logic
 local sessionStart = os.time()
 local lastInput = os.time()
 local cachedGameName = "Unknown Game"
@@ -2102,7 +2099,6 @@ gripLine2.BorderSizePixel = 0
 gripLine2.ZIndex = 61
 gripLine2.Parent = resizeGrip
 
--- Drag Window Logic
 do
 	local dragging, dragStart, startPos = false, nil, nil
 	bar.InputBegan:Connect(function(input)
@@ -2126,7 +2122,6 @@ do
 	end)
 end
 
--- Resize Window Logic
 do
 	local resizing = false
 	local resizeStart = nil
@@ -2156,7 +2151,7 @@ do
 		if resizing and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
 			local delta = input.Position - resizeStart
 			local targetW = math.clamp(startSize.X + delta.X, 230, 600)
-			local targetH = math.clamp(startSize.Y + delta.Y, 220, 800)
+			local targetH = math.clamp(startSize.Y + delta.Y, 150, 800)
 			f.Size = UDim2.new(0, targetW, 0, targetH)
 		end
 	end)
@@ -2165,7 +2160,37 @@ end
 local currentOrder = 1
 local function getOrder() currentOrder = currentOrder + 1; return currentOrder end
 
--- Collapsible Category Component (No Tofu / No Square Bug)
+-- ================== DYNAMIC AUTO-RESIZING SYSTEM ==================
+local categories = {}
+
+local function adjustPanelHeight(animate)
+	task.defer(function()
+		local totalContentHeight = statusCard.Size.Y.Offset + scrollPadding.PaddingTop.Offset + scrollPadding.PaddingBottom.Offset
+		
+		for _, cat in ipairs(categories) do
+			totalContentHeight = totalContentHeight + 26 -- ความสูง Header ปุ่มหมวดหมู่
+			if cat.isOpen() then
+				totalContentHeight = totalContentHeight + cat.contentLayout.AbsoluteContentSize.Y + 4
+			end
+			totalContentHeight = totalContentHeight + layout.Padding.Offset
+		end
+
+		local totalPanelHeight = totalContentHeight + 40 -- รวม TopBar (40px)
+		local cam = Workspace.CurrentCamera
+		local maxAllowedHeight = cam and (cam.ViewportSize.Y * 0.85) or 600
+		local finalHeight = math.clamp(totalPanelHeight, 150, maxAllowedHeight)
+
+		if animate then
+			TweenService:Create(f, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+				Size = UDim2.new(0, f.Size.X.Offset, 0, finalHeight)
+			}):Play()
+		else
+			f.Size = UDim2.new(0, f.Size.X.Offset, 0, finalHeight)
+		end
+	end)
+end
+
+-- Collapsible Category Component (พร้อมระบบขยาย-หดอัตโนมัติ)
 local function addCollapsibleCategory(name, defaultOpen)
 	local catFrame = Instance.new("Frame")
 	catFrame.Name = name .. "Category"
@@ -2220,7 +2245,7 @@ local function addCollapsibleCategory(name, defaultOpen)
 	contentLayout.Padding = UDim.new(0, 4)
 	contentLayout.Parent = content
 
-	local isOpen = (defaultOpen ~= false)
+	local isOpen = (defaultOpen == true)
 
 	local function updateHeader()
 		local arrow = isOpen and "[-] " or "[+] "
@@ -2233,10 +2258,11 @@ local function addCollapsibleCategory(name, defaultOpen)
 		updateHeader()
 
 		local targetH = isOpen and contentLayout.AbsoluteContentSize.Y or 0
-		local tween = TweenService:Create(clipWrapper, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+		TweenService:Create(clipWrapper, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
 			Size = UDim2.new(1, 0, 0, targetH)
-		})
-		tween:Play()
+		}):Play()
+
+		adjustPanelHeight(true)
 	end
 
 	contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
@@ -2255,6 +2281,11 @@ local function addCollapsibleCategory(name, defaultOpen)
 	updateHeader()
 
 	headerBtn.MouseButton1Click:Connect(toggleAccordion)
+
+	table.insert(categories, {
+		isOpen = function() return isOpen end,
+		contentLayout = contentLayout
+	})
 
 	return content
 end
@@ -2412,7 +2443,7 @@ end
 -- ================== POPULATE CATEGORIES ==================
 
 -- [1] MOVEMENT
-local movementContent = addCollapsibleCategory("Movement", true)
+local movementContent = addCollapsibleCategory("Movement", false)
 
 addInputToggleRow(movementContent, "Walk Speed", state.speedValue, state.speedEnabled, function(_, render)
 	state.speedEnabled = not state.speedEnabled
@@ -2434,7 +2465,7 @@ end, function(val)
 end)
 
 -- [2] UTILITIES
-local utilitiesContent = addCollapsibleCategory("Utilities", true)
+local utilitiesContent = addCollapsibleCategory("Utilities", false)
 
 addToggleRow(utilitiesContent, "Instant Interact", state.instantInteract, function(_, render)
 	state.instantInteract = not state.instantInteract
@@ -2471,7 +2502,7 @@ addToggleRow(utilitiesContent, "Full Bright", state.fullBright, function(_, rend
 end)
 
 -- [3] VISUAL
-local visualContent = addCollapsibleCategory("Visual", true)
+local visualContent = addCollapsibleCategory("Visual", false)
 
 addToggleRow(visualContent, "Player ESP", state.esp, function(_, render)
 	state.esp = not state.esp
@@ -2497,7 +2528,7 @@ addToggleRow(visualContent, "FPS Booster (Potato)", state.fpsBooster, function(_
 end)
 
 -- [4] MORE TOOLS
-local toolsContent = addCollapsibleCategory("More Tools", true)
+local toolsContent = addCollapsibleCategory("More Tools", false)
 
 addActionButton(toolsContent, "Auto Clicker", function()
 	launchAutoClickerScript()
@@ -2524,7 +2555,7 @@ addActionButton(toolsContent, "Player Teleport", function()
 end)
 
 -- [5] WAYPOINTS
-local waypointsContent = addCollapsibleCategory("Waypoints", true)
+local waypointsContent = addCollapsibleCategory("Waypoints", false)
 
 local spotGrid = Instance.new("Frame")
 spotGrid.Size = UDim2.new(1, 0, 0, 28)
@@ -2611,6 +2642,12 @@ makeGridSpotBtn(2, 0.5, 0.5)
 
 makeGridClearBtn(1, 0, 0.5)
 makeGridClearBtn(2, 0.5, 0.5)
+
+-- ปรับขนาด Panel ครั้งแรกให้พอดีกับสถานะเริ่มต้นทันที
+task.spawn(function()
+	task.wait(0.08)
+	adjustPanelHeight(false)
+end)
 
 -- ================== HOOKS ==================
 UserInputService.JumpRequest:Connect(function()
