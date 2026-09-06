@@ -7,6 +7,7 @@ local Lighting = game:GetService("Lighting")
 local TweenService = game:GetService("TweenService")
 local CoreGui = game:GetService("CoreGui")
 local MarketplaceService = game:GetService("MarketplaceService")
+local VirtualInputManager = game:GetService("VirtualInputManager")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -90,6 +91,385 @@ local function copyGameName()
 	end
 
 	return copied, gameName
+end
+
+-- ================== AUTO CLICKER PANEL ==================
+local function launchAutoClickerScript()
+	local existing = targetContainer:FindFirstChild("Phumipad_AutoClicker_UI")
+	if existing then
+		existing:Destroy()
+		return
+	end
+
+	local ScreenGui = Instance.new("ScreenGui")
+	ScreenGui.Name = "Phumipad_AutoClicker_UI"
+	ScreenGui.ResetOnSpawn = false
+	ScreenGui.IgnoreGuiInset = true -- พิกัดตรง 100% ไม่เลื่อน
+	ScreenGui.Parent = targetContainer
+
+	local MainFrame = Instance.new("Frame")
+	MainFrame.Size = UDim2.new(0, 240, 0, 330)
+	MainFrame.Position = UDim2.new(0.5, -120, 0.35, 0)
+	MainFrame.BackgroundColor3 = Color3.fromRGB(15, 17, 23)
+	MainFrame.BorderSizePixel = 0
+	MainFrame.ClipsDescendants = true
+	MainFrame.Parent = ScreenGui
+
+	local mfCorner = Instance.new("UICorner")
+	mfCorner.CornerRadius = UDim.new(0, 10)
+	mfCorner.Parent = MainFrame
+
+	local mfStroke = Instance.new("UIStroke")
+	mfStroke.Color = Color3.fromRGB(45, 52, 70)
+	mfStroke.Thickness = 1.2
+	mfStroke.Parent = MainFrame
+
+	-- Top Bar
+	local TopBar = Instance.new("Frame")
+	TopBar.Size = UDim2.new(1, 0, 0, 34)
+	TopBar.Position = UDim2.new(0, 0, 0, 0)
+	TopBar.BackgroundColor3 = Color3.fromRGB(22, 25, 35)
+	TopBar.BorderSizePixel = 0
+	TopBar.Parent = MainFrame
+
+	local tbCorner = Instance.new("UICorner")
+	tbCorner.CornerRadius = UDim.new(0, 10)
+	tbCorner.Parent = TopBar
+
+	local Title = Instance.new("TextLabel")
+	Title.Size = UDim2.new(1, -65, 1, 0)
+	Title.Position = UDim2.new(0, 12, 0, 0)
+	Title.BackgroundTransparency = 1
+	Title.Text = "Auto Clicker"
+	Title.TextColor3 = Color3.fromRGB(240, 245, 255)
+	Title.TextXAlignment = Enum.TextXAlignment.Left
+	Title.Font = Enum.Font.GothamBold
+	Title.TextSize = 13
+	Title.Parent = TopBar
+
+	local CloseButton = Instance.new("TextButton")
+	CloseButton.Size = UDim2.new(0, 24, 0, 24)
+	CloseButton.Position = UDim2.new(1, -28, 0.5, -12)
+	CloseButton.BackgroundColor3 = Color3.fromRGB(220, 50, 65)
+	CloseButton.BorderSizePixel = 0
+	CloseButton.Text = "X"
+	CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+	CloseButton.Font = Enum.Font.GothamBold
+	CloseButton.TextSize = 12
+	CloseButton.Parent = TopBar
+	local clsCorner = Instance.new("UICorner")
+	clsCorner.CornerRadius = UDim.new(0, 6)
+	clsCorner.Parent = CloseButton
+
+	-- Content Area
+	local Content = Instance.new("Frame")
+	Content.Size = UDim2.new(1, -20, 1, -44)
+	Content.Position = UDim2.new(0, 10, 0, 38)
+	Content.BackgroundTransparency = 1
+	Content.Parent = MainFrame
+
+	local cLayout = Instance.new("UIListLayout")
+	cLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	cLayout.Padding = UDim.new(0, 6)
+	cLayout.Parent = Content
+
+	-- Tap Position Marker
+	local marker = Instance.new("Frame")
+	marker.Name = "ClickIndicatorMarker"
+	marker.Size = UDim2.new(0, 14, 0, 14)
+	marker.AnchorPoint = Vector2.new(0.5, 0.5)
+	marker.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+	marker.BorderSizePixel = 0
+	marker.Visible = false
+	marker.ZIndex = 100
+	marker.Parent = ScreenGui
+
+	local markerCorner = Instance.new("UICorner")
+	markerCorner.CornerRadius = UDim.new(1, 0)
+	markerCorner.Parent = marker
+
+	local markerStroke = Instance.new("UIStroke")
+	markerStroke.Color = Color3.fromRGB(255, 255, 255)
+	markerStroke.Thickness = 1.5
+	markerStroke.Parent = marker
+
+	-- States
+	local isClicking = false
+	local turboMode = false
+	local cpsValue = 10
+	local clickPosition = nil
+	local settingPosConn = nil
+
+	-- ปล่อยปุ่มเมาส์เพื่อแก้บัคการกดค้าง
+	local function releaseMouse()
+		local pos = clickPosition or UserInputService:GetMouseLocation()
+		pcall(function()
+			VirtualInputManager:SendMouseButtonEvent(pos.X, pos.Y, 0, false, game, 0)
+		end)
+	end
+
+	-- ฟังก์ชันคลิก 1 ครั้ง
+	local function triggerClick(pos)
+		local x = pos and pos.X or (Workspace.CurrentCamera.ViewportSize.X / 2)
+		local y = pos and pos.Y or (Workspace.CurrentCamera.ViewportSize.Y / 2)
+
+		pcall(function()
+			VirtualInputManager:SendMouseButtonEvent(x, y, 0, true, game, 0)
+			task.wait(0.001)
+			VirtualInputManager:SendMouseButtonEvent(x, y, 0, false, game, 0)
+		end)
+	end
+
+	-- 1. CPS Input Box Row
+	local speedRow = Instance.new("Frame")
+	speedRow.Size = UDim2.new(1, 0, 0, 28)
+	speedRow.BackgroundColor3 = Color3.fromRGB(20, 24, 34)
+	speedRow.BorderSizePixel = 0
+	speedRow.LayoutOrder = 1
+	speedRow.Parent = Content
+	local srCorner = Instance.new("UICorner")
+	srCorner.CornerRadius = UDim.new(0, 6)
+	srCorner.Parent = speedRow
+
+	local speedLabel = Instance.new("TextLabel")
+	speedLabel.Size = UDim2.new(0.6, 0, 1, 0)
+	speedLabel.Position = UDim2.new(0, 8, 0, 0)
+	speedLabel.BackgroundTransparency = 1
+	speedLabel.Text = "Clicks / Sec (CPS):"
+	speedLabel.TextColor3 = Color3.fromRGB(215, 225, 240)
+	speedLabel.Font = Enum.Font.GothamMedium
+	speedLabel.TextSize = 11
+	speedLabel.TextXAlignment = Enum.TextXAlignment.Left
+	speedLabel.Parent = speedRow
+
+	local speedBox = Instance.new("TextBox")
+	speedBox.Size = UDim2.new(0.35, -4, 1, -8)
+	speedBox.Position = UDim2.new(0.65, 0, 0, 4)
+	speedBox.BackgroundColor3 = Color3.fromRGB(28, 33, 48)
+	speedBox.BorderSizePixel = 0
+	speedBox.Text = tostring(cpsValue)
+	speedBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+	speedBox.Font = Enum.Font.GothamBold
+	speedBox.TextSize = 11
+	speedBox.ClearTextOnFocus = false
+	speedBox.Parent = speedRow
+	local sbCorner = Instance.new("UICorner")
+	sbCorner.CornerRadius = UDim.new(0, 5)
+	sbCorner.Parent = speedBox
+
+	speedBox.FocusLost:Connect(function()
+		local val = tonumber(speedBox.Text)
+		if val and val > 0 then
+			cpsValue = val
+			speedBox.Text = tostring(val)
+		else
+			speedBox.Text = tostring(cpsValue)
+		end
+	end)
+
+	-- 2. Speed Example Label
+	local exampleLabel = Instance.new("TextLabel")
+	exampleLabel.Size = UDim2.new(1, 0, 0, 24)
+	exampleLabel.BackgroundTransparency = 1
+	exampleLabel.Text = "Ex: 1 = 1 CPS (1 คลิก/วินาที)\n10 = 10 CPS | 50 = 50 CPS"
+	exampleLabel.TextColor3 = Color3.fromRGB(130, 145, 175)
+	exampleLabel.Font = Enum.Font.Gotham
+	exampleLabel.TextSize = 9
+	exampleLabel.TextWrapped = true
+	exampleLabel.TextXAlignment = Enum.TextXAlignment.Center
+	exampleLabel.LayoutOrder = 2
+	exampleLabel.Parent = Content
+
+	-- 3. Set Tap Position Button
+	local posBtn = Instance.new("TextButton")
+	posBtn.Size = UDim2.new(1, 0, 0, 28)
+	posBtn.BackgroundColor3 = Color3.fromRGB(28, 33, 48)
+	posBtn.BorderSizePixel = 0
+	posBtn.Text = "Set Tap Position (Center)"
+	posBtn.TextColor3 = Color3.fromRGB(225, 235, 255)
+	posBtn.Font = Enum.Font.GothamBold
+	posBtn.TextSize = 10
+	posBtn.LayoutOrder = 3
+	posBtn.Parent = Content
+	local pbCorner = Instance.new("UICorner")
+	pbCorner.CornerRadius = UDim.new(0, 6)
+	pbCorner.Parent = posBtn
+
+	posBtn.MouseButton1Click:Connect(function()
+		if settingPosConn then return end
+		posBtn.Text = "Tap Screen to Set..."
+		posBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+
+		task.wait(0.1)
+		settingPosConn = UserInputService.InputBegan:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+				local posX, posY
+				if input.UserInputType == Enum.UserInputType.MouseButton1 then
+					local mousePos = UserInputService:GetMouseLocation()
+					posX = mousePos.X
+					posY = mousePos.Y
+				else
+					posX = input.Position.X
+					posY = input.Position.Y
+				end
+
+				clickPosition = Vector2.new(posX, posY)
+
+				marker.Position = UDim2.new(0, posX, 0, posY)
+				marker.Visible = true
+
+				posBtn.Text = string.format("Pos: (%d, %d)", posX, posY)
+				posBtn.BackgroundColor3 = Color3.fromRGB(28, 33, 48)
+
+				settingPosConn:Disconnect()
+				settingPosConn = nil
+			end
+		end)
+	end)
+
+	-- 4. Turbo Mode Toggle Row
+	local turboRow = Instance.new("Frame")
+	turboRow.Size = UDim2.new(1, 0, 0, 28)
+	turboRow.BackgroundColor3 = Color3.fromRGB(20, 24, 34)
+	turboRow.BorderSizePixel = 0
+	turboRow.LayoutOrder = 4
+	turboRow.Parent = Content
+	local trCorner = Instance.new("UICorner")
+	trCorner.CornerRadius = UDim.new(0, 6)
+	trCorner.Parent = turboRow
+
+	local turboLabel = Instance.new("TextLabel")
+	turboLabel.Size = UDim2.new(1, -55, 1, 0)
+	turboLabel.Position = UDim2.new(0, 8, 0, 0)
+	turboLabel.BackgroundTransparency = 1
+	turboLabel.Text = "Turbo Mode (Extreme)"
+	turboLabel.TextColor3 = Color3.fromRGB(215, 225, 240)
+	turboLabel.Font = Enum.Font.GothamMedium
+	turboLabel.TextSize = 11
+	turboLabel.TextXAlignment = Enum.TextXAlignment.Left
+	turboLabel.Parent = turboRow
+
+	local turboToggleBtn = Instance.new("TextButton")
+	turboToggleBtn.Size = UDim2.new(0, 44, 0, 20)
+	turboToggleBtn.Position = UDim2.new(1, -50, 0.5, -10)
+	turboToggleBtn.BorderSizePixel = 0
+	turboToggleBtn.Font = Enum.Font.GothamBold
+	turboToggleBtn.TextSize = 10
+	turboToggleBtn.Text = "OFF"
+	turboToggleBtn.BackgroundColor3 = Color3.fromRGB(38, 44, 60)
+	turboToggleBtn.TextColor3 = Color3.fromRGB(150, 160, 180)
+	turboToggleBtn.Parent = turboRow
+	local ttbCorner = Instance.new("UICorner")
+	ttbCorner.CornerRadius = UDim.new(0, 5)
+	ttbCorner.Parent = turboToggleBtn
+
+	turboToggleBtn.MouseButton1Click:Connect(function()
+		turboMode = not turboMode
+		turboToggleBtn.Text = turboMode and "ON" or "OFF"
+		turboToggleBtn.BackgroundColor3 = turboMode and Color3.fromRGB(255, 140, 0) or Color3.fromRGB(38, 44, 60)
+		turboToggleBtn.TextColor3 = turboMode and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(150, 160, 180)
+	end)
+
+	-- 5. Main ON / OFF Toggle Button
+	local toggleClickBtn = Instance.new("TextButton")
+	toggleClickBtn.Size = UDim2.new(1, 0, 0, 32)
+	toggleClickBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 125)
+	toggleClickBtn.BorderSizePixel = 0
+	toggleClickBtn.Text = "START AUTO CLICK"
+	toggleClickBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	toggleClickBtn.Font = Enum.Font.GothamBold
+	toggleClickBtn.TextSize = 11
+	toggleClickBtn.LayoutOrder = 5
+	toggleClickBtn.Parent = Content
+	local tcbCorner = Instance.new("UICorner")
+	tcbCorner.CornerRadius = UDim.new(0, 6)
+	tcbCorner.Parent = toggleClickBtn
+
+	-- ฟังก์ชันหยุดคลิกอย่างสมบูรณ์
+	local function stopClicking()
+		isClicking = false
+		releaseMouse()
+		toggleClickBtn.Text = "START AUTO CLICK"
+		toggleClickBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 125)
+	end
+
+	toggleClickBtn.MouseButton1Click:Connect(function()
+		if not isClicking then
+			isClicking = true
+			toggleClickBtn.Text = "STOP AUTO CLICK"
+			toggleClickBtn.BackgroundColor3 = Color3.fromRGB(220, 50, 65)
+
+			task.spawn(function()
+				while isClicking do
+					triggerClick(clickPosition)
+					if turboMode then
+						RunService.RenderStepped:Wait()
+					else
+						local delayTime = 1 / math.clamp(cpsValue, 0.001, 1000)
+						task.wait(delayTime)
+					end
+				end
+				releaseMouse()
+			end)
+		else
+			stopClicking()
+		end
+	end)
+
+	-- 6. ปุ่มแดงฉุกเฉิน FORCE STOP
+	local forceStopBtn = Instance.new("TextButton")
+	forceStopBtn.Size = UDim2.new(1, 0, 0, 30)
+	forceStopBtn.BackgroundColor3 = Color3.fromRGB(200, 35, 45)
+	forceStopBtn.BorderSizePixel = 0
+	forceStopBtn.Text = "FORCE STOP (EMERGENCY)"
+	forceStopBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	forceStopBtn.Font = Enum.Font.GothamBold
+	forceStopBtn.TextSize = 10
+	forceStopBtn.LayoutOrder = 6
+	forceStopBtn.Parent = Content
+	local fsCorner = Instance.new("UICorner")
+	fsCorner.CornerRadius = UDim.new(0, 6)
+	fsCorner.Parent = forceStopBtn
+
+	forceStopBtn.MouseButton1Click:Connect(function()
+		stopClicking()
+	end)
+
+	-- Drag Logic for AutoClicker Panel
+	do
+		local dragging, dragStart, startPos = false, nil, nil
+		TopBar.InputBegan:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+				dragging = true
+				dragStart = input.Position
+				startPos = MainFrame.Position
+				input.Changed:Connect(function()
+					if input.UserInputState == Enum.UserInputState.End then dragging = false end
+				end)
+			end
+		end)
+		TopBar.InputChanged:Connect(function(input)
+			if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+				local delta = input.Position - dragStart
+				MainFrame.Position = UDim2.new(
+					startPos.X.Scale, startPos.X.Offset + delta.X,
+					startPos.Y.Scale, startPos.Y.Offset + delta.Y
+				)
+			end
+		end)
+	end
+
+	-- ปิดหน้าต่างแล้วหยุดการทำงานของ Auto Clicker ทันที
+	CloseButton.MouseButton1Click:Connect(function()
+		stopClicking()
+		if settingPosConn then settingPosConn:Disconnect() end
+		ScreenGui:Destroy()
+	end)
+
+	ScreenGui.Destroying:Connect(function()
+		stopClicking()
+		if settingPosConn then settingPosConn:Disconnect() end
+	end)
 end
 
 -- ================== FLY SCRIPT FUNCTION ==================
@@ -1575,7 +1955,6 @@ resizeGrip.AutoButtonColor = false
 resizeGrip.ZIndex = 60
 resizeGrip.Parent = f
 
--- เส้น Grip คู่สไตล์โมเดิร์น (หมดปัญหา Glyph สี่เหลี่ยมบัค)
 local gripLine1 = Instance.new("Frame")
 gripLine1.Size = UDim2.new(0, 10, 0, 2)
 gripLine1.Position = UDim2.new(0, 5, 0, 11)
@@ -1618,7 +1997,7 @@ do
 	end)
 end
 
--- Resize Window Logic (รองรับทั้งนิ้วสัมผัสบนมือถือ และเมาส์บน PC)
+-- Resize Window Logic
 do
 	local resizing = false
 	local resizeStart = nil
@@ -2023,7 +2402,6 @@ addToggleRow(utilitiesContent, "Full Bright", state.fullBright, function(_, rend
 	applyFullBright(state.fullBright)
 end)
 
--- Copy Gamename อยู่หลัง Full Bright
 addCopyRow(utilitiesContent, "Copy Gamename", function()
 	local copied, _ = copyGameName()
 	return copied
@@ -2057,6 +2435,10 @@ end)
 
 -- [4] MORE TOOLS
 local toolsContent = addCollapsibleCategory("More Tools", true)
+
+addActionButton(toolsContent, "Auto Clicker", function()
+	launchAutoClickerScript()
+end)
 
 addActionButton(toolsContent, "Aiming (Aimbot)", function()
 	pcall(function()
