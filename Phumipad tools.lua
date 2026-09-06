@@ -4,6 +4,7 @@ local UserInputService = game:GetService("UserInputService")
 local ProximityPromptService = game:GetService("ProximityPromptService")
 local Workspace = game:GetService("Workspace")
 local Lighting = game:GetService("Lighting")
+local TweenService = game:GetService("TweenService")
 local CoreGui = game:GetService("CoreGui")
 
 local player = Players.LocalPlayer
@@ -14,7 +15,7 @@ local state = {
 	ui = nil,
 	frame = nil,
 
-	-- Speed & Movement
+	-- Movement
 	speedEnabled = false,
 	speedValue = 16,
 	baseWalkSpeed = 16,
@@ -22,7 +23,7 @@ local state = {
 	tpWalkEnabled = false,
 	tpWalkSpeed = 1,
 
-	-- Toggles
+	-- Utilities & Visual
 	instantInteract = false,
 	infiniteJump = false,
 	godMode = false,
@@ -30,6 +31,7 @@ local state = {
 	antiRagdoll = false,
 	fullBright = false,
 	esp = false,
+	espTeamMode = true, -- โหมดแยกสีตามทีม
 	fpsBooster = false,
 
 	baseMaxHealth = 100,
@@ -42,8 +44,9 @@ local state = {
 	_tpWalkConn = nil,
 	_fpsConn = nil,
 
-	-- FullBright & Positions
+	-- Backups
 	fbBackup = nil,
+	potatoBackup = nil,
 	savedPosition1 = nil,
 	savedPosition2 = nil
 }
@@ -702,16 +705,33 @@ local function applyTPWalk(on)
 	end
 end
 
+-- Full Potato FPS Booster with Clean Restore
 local function applyFPSBooster(on)
 	if on then
+		state.potatoBackup = {
+			parts = {},
+			decals = {},
+			effects = {},
+			lighting = {
+				GlobalShadows = Lighting.GlobalShadows,
+				FogEnd = Lighting.FogEnd,
+				ShadowSoftness = Lighting.ShadowSoftness,
+				Brightness = Lighting.Brightness,
+				effects = {}
+			},
+			quality = settings().Rendering.QualityLevel
+		}
+
 		pcall(function()
 			settings().Rendering.QualityLevel = 1
 			Lighting.GlobalShadows = false
 			Lighting.FogEnd = 9e9
 			Lighting.ShadowSoftness = 0
+
 			for _, fx in ipairs(Lighting:GetChildren()) do
 				if fx:IsA("PostEffect") or fx:IsA("BloomEffect") or fx:IsA("ColorCorrectionEffect")
 					or fx:IsA("SunRaysEffect") or fx:IsA("BlurEffect") or fx:IsA("DepthOfFieldEffect") then
+					state.potatoBackup.lighting.effects[fx] = fx.Enabled
 					fx.Enabled = false
 				end
 			end
@@ -719,13 +739,39 @@ local function applyFPSBooster(on)
 
 		local function potatoify(part)
 			pcall(function()
-				if part:IsA("BasePart") and not part.Parent:FindFirstChildOfClass("Humanoid") then
-					part.Material = Enum.Material.SmoothPlastic
-					part.Reflectance = 0
-					part.CastShadow = false
+				if part.Name == "DracoESPHighlight" or part.Name == "DracoESPName" 
+					or part:IsDescendantOf(playerGui) or (CoreGui and part:IsDescendantOf(CoreGui)) then
+					return
+				end
+
+				if part:IsA("BasePart") then
+					local isChar = part.Parent and part.Parent:FindFirstChildOfClass("Humanoid")
+					if not isChar then
+						if not state.potatoBackup.parts[part] then
+							state.potatoBackup.parts[part] = {
+								Material = part.Material,
+								Reflectance = part.Reflectance,
+								CastShadow = part.CastShadow
+							}
+						end
+						part.Material = Enum.Material.SmoothPlastic
+						part.Reflectance = 0
+						part.CastShadow = false
+					end
 				elseif part:IsA("Decal") or part:IsA("Texture") then
+					if not state.potatoBackup.decals[part] then
+						state.potatoBackup.decals[part] = {
+							Transparency = part.Transparency
+						}
+					end
 					part.Transparency = 1
-				elseif part:IsA("ParticleEmitter") or part:IsA("Trail") or part:IsA("Smoke") or part:IsA("Fire") or part:IsA("Sparkles") then
+				elseif part:IsA("ParticleEmitter") or part:IsA("Trail") or part:IsA("Smoke") 
+					or part:IsA("Fire") or part:IsA("Sparkles") or part:IsA("Beam") then
+					if not state.potatoBackup.effects[part] then
+						state.potatoBackup.effects[part] = {
+							Enabled = part.Enabled
+						}
+					end
 					part.Enabled = false
 				end
 			end)
@@ -740,12 +786,47 @@ local function applyFPSBooster(on)
 			state._fpsConn:Disconnect()
 			state._fpsConn = nil
 		end
-		pcall(function()
-			Lighting.GlobalShadows = true
-			for _, fx in ipairs(Lighting:GetChildren()) do
-				if fx:IsA("PostEffect") then fx.Enabled = true end
-			end
-		end)
+
+		if state.potatoBackup then
+			pcall(function()
+				if state.potatoBackup.quality then
+					settings().Rendering.QualityLevel = state.potatoBackup.quality
+				end
+				if state.potatoBackup.lighting then
+					local l = state.potatoBackup.lighting
+					Lighting.GlobalShadows = l.GlobalShadows
+					Lighting.FogEnd = l.FogEnd
+					Lighting.ShadowSoftness = l.ShadowSoftness
+					Lighting.Brightness = l.Brightness
+					for fx, enabled in pairs(l.effects or {}) do
+						if fx and fx.Parent then
+							fx.Enabled = enabled
+						end
+					end
+				end
+
+				for part, props in pairs(state.potatoBackup.parts or {}) do
+					if part and part.Parent then
+						part.Material = props.Material
+						part.Reflectance = props.Reflectance
+						part.CastShadow = props.CastShadow
+					end
+				end
+
+				for decal, props in pairs(state.potatoBackup.decals or {}) do
+					if decal and decal.Parent then
+						decal.Transparency = props.Transparency
+					end
+				end
+
+				for eff, props in pairs(state.potatoBackup.effects or {}) do
+					if eff and eff.Parent then
+						eff.Enabled = props.Enabled
+					end
+				end
+			end)
+			state.potatoBackup = nil
+		end
 	end
 end
 
@@ -832,13 +913,6 @@ local function applyFullBright(on)
 end
 
 -- ================== ADVANCED PLAYER ESP SYSTEM ==================
-local function isTeammate(plr)
-	if not player.Team or not plr.Team then
-		return false
-	end
-	return player.Team == plr.Team
-end
-
 local espRayParams = RaycastParams.new()
 espRayParams.FilterType = Enum.RaycastFilterType.Exclude
 espRayParams.IgnoreWater = true
@@ -857,6 +931,35 @@ local function isPlayerOccluded(targetChar, targetPart)
 	return result ~= nil
 end
 
+-- สุ่มสีหรือดึงสีเฉพาะของแต่ละทีมแบบคงที่
+local function getTeamOrPlayerColor(plr)
+	local myTeam = player.Team
+	local targetTeam = plr.Team
+
+	-- ทีมเดียวกันเป็นสีฟ้าสดใสเสมอ
+	if myTeam and targetTeam and myTeam == targetTeam then
+		return Color3.fromRGB(0, 185, 255)
+	end
+
+	-- ถ้าเปิดโหมด Team
+	if state.espTeamMode then
+		if targetTeam and targetTeam.TeamColor then
+			return targetTeam.TeamColor.Color
+		else
+			-- สุ่มสีตามชื่อทีม หรือชื่อผู้เล่น
+			local seedString = (targetTeam and targetTeam.Name) or plr.Name
+			local hash = 0
+			for i = 1, #seedString do
+				hash = (hash * 33 + string.byte(seedString, i)) % 360
+			end
+			return Color3.fromHSV(hash / 360, 0.85, 1)
+		end
+	else
+		-- โหมดปกติ (ศัตรู/ไม่มีทีมเป็นสีแดงสด)
+		return Color3.fromRGB(255, 45, 45)
+	end
+end
+
 local function createESP(plr)
 	if plr == player then return end
 
@@ -868,43 +971,39 @@ local function createESP(plr)
 			local head = char:WaitForChild("Head", 5)
 			if not root or not head then return end
 
-			local isAlly = isTeammate(plr)
-			local teamCol = isAlly and Color3.fromRGB(0, 160, 255) or Color3.fromRGB(255, 35, 35)
+			local col = getTeamOrPlayerColor(plr)
 
-			-- Highlight: เรนเดอร์ทะลุกำแพงเฉพาะเมื่ออยู่นอกสายตา
 			local hl = Instance.new("Highlight")
 			hl.Name = "DracoESPHighlight"
 			hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-			hl.FillColor = teamCol
+			hl.FillColor = col
 			hl.FillTransparency = 0.35
-			hl.OutlineColor = teamCol
+			hl.OutlineColor = col
 			hl.OutlineTransparency = 0
 			hl.Enabled = false
 			hl.Adornee = char
 			hl.Parent = char
 
-			-- BillboardGui: ยกสูงจากศีรษะ 4.2 Studs เพื่อไม่ให้บังตัวละคร
 			local bb = Instance.new("BillboardGui")
 			bb.Name = "DracoESPName"
 			bb.Adornee = head
 			bb.Size = UDim2.new(0, 260, 0, 52)
-			bb.StudsOffset = Vector3.new(0, 4.2, 0)
+			bb.StudsOffset = Vector3.new(0, 4.4, 0)
 			bb.AlwaysOnTop = true
 			bb.LightInfluence = 0
 			bb.MaxDistance = 10000
 			bb.Parent = head
 
-			-- ป้ายชื่อ + ระยะห่าง (ตัวอักษรสีขาว ขอบ Stroke สีแดงหนาชัดเจน)
 			local label = Instance.new("TextLabel")
 			label.Name = "ESPLabel"
 			label.Size = UDim2.new(1, 0, 1, 0)
 			label.BackgroundTransparency = 1
 			label.Text = plr.DisplayName or plr.Name
-			label.TextColor3 = Color3.fromRGB(255, 255, 255) -- อักษรสีขาว
-			label.TextStrokeTransparency = 0 -- ขอบทึบชัดเจน
-			label.TextStrokeColor3 = isAlly and Color3.fromRGB(0, 140, 255) or Color3.fromRGB(255, 25, 25) -- ขอบสีแดง (ทีมตัวเองขอบฟ้า)
+			label.TextColor3 = Color3.fromRGB(255, 255, 255)
+			label.TextStrokeTransparency = 0
+			label.TextStrokeColor3 = col
 			label.Font = Enum.Font.GothamBold
-			label.TextSize = 16 -- ขนาดตัวอักษรใหญ่ชัดเจน
+			label.TextSize = 16
 			label.Parent = bb
 		end)
 	end
@@ -944,7 +1043,6 @@ local function applyESP(on)
 			if state.esp then createESP(plr) end
 		end))
 
-		-- Render Loop: Raycast อัปเดตการแสดงผลและคำนวณระยะห่าง
 		table.insert(state._espConns, RunService.RenderStepped:Connect(function()
 			if not state.esp then return end
 			local myChar = player.Character
@@ -955,16 +1053,14 @@ local function applyESP(on)
 					local root = plr.Character:FindFirstChild("HumanoidRootPart")
 					local head = plr.Character:FindFirstChild("Head")
 					local targetPart = head or root
-					local isAlly = isTeammate(plr)
-					local strokeCol = isAlly and Color3.fromRGB(0, 140, 255) or Color3.fromRGB(255, 25, 25)
+					local col = getTeamOrPlayerColor(plr)
 
-					-- เช็คกำแพงบัง
 					local occluded = isPlayerOccluded(plr.Character, targetPart)
 
 					local hl = plr.Character:FindFirstChild("DracoESPHighlight")
 					if hl then
-						hl.FillColor = strokeCol
-						hl.OutlineColor = strokeCol
+						hl.FillColor = col
+						hl.OutlineColor = col
 						hl.Enabled = occluded
 					end
 
@@ -974,7 +1070,7 @@ local function applyESP(on)
 							local label = bb:FindFirstChild("ESPLabel")
 							if label then
 								label.TextColor3 = Color3.fromRGB(255, 255, 255)
-								label.TextStrokeColor3 = strokeCol
+								label.TextStrokeColor3 = col
 								if myHrp and root then
 									local dist = math.floor((myHrp.Position - root.Position).Magnitude)
 									label.Text = string.format("%s\n[%d studs]", plr.DisplayName or plr.Name, dist)
@@ -1008,41 +1104,41 @@ player.CharacterAdded:Connect(function(char)
 	if state.fullBright    then applyFullBright(true) end
 end)
 
--- ================== MODERN MINIMAL UI (ItsDraco) ==================
+-- ================== MODERN GRADIENT UI ==================
 local sg = Instance.new("ScreenGui")
-sg.Name = "ItsDracoMinimalToolbox"
+sg.Name = "PhumipadToolboxMinimalGui"
 sg.ResetOnSpawn = false
 sg.Parent = playerGui
 
 -- Main Window
 local f = Instance.new("Frame")
 f.Name = "MainFrame"
-f.Size = UDim2.new(0, 250, 0, 420)
-f.Position = UDim2.new(0.04, 0, 0.45, -210)
-f.BackgroundColor3 = Color3.fromRGB(18, 19, 24)
+f.Size = UDim2.new(0, 260, 0, 435)
+f.Position = UDim2.new(0.04, 0, 0.45, -215)
+f.BackgroundColor3 = Color3.fromRGB(16, 18, 24)
 f.BorderSizePixel = 0
 f.Active = true
 f.ClipsDescendants = true
 f.Parent = sg
 
 local corner = Instance.new("UICorner")
-corner.CornerRadius = UDim.new(0, 10)
+corner.CornerRadius = UDim.new(0, 12)
 corner.Parent = f
 
 local stroke = Instance.new("UIStroke")
-stroke.Color = Color3.fromRGB(45, 48, 60)
-stroke.Thickness = 1
+stroke.Color = Color3.fromRGB(48, 54, 75)
+stroke.Thickness = 1.2
 stroke.Parent = f
 
--- Floating Dock Button
+-- Top-Left Pop-Up Dock Button (อยู่ใต้ปุ่ม 3 ขีดและเมนู Roblox มุมซ้ายบนพอดี)
 local openBtn = Instance.new("TextButton")
-openBtn.Name = "SideOpenButton"
-openBtn.Size = UDim2.new(0, 95, 0, 32)
-openBtn.Position = UDim2.new(0, 10, 0.5, -16)
-openBtn.BackgroundColor3 = Color3.fromRGB(24, 26, 33)
+openBtn.Name = "TopLeftOpenButton"
+openBtn.Size = UDim2.new(0, 105, 0, 32)
+openBtn.Position = UDim2.new(0, 12, 0, 52)
+openBtn.BackgroundColor3 = Color3.fromRGB(20, 23, 32)
 openBtn.BorderSizePixel = 0
-openBtn.Text = "⚡ ItsDraco"
-openBtn.TextColor3 = Color3.fromRGB(100, 200, 255)
+openBtn.Text = "⚡ Phumipad"
+openBtn.TextColor3 = Color3.fromRGB(0, 210, 255)
 openBtn.Font = Enum.Font.GothamBold
 openBtn.TextSize = 12
 openBtn.Visible = false
@@ -1054,7 +1150,7 @@ openCorner.CornerRadius = UDim.new(0, 8)
 openCorner.Parent = openBtn
 
 local openStroke = Instance.new("UIStroke")
-openStroke.Color = Color3.fromRGB(50, 55, 75)
+openStroke.Color = Color3.fromRGB(0, 180, 255)
 openStroke.Thickness = 1
 openStroke.Parent = openBtn
 
@@ -1110,45 +1206,45 @@ end
 -- Top Bar
 local bar = Instance.new("Frame")
 bar.Name = "TopBar"
-bar.Size = UDim2.new(1, 0, 0, 36)
-bar.BackgroundColor3 = Color3.fromRGB(24, 26, 33)
+bar.Size = UDim2.new(1, 0, 0, 38)
+bar.BackgroundColor3 = Color3.fromRGB(24, 27, 38)
 bar.BorderSizePixel = 0
 bar.Active = true
 bar.Parent = f
 
 local barCorner = Instance.new("UICorner")
-barCorner.CornerRadius = UDim.new(0, 10)
+barCorner.CornerRadius = UDim.new(0, 12)
 barCorner.Parent = bar
 
 local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, -70, 1, 0)
 title.Position = UDim2.new(0, 12, 0, 0)
 title.BackgroundTransparency = 1
-title.Text = "ItsDraco  •  v3.1"
-title.TextColor3 = Color3.fromRGB(230, 235, 245)
+title.Text = "⚡ Phumipad Toolbox v3.1 beta"
+title.TextColor3 = Color3.fromRGB(235, 240, 255)
 title.Font = Enum.Font.GothamBold
 title.TextSize = 12
 title.TextXAlignment = Enum.TextXAlignment.Left
 title.Parent = bar
 
 local miniBtn = Instance.new("TextButton")
-miniBtn.Size = UDim2.new(0, 22, 0, 22)
-miniBtn.Position = UDim2.new(1, -54, 0, 7)
-miniBtn.BackgroundColor3 = Color3.fromRGB(36, 38, 48)
+miniBtn.Size = UDim2.new(0, 24, 0, 24)
+miniBtn.Position = UDim2.new(1, -56, 0, 7)
+miniBtn.BackgroundColor3 = Color3.fromRGB(38, 42, 56)
 miniBtn.BorderSizePixel = 0
 miniBtn.Text = "—"
-miniBtn.TextColor3 = Color3.fromRGB(180, 185, 200)
+miniBtn.TextColor3 = Color3.fromRGB(180, 190, 210)
 miniBtn.Font = Enum.Font.GothamBold
-miniBtn.TextSize = 11
+miniBtn.TextSize = 12
 miniBtn.Parent = bar
 local miniCorner = Instance.new("UICorner")
-miniCorner.CornerRadius = UDim.new(0, 5)
+miniCorner.CornerRadius = UDim.new(0, 6)
 miniCorner.Parent = miniBtn
 
 local closeBtn = Instance.new("TextButton")
-closeBtn.Size = UDim2.new(0, 22, 0, 22)
+closeBtn.Size = UDim2.new(0, 24, 0, 24)
 closeBtn.Position = UDim2.new(1, -28, 0, 7)
-closeBtn.BackgroundColor3 = Color3.fromRGB(190, 45, 55)
+closeBtn.BackgroundColor3 = Color3.fromRGB(220, 50, 65)
 closeBtn.BorderSizePixel = 0
 closeBtn.Text = "✕"
 closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -1156,32 +1252,33 @@ closeBtn.Font = Enum.Font.GothamBold
 closeBtn.TextSize = 11
 closeBtn.Parent = bar
 local closeCorner = Instance.new("UICorner")
-closeCorner.CornerRadius = UDim.new(0, 5)
+closeCorner.CornerRadius = UDim.new(0, 6)
 closeCorner.Parent = closeBtn
 
 closeBtn.MouseButton1Click:Connect(function() sg:Destroy() end)
 
 miniBtn.MouseButton1Click:Connect(function()
 	f.Visible = false
+	openBtn.Position = UDim2.new(0, 12, 0, 52)
 	openBtn.Visible = true
 end)
 
 -- Scroll Container
 local scroll = Instance.new("ScrollingFrame")
 scroll.Name = "Content"
-scroll.Size = UDim2.new(1, 0, 1, -36)
-scroll.Position = UDim2.new(0, 0, 0, 36)
+scroll.Size = UDim2.new(1, 0, 1, -38)
+scroll.Position = UDim2.new(0, 0, 0, 38)
 scroll.BackgroundTransparency = 1
 scroll.BorderSizePixel = 0
 scroll.ScrollBarThickness = 3
-scroll.ScrollBarImageColor3 = Color3.fromRGB(65, 70, 90)
+scroll.ScrollBarImageColor3 = Color3.fromRGB(0, 175, 255)
 scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
 scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
 scroll.Parent = f
 
 local layout = Instance.new("UIListLayout")
 layout.SortOrder = Enum.SortOrder.LayoutOrder
-layout.Padding = UDim.new(0, 5)
+layout.Padding = UDim.new(0, 6)
 layout.Parent = scroll
 
 local scrollPadding = Instance.new("UIPadding")
@@ -1198,13 +1295,13 @@ resizeGrip.Size = UDim2.new(0, 14, 0, 14)
 resizeGrip.Position = UDim2.new(1, -14, 1, -14)
 resizeGrip.BackgroundTransparency = 1
 resizeGrip.Text = "◢"
-resizeGrip.TextColor3 = Color3.fromRGB(90, 95, 115)
+resizeGrip.TextColor3 = Color3.fromRGB(90, 100, 130)
 resizeGrip.TextSize = 11
 resizeGrip.Font = Enum.Font.GothamBold
 resizeGrip.ZIndex = 50
 resizeGrip.Parent = f
 
--- Drag Window
+-- Drag Window Logic
 do
 	local dragging, dragStart, startPos = false, nil, nil
 	bar.InputBegan:Connect(function(input)
@@ -1244,49 +1341,132 @@ do
 	UserInputService.InputChanged:Connect(function(input)
 		if resizing and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
 			local delta = input.Position - resizeStart
-			local targetW = math.clamp(startSize.X + delta.X, 220, 500)
-			local targetH = math.clamp(startSize.Y + delta.Y, 200, 700)
+			local targetW = math.clamp(startSize.X + delta.X, 230, 500)
+			local targetH = math.clamp(startSize.Y + delta.Y, 220, 700)
 			f.Size = UDim2.new(0, targetW, 0, targetH)
 		end
 	end)
 end
 
--- UI Generators
+-- Layout Order Index
 local currentOrder = 0
 local function getOrder() currentOrder = currentOrder + 1; return currentOrder end
 
-local function addCategory(name)
-	local lbl = Instance.new("TextLabel")
-	lbl.Size = UDim2.new(1, 0, 0, 16)
-	lbl.BackgroundTransparency = 1
-	lbl.Text = name:upper()
-	lbl.TextColor3 = Color3.fromRGB(100, 105, 125)
-	lbl.Font = Enum.Font.GothamBold
-	lbl.TextSize = 10
-	lbl.TextXAlignment = Enum.TextXAlignment.Left
-	lbl.LayoutOrder = getOrder()
-	lbl.Parent = scroll
+-- Collapsible Category Component with Smooth Slide Animation
+local function addCollapsibleCategory(emoji, name, defaultOpen)
+	local catFrame = Instance.new("Frame")
+	catFrame.Name = name .. "Category"
+	catFrame.Size = UDim2.new(1, 0, 0, 0)
+	catFrame.AutomaticSize = Enum.AutomaticSize.Y
+	catFrame.BackgroundTransparency = 1
+	catFrame.LayoutOrder = getOrder()
+	catFrame.Parent = scroll
+
+	local catLayout = Instance.new("UIListLayout")
+	catLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	catLayout.Padding = UDim.new(0, 3)
+	catLayout.Parent = catFrame
+
+	-- Header Button
+	local headerBtn = Instance.new("TextButton")
+	headerBtn.Name = "Header"
+	headerBtn.Size = UDim2.new(1, 0, 0, 24)
+	headerBtn.BackgroundColor3 = Color3.fromRGB(22, 25, 36)
+	headerBtn.BorderSizePixel = 0
+	headerBtn.Font = Enum.Font.GothamBold
+	headerBtn.TextSize = 11
+	headerBtn.TextColor3 = Color3.fromRGB(150, 165, 195)
+	headerBtn.TextXAlignment = Enum.TextXAlignment.Left
+	headerBtn.LayoutOrder = 1
+	headerBtn.Parent = catFrame
+
+	local headerCorner = Instance.new("UICorner")
+	headerCorner.CornerRadius = UDim.new(0, 6)
+	headerCorner.Parent = headerBtn
+
+	local headerPadding = Instance.new("UIPadding")
+	headerPadding.PaddingLeft = UDim.new(0, 8)
+	headerPadding.Parent = headerBtn
+
+	-- Content Wrapper for smooth sliding
+	local clipWrapper = Instance.new("Frame")
+	clipWrapper.Name = "ClipWrapper"
+	clipWrapper.Size = UDim2.new(1, 0, 0, 0)
+	clipWrapper.ClipsDescendants = true
+	clipWrapper.BackgroundTransparency = 1
+	clipWrapper.LayoutOrder = 2
+	clipWrapper.Parent = catFrame
+
+	local content = Instance.new("Frame")
+	content.Name = "Content"
+	content.Size = UDim2.new(1, 0, 0, 0)
+	content.AutomaticSize = Enum.AutomaticSize.Y
+	content.BackgroundTransparency = 1
+	content.Parent = clipWrapper
+
+	local contentLayout = Instance.new("UIListLayout")
+	contentLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	contentLayout.Padding = UDim.new(0, 4)
+	contentLayout.Parent = content
+
+	local isOpen = (defaultOpen ~= false)
+
+	local function updateHeader()
+		local arrow = isOpen and "▾" or "▸"
+		headerBtn.Text = string.format("%s  %s %s", arrow, emoji, name:upper())
+		headerBtn.TextColor3 = isOpen and Color3.fromRGB(0, 195, 255) or Color3.fromRGB(130, 140, 165)
+	end
+
+	local function toggleAccordion()
+		isOpen = not isOpen
+		updateHeader()
+
+		local targetH = isOpen and contentLayout.AbsoluteContentSize.Y or 0
+		local tween = TweenService:Create(clipWrapper, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+			Size = UDim2.new(1, 0, 0, targetH)
+		})
+		tween:Play()
+	end
+
+	contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+		if isOpen then
+			clipWrapper.Size = UDim2.new(1, 0, 0, contentLayout.AbsoluteContentSize.Y)
+		end
+	end)
+
+	if isOpen then
+		task.defer(function()
+			clipWrapper.Size = UDim2.new(1, 0, 0, contentLayout.AbsoluteContentSize.Y)
+		end)
+	else
+		clipWrapper.Size = UDim2.new(1, 0, 0, 0)
+	end
+	updateHeader()
+
+	headerBtn.MouseButton1Click:Connect(toggleAccordion)
+
+	return content
 end
 
-local function addActionButton(name, onClick)
+local function addActionButton(parent, name, onClick)
 	local row = Instance.new("Frame")
 	row.Size = UDim2.new(1, 0, 0, 28)
-	row.BackgroundColor3 = Color3.fromRGB(24, 25, 33)
+	row.BackgroundColor3 = Color3.fromRGB(24, 27, 38)
 	row.BorderSizePixel = 0
 	row.LayoutOrder = getOrder()
-	row.Parent = scroll
+	row.Parent = parent
 
 	local rCorner = Instance.new("UICorner")
 	rCorner.CornerRadius = UDim.new(0, 6)
 	rCorner.Parent = row
 
 	local btn = Instance.new("TextButton")
-	btn.Size = UDim2.new(1, -8, 1, -6)
-	btn.Position = UDim2.new(0, 4, 0, 3)
-	btn.BackgroundColor3 = Color3.fromRGB(36, 38, 48)
+	btn.Size = UDim2.new(1, -6, 1, -6)
+	btn.Position = UDim2.new(0, 3, 0, 3)
+	btn.BackgroundColor3 = Color3.fromRGB(33, 38, 54)
 	btn.BorderSizePixel = 0
 	btn.Text = name
-	btn.TextColor3 = Color3.fromRGB(220, 225, 235)
+	btn.TextColor3 = Color3.fromRGB(225, 235, 255)
 	btn.Font = Enum.Font.GothamBold
 	btn.TextSize = 11
 	btn.Parent = row
@@ -1299,13 +1479,13 @@ local function addActionButton(name, onClick)
 	return btn
 end
 
-local function addToggleRow(name, defaultOn, onClick)
+local function addToggleRow(parent, name, defaultOn, onClick)
 	local row = Instance.new("Frame")
 	row.Size = UDim2.new(1, 0, 0, 28)
-	row.BackgroundColor3 = Color3.fromRGB(24, 25, 33)
+	row.BackgroundColor3 = Color3.fromRGB(24, 27, 38)
 	row.BorderSizePixel = 0
 	row.LayoutOrder = getOrder()
-	row.Parent = scroll
+	row.Parent = parent
 
 	local rCorner = Instance.new("UICorner")
 	rCorner.CornerRadius = UDim.new(0, 6)
@@ -1316,7 +1496,7 @@ local function addToggleRow(name, defaultOn, onClick)
 	lbl.Position = UDim2.new(0, 8, 0, 0)
 	lbl.BackgroundTransparency = 1
 	lbl.Text = name
-	lbl.TextColor3 = Color3.fromRGB(215, 220, 230)
+	lbl.TextColor3 = Color3.fromRGB(215, 225, 240)
 	lbl.Font = Enum.Font.GothamMedium
 	lbl.TextSize = 12
 	lbl.TextXAlignment = Enum.TextXAlignment.Left
@@ -1336,8 +1516,8 @@ local function addToggleRow(name, defaultOn, onClick)
 
 	local function render(v)
 		btn.Text = v and "ON" or "OFF"
-		btn.BackgroundColor3 = v and Color3.fromRGB(46, 175, 100) or Color3.fromRGB(45, 48, 60)
-		btn.TextColor3 = v and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(160, 165, 180)
+		btn.BackgroundColor3 = v and Color3.fromRGB(0, 195, 125) or Color3.fromRGB(48, 52, 68)
+		btn.TextColor3 = v and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(155, 165, 185)
 	end
 	render(defaultOn)
 
@@ -1346,13 +1526,13 @@ local function addToggleRow(name, defaultOn, onClick)
 	end)
 end
 
-local function addInputToggleRow(name, defaultVal, defaultOn, onToggle, onValChange)
+local function addInputToggleRow(parent, name, defaultVal, defaultOn, onToggle, onValChange)
 	local row = Instance.new("Frame")
 	row.Size = UDim2.new(1, 0, 0, 30)
-	row.BackgroundColor3 = Color3.fromRGB(24, 25, 33)
+	row.BackgroundColor3 = Color3.fromRGB(24, 27, 38)
 	row.BorderSizePixel = 0
 	row.LayoutOrder = getOrder()
-	row.Parent = scroll
+	row.Parent = parent
 
 	local rCorner = Instance.new("UICorner")
 	rCorner.CornerRadius = UDim.new(0, 6)
@@ -1363,7 +1543,7 @@ local function addInputToggleRow(name, defaultVal, defaultOn, onToggle, onValCha
 	lbl.Position = UDim2.new(0, 8, 0, 0)
 	lbl.BackgroundTransparency = 1
 	lbl.Text = name
-	lbl.TextColor3 = Color3.fromRGB(215, 220, 230)
+	lbl.TextColor3 = Color3.fromRGB(215, 225, 240)
 	lbl.Font = Enum.Font.GothamMedium
 	lbl.TextSize = 12
 	lbl.TextXAlignment = Enum.TextXAlignment.Left
@@ -1372,10 +1552,10 @@ local function addInputToggleRow(name, defaultVal, defaultOn, onToggle, onValCha
 	local box = Instance.new("TextBox")
 	box.Size = UDim2.new(0, 38, 0, 20)
 	box.Position = UDim2.new(1, -94, 0.5, -10)
-	box.BackgroundColor3 = Color3.fromRGB(34, 36, 46)
+	box.BackgroundColor3 = Color3.fromRGB(33, 38, 54)
 	box.BorderSizePixel = 0
 	box.Text = tostring(defaultVal)
-	box.TextColor3 = Color3.fromRGB(240, 240, 250)
+	box.TextColor3 = Color3.fromRGB(240, 245, 255)
 	box.Font = Enum.Font.GothamBold
 	box.TextSize = 11
 	box.ClearTextOnFocus = false
@@ -1399,8 +1579,8 @@ local function addInputToggleRow(name, defaultVal, defaultOn, onToggle, onValCha
 
 	local function render(v)
 		btn.Text = v and "ON" or "OFF"
-		btn.BackgroundColor3 = v and Color3.fromRGB(46, 175, 100) or Color3.fromRGB(45, 48, 60)
-		btn.TextColor3 = v and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(160, 165, 180)
+		btn.BackgroundColor3 = v and Color3.fromRGB(0, 195, 125) or Color3.fromRGB(48, 52, 68)
+		btn.TextColor3 = v and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(155, 165, 185)
 	end
 	render(defaultOn)
 
@@ -1418,12 +1598,12 @@ local function addInputToggleRow(name, defaultVal, defaultOn, onToggle, onValCha
 	end)
 end
 
--- ================== POPULATE ITEMS ==================
+-- ================== POPULATE CATEGORIES ==================
 
--- [1] Movement
-addCategory("Movement")
+-- [1] 🏃 MOVEMENT
+local movementContent = addCollapsibleCategory("🏃", "Movement", true)
 
-addInputToggleRow("Walk Speed", state.speedValue, state.speedEnabled, function(_, render)
+addInputToggleRow(movementContent, "Walk Speed", state.speedValue, state.speedEnabled, function(_, render)
 	state.speedEnabled = not state.speedEnabled
 	render(state.speedEnabled)
 	if humanoid then
@@ -1434,7 +1614,7 @@ end, function(val)
 	if state.speedEnabled and humanoid then humanoid.WalkSpeed = val end
 end)
 
-addInputToggleRow("TP Walk", state.tpWalkSpeed, state.tpWalkEnabled, function(_, render)
+addInputToggleRow(movementContent, "TP Walk", state.tpWalkSpeed, state.tpWalkEnabled, function(_, render)
 	state.tpWalkEnabled = not state.tpWalkEnabled
 	render(state.tpWalkEnabled)
 	applyTPWalk(state.tpWalkEnabled)
@@ -1442,83 +1622,94 @@ end, function(val)
 	state.tpWalkSpeed = val
 end)
 
-addActionButton("🕊️ Open Fly GUI (V3)", function()
+-- [2] 🛠️ MORE TOOLS (หมวดหมู่ใหม่ที่แยกออกมา)
+local toolsContent = addCollapsibleCategory("🛠️", "More Tools", true)
+
+addActionButton(toolsContent, "🕊️ Open Fly GUI (V3)", function()
 	launchFlyScript()
 end)
 
-addActionButton("⏱️ Anti AFK", function()
+addActionButton(toolsContent, "⏱️ Anti AFK", function()
 	pcall(function()
 		loadstring(game:HttpGet("https://raw.githubusercontent.com/hassanxzayn-lua/Anti-afk/main/antiafkbyhassanxzyn"))()
 	end)
 end)
 
-addActionButton("👥 Player Teleport", function()
+addActionButton(toolsContent, "👥 Player Teleport", function()
 	launchPlayerTeleportScript()
 end)
 
--- [2] Utilities
-addCategory("Utilities")
+-- [3] 🧰 UTILITIES
+local utilitiesContent = addCollapsibleCategory("🧰", "Utilities", true)
 
-addToggleRow("Instant Interact", state.instantInteract, function(_, render)
+addToggleRow(utilitiesContent, "Instant Interact", state.instantInteract, function(_, render)
 	state.instantInteract = not state.instantInteract
 	render(state.instantInteract)
 end)
 
-addToggleRow("Infinite Jump", state.infiniteJump, function(_, render)
+addToggleRow(utilitiesContent, "Infinite Jump", state.infiniteJump, function(_, render)
 	state.infiniteJump = not state.infiniteJump
 	render(state.infiniteJump)
 end)
 
-addToggleRow("God Mode", state.godMode, function(_, render)
+addToggleRow(utilitiesContent, "God Mode", state.godMode, function(_, render)
 	state.godMode = not state.godMode
 	render(state.godMode)
 	applyGodMode(state.godMode)
 end)
 
-addToggleRow("Noclip", state.noclip, function(_, render)
+addToggleRow(utilitiesContent, "Noclip", state.noclip, function(_, render)
 	state.noclip = not state.noclip
 	render(state.noclip)
 	applyNoclip(state.noclip)
 end)
 
-addToggleRow("Anti Ragdoll", state.antiRagdoll, function(_, render)
+addToggleRow(utilitiesContent, "Anti Ragdoll", state.antiRagdoll, function(_, render)
 	state.antiRagdoll = not state.antiRagdoll
 	render(state.antiRagdoll)
 	applyAntiRagdoll(state.antiRagdoll)
 end)
 
-addToggleRow("Full Bright", state.fullBright, function(_, render)
+addToggleRow(utilitiesContent, "Full Bright", state.fullBright, function(_, render)
 	state.fullBright = not state.fullBright
 	render(state.fullBright)
 	applyFullBright(state.fullBright)
 end)
 
-addToggleRow("Player ESP", state.esp, function(_, render)
+-- [4] 👁️ VISUAL (อัปเดตระบบ ESP ทะลุทุกคน + ปุ่ม Team Colors)
+local visualContent = addCollapsibleCategory("👁️", "Visual", true)
+
+addToggleRow(visualContent, "Player ESP", state.esp, function(_, render)
 	state.esp = not state.esp
 	render(state.esp)
 	applyESP(state.esp)
 end)
 
-addToggleRow("Potato FPS", state.fpsBooster, function(_, render)
+addToggleRow(visualContent, "ESP Team Colors", state.espTeamMode, function(_, render)
+	state.espTeamMode = not state.espTeamMode
+	render(state.espTeamMode)
+end)
+
+addToggleRow(visualContent, "FPS Booster (potato)", state.fpsBooster, function(_, render)
 	state.fpsBooster = not state.fpsBooster
 	render(state.fpsBooster)
 	applyFPSBooster(state.fpsBooster)
 end)
 
--- [3] Save Spots & Clear Buttons
-addCategory("Waypoints")
+-- [5] 📍 WAYPOINTS
+local waypointsContent = addCollapsibleCategory("📍", "Waypoints", true)
 
 local spotGrid = Instance.new("Frame")
 spotGrid.Size = UDim2.new(1, 0, 0, 26)
 spotGrid.BackgroundTransparency = 1
 spotGrid.LayoutOrder = getOrder()
-spotGrid.Parent = scroll
+spotGrid.Parent = waypointsContent
 
 local clearGrid = Instance.new("Frame")
 clearGrid.Size = UDim2.new(1, 0, 0, 24)
 clearGrid.BackgroundTransparency = 1
 clearGrid.LayoutOrder = getOrder()
-clearGrid.Parent = scroll
+clearGrid.Parent = waypointsContent
 
 local spotButtons = {}
 
@@ -1526,7 +1717,7 @@ local function resetSpotUI(slot)
 	state["savedPosition" .. slot] = nil
 	if spotButtons[slot] then
 		spotButtons[slot].Text = "📍 Spot " .. slot
-		spotButtons[slot].BackgroundColor3 = Color3.fromRGB(34, 36, 46)
+		spotButtons[slot].BackgroundColor3 = Color3.fromRGB(33, 38, 54)
 	end
 end
 
@@ -1534,10 +1725,10 @@ local function makeGridSpotBtn(slot, posX, sizeX)
 	local btn = Instance.new("TextButton")
 	btn.Size = UDim2.new(sizeX, -4, 1, 0)
 	btn.Position = UDim2.new(posX, 0, 0, 0)
-	btn.BackgroundColor3 = Color3.fromRGB(34, 36, 46)
+	btn.BackgroundColor3 = Color3.fromRGB(33, 38, 54)
 	btn.BorderSizePixel = 0
 	btn.Text = "📍 Spot " .. slot
-	btn.TextColor3 = Color3.fromRGB(220, 225, 235)
+	btn.TextColor3 = Color3.fromRGB(225, 235, 255)
 	btn.Font = Enum.Font.GothamBold
 	btn.TextSize = 11
 	btn.Parent = spotGrid
@@ -1561,7 +1752,7 @@ local function makeGridSpotBtn(slot, posX, sizeX)
 			if root then
 				state[key] = root.Position
 				btn.Text = "🚀 Go " .. slot
-				btn.BackgroundColor3 = Color3.fromRGB(46, 175, 100)
+				btn.BackgroundColor3 = Color3.fromRGB(0, 195, 125)
 			end
 		end
 	end)
@@ -1571,7 +1762,7 @@ local function makeGridClearBtn(slot, posX, sizeX)
 	local btn = Instance.new("TextButton")
 	btn.Size = UDim2.new(sizeX, -4, 1, 0)
 	btn.Position = UDim2.new(posX, 0, 0, 0)
-	btn.BackgroundColor3 = Color3.fromRGB(160, 40, 45)
+	btn.BackgroundColor3 = Color3.fromRGB(185, 45, 55)
 	btn.BorderSizePixel = 0
 	btn.Text = "🗑️ Clear " .. slot
 	btn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -1615,4 +1806,3 @@ end)
 
 state.baseWalkSpeed = humanoid and humanoid.WalkSpeed or 16
 state.baseMaxHealth = humanoid and humanoid.MaxHealth or 100
-
