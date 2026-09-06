@@ -31,7 +31,7 @@ local state = {
 	antiRagdoll = false,
 	fullBright = false,
 	esp = false,
-	espTeamMode = true, -- โหมดแยกสีตามทีม
+	espTeamMode = true,
 	fpsBooster = false,
 
 	baseMaxHealth = 100,
@@ -931,22 +931,18 @@ local function isPlayerOccluded(targetChar, targetPart)
 	return result ~= nil
 end
 
--- สุ่มสีหรือดึงสีเฉพาะของแต่ละทีมแบบคงที่
 local function getTeamOrPlayerColor(plr)
 	local myTeam = player.Team
 	local targetTeam = plr.Team
 
-	-- ทีมเดียวกันเป็นสีฟ้าสดใสเสมอ
 	if myTeam and targetTeam and myTeam == targetTeam then
 		return Color3.fromRGB(0, 185, 255)
 	end
 
-	-- ถ้าเปิดโหมด Team
 	if state.espTeamMode then
 		if targetTeam and targetTeam.TeamColor then
 			return targetTeam.TeamColor.Color
 		else
-			-- สุ่มสีตามชื่อทีม หรือชื่อผู้เล่น
 			local seedString = (targetTeam and targetTeam.Name) or plr.Name
 			local hash = 0
 			for i = 1, #seedString do
@@ -955,7 +951,6 @@ local function getTeamOrPlayerColor(plr)
 			return Color3.fromHSV(hash / 360, 0.85, 1)
 		end
 	else
-		-- โหมดปกติ (ศัตรู/ไม่มีทีมเป็นสีแดงสด)
 		return Color3.fromRGB(255, 45, 45)
 	end
 end
@@ -1130,7 +1125,7 @@ stroke.Color = Color3.fromRGB(48, 54, 75)
 stroke.Thickness = 1.2
 stroke.Parent = f
 
--- Top-Left Pop-Up Dock Button (อยู่ใต้ปุ่ม 3 ขีดและเมนู Roblox มุมซ้ายบนพอดี)
+-- Top-Left Pop-Up Dock Button
 local openBtn = Instance.new("TextButton")
 openBtn.Name = "TopLeftOpenButton"
 openBtn.Size = UDim2.new(0, 105, 0, 32)
@@ -1348,7 +1343,6 @@ do
 	end)
 end
 
--- Layout Order Index
 local currentOrder = 0
 local function getOrder() currentOrder = currentOrder + 1; return currentOrder end
 
@@ -1367,7 +1361,6 @@ local function addCollapsibleCategory(emoji, name, defaultOpen)
 	catLayout.Padding = UDim.new(0, 3)
 	catLayout.Parent = catFrame
 
-	-- Header Button
 	local headerBtn = Instance.new("TextButton")
 	headerBtn.Name = "Header"
 	headerBtn.Size = UDim2.new(1, 0, 0, 24)
@@ -1388,7 +1381,6 @@ local function addCollapsibleCategory(emoji, name, defaultOpen)
 	headerPadding.PaddingLeft = UDim.new(0, 8)
 	headerPadding.Parent = headerBtn
 
-	-- Content Wrapper for smooth sliding
 	local clipWrapper = Instance.new("Frame")
 	clipWrapper.Name = "ClipWrapper"
 	clipWrapper.Size = UDim2.new(1, 0, 0, 0)
@@ -1622,8 +1614,14 @@ end, function(val)
 	state.tpWalkSpeed = val
 end)
 
--- [2] 🛠️ MORE TOOLS (หมวดหมู่ใหม่ที่แยกออกมา)
+-- [2] 🛠️ MORE TOOLS (เพิ่ม Aiming)
 local toolsContent = addCollapsibleCategory("🛠️", "More Tools", true)
+
+addActionButton(toolsContent, "🎯 Aiming", function()
+	pcall(function()
+		loadstring(game:HttpGet("https://raw.githubusercontent.com/DanielHubll/DanielHubll/refs/heads/main/Aimbot%20Mobile"))()
+	end)
+end)
 
 addActionButton(toolsContent, "🕊️ Open Fly GUI (V3)", function()
 	launchFlyScript()
@@ -1676,7 +1674,7 @@ addToggleRow(utilitiesContent, "Full Bright", state.fullBright, function(_, rend
 	applyFullBright(state.fullBright)
 end)
 
--- [4] 👁️ VISUAL (อัปเดตระบบ ESP ทะลุทุกคน + ปุ่ม Team Colors)
+-- [4] 👁️ VISUAL
 local visualContent = addCollapsibleCategory("👁️", "Visual", true)
 
 addToggleRow(visualContent, "Player ESP", state.esp, function(_, render)
