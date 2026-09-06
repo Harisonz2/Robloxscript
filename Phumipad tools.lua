@@ -93,6 +93,254 @@ local function copyGameName()
 	return copied, gameName
 end
 
+-- ================== STALKER SCRIPT (PHUMIPAD REDESIGN) ==================
+local function launchStalkerScript()
+	if _G.StalkConnection then _G.StalkConnection:Disconnect() end
+	local existing = targetContainer:FindFirstChild("StalkerUI")
+	if existing then
+		existing:Destroy()
+		return
+	end
+
+	_G.user = ""
+	_G.active = false
+
+	local ScreenGui = Instance.new("ScreenGui")
+	ScreenGui.Name = "StalkerUI"
+	ScreenGui.ResetOnSpawn = false
+	ScreenGui.Parent = targetContainer
+
+	local MainFrame = Instance.new("Frame")
+	MainFrame.Size = UDim2.new(0, 230, 0, 305)
+	MainFrame.Position = UDim2.new(0.5, -115, 0.4, 0)
+	MainFrame.BackgroundColor3 = Color3.fromRGB(15, 17, 23)
+	MainFrame.BorderSizePixel = 0
+	MainFrame.ClipsDescendants = true
+	MainFrame.Active = true
+	MainFrame.Parent = ScreenGui
+
+	local mfCorner = Instance.new("UICorner")
+	mfCorner.CornerRadius = UDim.new(0, 10)
+	mfCorner.Parent = MainFrame
+
+	local mfStroke = Instance.new("UIStroke")
+	mfStroke.Color = Color3.fromRGB(45, 52, 70)
+	mfStroke.Thickness = 1.2
+	mfStroke.Parent = MainFrame
+
+	local TopBar = Instance.new("Frame")
+	TopBar.Size = UDim2.new(1, 0, 0, 34)
+	TopBar.Position = UDim2.new(0, 0, 0, 0)
+	TopBar.BackgroundColor3 = Color3.fromRGB(22, 25, 35)
+	TopBar.BorderSizePixel = 0
+	TopBar.Active = true
+	TopBar.Parent = MainFrame
+
+	local tbCorner = Instance.new("UICorner")
+	tbCorner.CornerRadius = UDim.new(0, 10)
+	tbCorner.Parent = TopBar
+
+	local Title = Instance.new("TextLabel")
+	Title.Size = UDim2.new(1, -40, 1, 0)
+	Title.Position = UDim2.new(0, 12, 0, 0)
+	Title.BackgroundTransparency = 1
+	Title.Text = "Stalker Toolbox"
+	Title.TextColor3 = Color3.fromRGB(240, 245, 255)
+	Title.TextXAlignment = Enum.TextXAlignment.Left
+	Title.Font = Enum.Font.GothamBold
+	Title.TextSize = 12
+	Title.Parent = TopBar
+
+	local CloseBtn = Instance.new("TextButton")
+	CloseBtn.Size = UDim2.new(0, 24, 0, 24)
+	CloseBtn.Position = UDim2.new(1, -28, 0.5, -12)
+	CloseBtn.BackgroundColor3 = Color3.fromRGB(220, 50, 65)
+	CloseBtn.BorderSizePixel = 0
+	CloseBtn.Text = "X"
+	CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	CloseBtn.Font = Enum.Font.GothamBold
+	CloseBtn.TextSize = 11
+	CloseBtn.Parent = TopBar
+	local cCorner = Instance.new("UICorner")
+	cCorner.CornerRadius = UDim.new(0, 6)
+	cCorner.Parent = CloseBtn
+
+	local TargetLabel = Instance.new("TextLabel")
+	TargetLabel.Size = UDim2.new(1, -16, 0, 26)
+	TargetLabel.Position = UDim2.new(0, 8, 0, 42)
+	TargetLabel.BackgroundColor3 = Color3.fromRGB(20, 24, 34)
+	TargetLabel.BorderSizePixel = 0
+	TargetLabel.Text = "Target: None"
+	TargetLabel.TextColor3 = Color3.fromRGB(0, 215, 255)
+	TargetLabel.TextSize = 11
+	TargetLabel.Font = Enum.Font.GothamBold
+	TargetLabel.TextTruncate = Enum.TextTruncate.AtEnd
+	TargetLabel.Parent = MainFrame
+	local tlCorner = Instance.new("UICorner")
+	tlCorner.CornerRadius = UDim.new(0, 6)
+	tlCorner.Parent = TargetLabel
+
+	local ScrollFrame = Instance.new("ScrollingFrame")
+	ScrollFrame.Size = UDim2.new(1, -16, 0, 130)
+	ScrollFrame.Position = UDim2.new(0, 8, 0, 74)
+	ScrollFrame.BackgroundColor3 = Color3.fromRGB(18, 20, 28)
+	ScrollFrame.BorderSizePixel = 0
+	ScrollFrame.ScrollBarThickness = 3
+	ScrollFrame.ScrollBarImageColor3 = Color3.fromRGB(0, 185, 255)
+	ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+	ScrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	ScrollFrame.Parent = MainFrame
+	local sfCorner = Instance.new("UICorner")
+	sfCorner.CornerRadius = UDim.new(0, 6)
+	sfCorner.Parent = ScrollFrame
+
+	local sPadding = Instance.new("UIPadding")
+	sPadding.PaddingTop = UDim.new(0, 4)
+	sPadding.PaddingBottom = UDim.new(0, 4)
+	sPadding.PaddingLeft = UDim.new(0, 4)
+	sPadding.PaddingRight = UDim.new(0, 4)
+	sPadding.Parent = ScrollFrame
+
+	local UIListLayout = Instance.new("UIListLayout")
+	UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	UIListLayout.Padding = UDim.new(0, 4)
+	UIListLayout.Parent = ScrollFrame
+
+	local function RefreshPlayerList()
+		for _, child in pairs(ScrollFrame:GetChildren()) do
+			if child:IsA("TextButton") then child:Destroy() end
+		end
+
+		for _, p in pairs(Players:GetPlayers()) do
+			if p ~= player then
+				local pBtn = Instance.new("TextButton")
+				pBtn.Size = UDim2.new(1, 0, 0, 24)
+				pBtn.BackgroundColor3 = Color3.fromRGB(26, 30, 42)
+				pBtn.BorderSizePixel = 0
+				pBtn.Text = p.DisplayName .. " (@" .. p.Name .. ")"
+				pBtn.TextColor3 = Color3.fromRGB(225, 235, 255)
+				pBtn.TextSize = 10
+				pBtn.Font = Enum.Font.GothamMedium
+				pBtn.TextTruncate = Enum.TextTruncate.AtEnd
+				pBtn.Parent = ScrollFrame
+
+				local pbCorner = Instance.new("UICorner")
+				pbCorner.CornerRadius = UDim.new(0, 5)
+				pbCorner.Parent = pBtn
+
+				pBtn.MouseButton1Click:Connect(function()
+					_G.user = p.Name
+					TargetLabel.Text = "Target: " .. p.DisplayName
+				end)
+			end
+		end
+	end
+	RefreshPlayerList()
+
+	local RefreshBtn = Instance.new("TextButton")
+	RefreshBtn.Size = UDim2.new(1, -16, 0, 24)
+	RefreshBtn.Position = UDim2.new(0, 8, 0, 210)
+	RefreshBtn.BackgroundColor3 = Color3.fromRGB(0, 140, 255)
+	RefreshBtn.BorderSizePixel = 0
+	RefreshBtn.Text = "Refresh Players"
+	RefreshBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	RefreshBtn.Font = Enum.Font.GothamBold
+	RefreshBtn.TextSize = 10
+	RefreshBtn.Parent = MainFrame
+	local rfCorner = Instance.new("UICorner")
+	rfCorner.CornerRadius = UDim.new(0, 6)
+	rfCorner.Parent = RefreshBtn
+	RefreshBtn.MouseButton1Click:Connect(RefreshPlayerList)
+
+	local StalkBtn = Instance.new("TextButton")
+	StalkBtn.Size = UDim2.new(0.5, -12, 0, 28)
+	StalkBtn.Position = UDim2.new(0, 8, 0, 240)
+	StalkBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 125)
+	StalkBtn.BorderSizePixel = 0
+	StalkBtn.Text = "START"
+	StalkBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	StalkBtn.Font = Enum.Font.GothamBold
+	StalkBtn.TextSize = 11
+	StalkBtn.Parent = MainFrame
+	local stCorner = Instance.new("UICorner")
+	stCorner.CornerRadius = UDim.new(0, 6)
+	stCorner.Parent = StalkBtn
+
+	local StopBtn = Instance.new("TextButton")
+	StopBtn.Size = UDim2.new(0.5, -12, 0, 28)
+	StopBtn.Position = UDim2.new(0.5, 4, 0, 240)
+	StopBtn.BackgroundColor3 = Color3.fromRGB(200, 35, 45)
+	StopBtn.BorderSizePixel = 0
+	StopBtn.Text = "STOP"
+	StopBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	StopBtn.Font = Enum.Font.GothamBold
+	StopBtn.TextSize = 11
+	StopBtn.Parent = MainFrame
+	local spCorner = Instance.new("UICorner")
+	spCorner.CornerRadius = UDim.new(0, 6)
+	spCorner.Parent = StopBtn
+
+	-- Drag TopBar
+	do
+		local dragging, dragStart, startPos = false, nil, nil
+		TopBar.InputBegan:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+				dragging = true
+				dragStart = input.Position
+				startPos = MainFrame.Position
+				input.Changed:Connect(function()
+					if input.UserInputState == Enum.UserInputState.End then dragging = false end
+				end)
+			end
+		end)
+		TopBar.InputChanged:Connect(function(input)
+			if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+				local delta = input.Position - dragStart
+				MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+			end
+		end)
+	end
+
+	StalkBtn.MouseButton1Click:Connect(function()
+		if _G.user ~= "" then
+			_G.active = true
+			StalkBtn.Text = "STALKING"
+			StalkBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 95)
+		end
+	end)
+
+	StopBtn.MouseButton1Click:Connect(function()
+		_G.active = false
+		StalkBtn.Text = "START"
+		StalkBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 125)
+	end)
+
+	local function cleanupStalker()
+		_G.active = false
+		if _G.StalkConnection then _G.StalkConnection:Disconnect() end
+		ScreenGui:Destroy()
+	end
+
+	CloseBtn.MouseButton1Click:Connect(cleanupStalker)
+	ScreenGui.Destroying:Connect(function()
+		_G.active = false
+		if _G.StalkConnection then _G.StalkConnection:Disconnect() end
+	end)
+
+	_G.StalkConnection = RunService.Heartbeat:Connect(function()
+		pcall(function()
+			if _G.active and _G.user ~= "" then
+				local target = Players:FindFirstChild(_G.user)
+				if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+					if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+						player.Character.HumanoidRootPart.CFrame = target.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, 3)
+					end
+				end
+			end
+		end)
+	end)
+end
+
 -- ================== AUTO CLICKER PANEL ==================
 local function launchAutoClickerScript()
 	local existing = targetContainer:FindFirstChild("Phumipad_AutoClicker_UI")
@@ -1554,15 +1802,11 @@ local usedBotColors = {}
 local function getUniqueBotColor()
 	local available = {}
 	for i = 1, #botColors do
-		if not usedBotColors[i] then
-			table.insert(available, i)
-		end
+		if not usedBotColors[i] then table.insert(available, i) end
 	end
 	if #available == 0 then
 		usedBotColors = {}
-		for i = 1, #botColors do
-			table.insert(available, i)
-		end
+		for i = 1, #botColors do table.insert(available, i) end
 	end
 	local index = available[math.random(1, #available)]
 	usedBotColors[index] = true
@@ -1571,9 +1815,7 @@ end
 
 local function isPlayerCharacter(model)
 	for _, plr in ipairs(Players:GetPlayers()) do
-		if plr.Character == model then
-			return true
-		end
+		if plr.Character == model then return true end
 	end
 	return false
 end
@@ -1599,22 +1841,11 @@ local function cleanBotESP(bot)
 end
 
 local function removeBotESP()
-	if state._botEspConn then
-		state._botEspConn:Disconnect()
-		state._botEspConn = nil
-	end
-	if state._botDescConn then
-		state._botDescConn:Disconnect()
-		state._botDescConn = nil
-	end
-	for bot, _ in pairs(state.botEspCache) do
-		cleanBotESP(bot)
-	end
+	if state._botEspConn then state._botEspConn:Disconnect(); state._botEspConn = nil end
+	if state._botDescConn then state._botDescConn:Disconnect(); state._botDescConn = nil end
+	for bot, _ in pairs(state.botEspCache) do cleanBotESP(bot) end
 	state.botEspCache = {}
-	if state.botEspFolder then
-		pcall(function() state.botEspFolder:Destroy() end)
-		state.botEspFolder = nil
-	end
+	if state.botEspFolder then pcall(function() state.botEspFolder:Destroy() end); state.botEspFolder = nil end
 	usedBotColors = {}
 end
 
@@ -1677,23 +1908,17 @@ local function applyBotESP(on)
 		}
 
 		bot.AncestryChanged:Connect(function(_, parent)
-			if not parent then
-				cleanBotESP(bot)
-			end
+			if not parent then cleanBotESP(bot) end
 		end)
 	end
 
 	for _, obj in ipairs(Workspace:GetDescendants()) do
-		if isBot(obj) then
-			registerBot(obj)
-		end
+		if isBot(obj) then registerBot(obj) end
 	end
 
 	state._botDescConn = Workspace.DescendantAdded:Connect(function(obj)
 		task.wait(0.1)
-		if state.botEsp and isBot(obj) then
-			registerBot(obj)
-		end
+		if state.botEsp and isBot(obj) then registerBot(obj) end
 	end)
 
 	state._botEspConn = RunService.RenderStepped:Connect(function()
@@ -2168,14 +2393,14 @@ local function adjustPanelHeight(animate)
 		local totalContentHeight = statusCard.Size.Y.Offset + scrollPadding.PaddingTop.Offset + scrollPadding.PaddingBottom.Offset
 		
 		for _, cat in ipairs(categories) do
-			totalContentHeight = totalContentHeight + 26 -- ความสูง Header ปุ่มหมวดหมู่
+			totalContentHeight = totalContentHeight + 26
 			if cat.isOpen() then
 				totalContentHeight = totalContentHeight + cat.contentLayout.AbsoluteContentSize.Y + 4
 			end
 			totalContentHeight = totalContentHeight + layout.Padding.Offset
 		end
 
-		local totalPanelHeight = totalContentHeight + 40 -- รวม TopBar (40px)
+		local totalPanelHeight = totalContentHeight + 40
 		local cam = Workspace.CurrentCamera
 		local maxAllowedHeight = cam and (cam.ViewportSize.Y * 0.85) or 600
 		local finalHeight = math.clamp(totalPanelHeight, 150, maxAllowedHeight)
@@ -2190,7 +2415,6 @@ local function adjustPanelHeight(animate)
 	end)
 end
 
--- Collapsible Category Component (พร้อมระบบขยาย-หดอัตโนมัติ)
 local function addCollapsibleCategory(name, defaultOpen)
 	local catFrame = Instance.new("Frame")
 	catFrame.Name = name .. "Category"
@@ -2534,6 +2758,10 @@ addActionButton(toolsContent, "Auto Clicker", function()
 	launchAutoClickerScript()
 end)
 
+addActionButton(toolsContent, "Stalker", function()
+	launchStalkerScript()
+end)
+
 addActionButton(toolsContent, "Aiming (Aimbot)", function()
 	pcall(function()
 		loadstring(game:HttpGet("https://raw.githubusercontent.com/DanielHubll/DanielHubll/refs/heads/main/Aimbot%20Mobile"))()
@@ -2643,7 +2871,6 @@ makeGridSpotBtn(2, 0.5, 0.5)
 makeGridClearBtn(1, 0, 0.5)
 makeGridClearBtn(2, 0.5, 0.5)
 
--- ปรับขนาด Panel ครั้งแรกให้พอดีกับสถานะเริ่มต้นทันที
 task.spawn(function()
 	task.wait(0.08)
 	adjustPanelHeight(false)
