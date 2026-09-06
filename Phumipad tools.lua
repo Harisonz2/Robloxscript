@@ -6,6 +6,7 @@ local Workspace = game:GetService("Workspace")
 local Lighting = game:GetService("Lighting")
 local TweenService = game:GetService("TweenService")
 local CoreGui = game:GetService("CoreGui")
+local MarketplaceService = game:GetService("MarketplaceService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -62,6 +63,34 @@ local state = {
 local character = player.Character or player.CharacterAdded:Wait()
 local humanoid  = character:WaitForChild("Humanoid")
 local hrp       = character:WaitForChild("HumanoidRootPart")
+
+-- ================== UTILITY FUNCTIONS ==================
+local function copyGameName()
+	local gameName = "Unknown Game"
+	local success, result = pcall(function()
+		return MarketplaceService:GetProductInfo(game.PlaceId)
+	end)
+
+	if success and result and result.Name then
+		gameName = result.Name
+	else
+		gameName = "Place " .. tostring(game.PlaceId)
+	end
+
+	local copied = false
+	if setclipboard then
+		setclipboard(gameName)
+		copied = true
+	elseif toclipboard then
+		toclipboard(gameName)
+		copied = true
+	elseif syn and syn.write_clipboard then
+		syn.write_clipboard(gameName)
+		copied = true
+	end
+
+	return copied, gameName
+end
 
 -- ================== FLY SCRIPT FUNCTION ==================
 local function launchFlyScript()
@@ -1731,6 +1760,68 @@ local function addToggleRow(parent, name, defaultOn, onClick)
 	end)
 end
 
+-- ฟังก์ชันสร้างแถวที่มีปุ่ม COPY แทนปุ่ม ON/OFF
+local function addCopyRow(parent, name, onCopy)
+	local row = Instance.new("Frame")
+	row.Size = UDim2.new(1, 0, 0, 28)
+	row.BackgroundColor3 = Color3.fromRGB(24, 27, 38)
+	row.BorderSizePixel = 0
+	row.LayoutOrder = getOrder()
+	row.Parent = parent
+
+	local rCorner = Instance.new("UICorner")
+	rCorner.CornerRadius = UDim.new(0, 6)
+	rCorner.Parent = row
+
+	local lbl = Instance.new("TextLabel")
+	lbl.Size = UDim2.new(1, -60, 1, 0)
+	lbl.Position = UDim2.new(0, 8, 0, 0)
+	lbl.BackgroundTransparency = 1
+	lbl.Text = name
+	lbl.TextColor3 = Color3.fromRGB(215, 225, 240)
+	lbl.Font = Enum.Font.GothamMedium
+	lbl.TextSize = 12
+	lbl.TextXAlignment = Enum.TextXAlignment.Left
+	lbl.Parent = row
+
+	local btn = Instance.new("TextButton")
+	btn.Size = UDim2.new(0, 48, 0, 20)
+	btn.Position = UDim2.new(1, -54, 0.5, -10)
+	btn.BackgroundColor3 = Color3.fromRGB(0, 140, 255)
+	btn.BorderSizePixel = 0
+	btn.Font = Enum.Font.GothamBold
+	btn.TextSize = 10
+	btn.Text = "COPY"
+	btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	btn.Parent = row
+
+	local bCorner = Instance.new("UICorner")
+	bCorner.CornerRadius = UDim.new(0, 5)
+	bCorner.Parent = btn
+
+	local busy = false
+	btn.MouseButton1Click:Connect(function()
+		if busy then return end
+		busy = true
+
+		local success = onCopy()
+		if success then
+			btn.Text = "DONE"
+			btn.BackgroundColor3 = Color3.fromRGB(0, 195, 125)
+		else
+			btn.Text = "FAIL"
+			btn.BackgroundColor3 = Color3.fromRGB(220, 50, 65)
+		end
+
+		task.wait(1.5)
+		btn.Text = "COPY"
+		btn.BackgroundColor3 = Color3.fromRGB(0, 140, 255)
+		busy = false
+	end)
+
+	return row
+end
+
 local function addInputToggleRow(parent, name, defaultVal, defaultOn, onToggle, onValChange)
 	local row = Instance.new("Frame")
 	row.Size = UDim2.new(1, 0, 0, 30)
@@ -1852,6 +1943,12 @@ end)
 
 -- [3] 🧰 UTILITIES
 local utilitiesContent = addCollapsibleCategory("🧰", "Utilities", true)
+
+-- เพิ่มปุ่ม Copy Gamename (ปุ่มสไตล์ COPY แทน ON/OFF)
+addCopyRow(utilitiesContent, "Copy Gamename", function()
+	local copied, _ = copyGameName()
+	return copied
+end)
 
 addToggleRow(utilitiesContent, "Instant Interact", state.instantInteract, function(_, render)
 	state.instantInteract = not state.instantInteract
