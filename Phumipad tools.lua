@@ -104,7 +104,7 @@ local function launchAutoClickerScript()
 	local ScreenGui = Instance.new("ScreenGui")
 	ScreenGui.Name = "Phumipad_AutoClicker_UI"
 	ScreenGui.ResetOnSpawn = false
-	ScreenGui.IgnoreGuiInset = true -- พิกัดตรง 100% ไม่เลื่อน
+	ScreenGui.IgnoreGuiInset = true 
 	ScreenGui.Parent = targetContainer
 
 	local MainFrame = Instance.new("Frame")
@@ -124,7 +124,6 @@ local function launchAutoClickerScript()
 	mfStroke.Thickness = 1.2
 	mfStroke.Parent = MainFrame
 
-	-- Top Bar
 	local TopBar = Instance.new("Frame")
 	TopBar.Size = UDim2.new(1, 0, 0, 34)
 	TopBar.Position = UDim2.new(0, 0, 0, 0)
@@ -161,7 +160,6 @@ local function launchAutoClickerScript()
 	clsCorner.CornerRadius = UDim.new(0, 6)
 	clsCorner.Parent = CloseButton
 
-	-- Content Area
 	local Content = Instance.new("Frame")
 	Content.Size = UDim2.new(1, -20, 1, -44)
 	Content.Position = UDim2.new(0, 10, 0, 38)
@@ -173,7 +171,6 @@ local function launchAutoClickerScript()
 	cLayout.Padding = UDim.new(0, 6)
 	cLayout.Parent = Content
 
-	-- Tap Position Marker
 	local marker = Instance.new("Frame")
 	marker.Name = "ClickIndicatorMarker"
 	marker.Size = UDim2.new(0, 14, 0, 14)
@@ -193,14 +190,12 @@ local function launchAutoClickerScript()
 	markerStroke.Thickness = 1.5
 	markerStroke.Parent = marker
 
-	-- States
 	local isClicking = false
 	local turboMode = false
 	local cpsValue = 10
 	local clickPosition = nil
 	local settingPosConn = nil
 
-	-- ปล่อยปุ่มเมาส์เพื่อแก้บัคการกดค้าง
 	local function releaseMouse()
 		local pos = clickPosition or UserInputService:GetMouseLocation()
 		pcall(function()
@@ -208,7 +203,6 @@ local function launchAutoClickerScript()
 		end)
 	end
 
-	-- ฟังก์ชันคลิก 1 ครั้ง
 	local function triggerClick(pos)
 		local x = pos and pos.X or (Workspace.CurrentCamera.ViewportSize.X / 2)
 		local y = pos and pos.Y or (Workspace.CurrentCamera.ViewportSize.Y / 2)
@@ -220,7 +214,6 @@ local function launchAutoClickerScript()
 		end)
 	end
 
-	-- 1. CPS Input Box Row
 	local speedRow = Instance.new("Frame")
 	speedRow.Size = UDim2.new(1, 0, 0, 28)
 	speedRow.BackgroundColor3 = Color3.fromRGB(20, 24, 34)
@@ -267,7 +260,6 @@ local function launchAutoClickerScript()
 		end
 	end)
 
-	-- 2. Speed Example Label
 	local exampleLabel = Instance.new("TextLabel")
 	exampleLabel.Size = UDim2.new(1, 0, 0, 24)
 	exampleLabel.BackgroundTransparency = 1
@@ -280,7 +272,6 @@ local function launchAutoClickerScript()
 	exampleLabel.LayoutOrder = 2
 	exampleLabel.Parent = Content
 
-	-- 3. Set Tap Position Button
 	local posBtn = Instance.new("TextButton")
 	posBtn.Size = UDim2.new(1, 0, 0, 28)
 	posBtn.BackgroundColor3 = Color3.fromRGB(28, 33, 48)
@@ -314,7 +305,6 @@ local function launchAutoClickerScript()
 				end
 
 				clickPosition = Vector2.new(posX, posY)
-
 				marker.Position = UDim2.new(0, posX, 0, posY)
 				marker.Visible = true
 
@@ -327,7 +317,6 @@ local function launchAutoClickerScript()
 		end)
 	end)
 
-	-- 4. Turbo Mode Toggle Row
 	local turboRow = Instance.new("Frame")
 	turboRow.Size = UDim2.new(1, 0, 0, 28)
 	turboRow.BackgroundColor3 = Color3.fromRGB(20, 24, 34)
@@ -370,7 +359,6 @@ local function launchAutoClickerScript()
 		turboToggleBtn.TextColor3 = turboMode and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(150, 160, 180)
 	end)
 
-	-- 5. Main ON / OFF Toggle Button
 	local toggleClickBtn = Instance.new("TextButton")
 	toggleClickBtn.Size = UDim2.new(1, 0, 0, 32)
 	toggleClickBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 125)
@@ -385,7 +373,6 @@ local function launchAutoClickerScript()
 	tcbCorner.CornerRadius = UDim.new(0, 6)
 	tcbCorner.Parent = toggleClickBtn
 
-	-- ฟังก์ชันหยุดคลิกอย่างสมบูรณ์
 	local function stopClicking()
 		isClicking = false
 		releaseMouse()
@@ -416,7 +403,6 @@ local function launchAutoClickerScript()
 		end
 	end)
 
-	-- 6. ปุ่มแดงฉุกเฉิน FORCE STOP
 	local forceStopBtn = Instance.new("TextButton")
 	forceStopBtn.Size = UDim2.new(1, 0, 0, 30)
 	forceStopBtn.BackgroundColor3 = Color3.fromRGB(200, 35, 45)
@@ -435,7 +421,6 @@ local function launchAutoClickerScript()
 		stopClicking()
 	end)
 
-	-- Drag Logic for AutoClicker Panel
 	do
 		local dragging, dragStart, startPos = false, nil, nil
 		TopBar.InputBegan:Connect(function(input)
@@ -459,7 +444,6 @@ local function launchAutoClickerScript()
 		end)
 	end
 
-	-- ปิดหน้าต่างแล้วหยุดการทำงานของ Auto Clicker ทันที
 	CloseButton.MouseButton1Click:Connect(function()
 		stopClicking()
 		if settingPosConn then settingPosConn:Disconnect() end
@@ -1161,7 +1145,6 @@ local function applyTPWalk(on)
 	end
 end
 
--- Full Potato FPS Booster with Clean Restore
 local function applyFPSBooster(on)
 	if on then
 		state.potatoBackup = {
@@ -1944,6 +1927,152 @@ scrollPadding.PaddingLeft = UDim.new(0, 10)
 scrollPadding.PaddingRight = UDim.new(0, 10)
 scrollPadding.Parent = scroll
 
+-- ================== STATUS PANEL (GAME & IDLE TIME) ==================
+local statusCard = Instance.new("Frame")
+statusCard.Size = UDim2.new(1, 0, 0, 56)
+statusCard.BackgroundColor3 = Color3.fromRGB(20, 24, 34)
+statusCard.BorderSizePixel = 0
+statusCard.LayoutOrder = 0 -- ให้อยู่บนสุดเหนือ Movement
+statusCard.Parent = scroll
+
+local scCorner = Instance.new("UICorner")
+scCorner.CornerRadius = UDim.new(0, 8)
+scCorner.Parent = statusCard
+
+local scStroke = Instance.new("UIStroke")
+scStroke.Color = Color3.fromRGB(45, 55, 75)
+scStroke.Thickness = 1
+scStroke.Parent = statusCard
+
+-- ชื่อเกม
+local gameNameLabel = Instance.new("TextLabel")
+gameNameLabel.Size = UDim2.new(1, -64, 0, 18)
+gameNameLabel.Position = UDim2.new(0, 8, 0, 6)
+gameNameLabel.BackgroundTransparency = 1
+gameNameLabel.Text = "Loading Game Info..."
+gameNameLabel.TextColor3 = Color3.fromRGB(240, 245, 255)
+gameNameLabel.Font = Enum.Font.GothamBold
+gameNameLabel.TextSize = 11
+gameNameLabel.TextXAlignment = Enum.TextXAlignment.Left
+gameNameLabel.TextTruncate = Enum.TextTruncate.AtEnd
+gameNameLabel.Parent = statusCard
+
+-- ปุ่ม COPY ต่อท้ายชื่อเกม
+local copyHeaderBtn = Instance.new("TextButton")
+copyHeaderBtn.Name = "CopyHeaderButton"
+copyHeaderBtn.Size = UDim2.new(0, 46, 0, 18)
+copyHeaderBtn.Position = UDim2.new(1, -54, 0, 6)
+copyHeaderBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+copyHeaderBtn.BorderSizePixel = 0
+copyHeaderBtn.Font = Enum.Font.GothamBold
+copyHeaderBtn.TextSize = 9
+copyHeaderBtn.Text = "COPY"
+copyHeaderBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+copyHeaderBtn.Parent = statusCard
+
+local chbCorner = Instance.new("UICorner")
+chbCorner.CornerRadius = UDim.new(0, 4)
+chbCorner.Parent = copyHeaderBtn
+
+local copyBusy = false
+copyHeaderBtn.MouseButton1Click:Connect(function()
+	if copyBusy then return end
+	copyBusy = true
+
+	local success, _ = copyGameName()
+	if success then
+		copyHeaderBtn.Text = "DONE"
+		copyHeaderBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 125)
+	else
+		copyHeaderBtn.Text = "FAIL"
+		copyHeaderBtn.BackgroundColor3 = Color3.fromRGB(220, 50, 65)
+	end
+
+	task.wait(1.5)
+	copyHeaderBtn.Text = "COPY"
+	copyHeaderBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+	copyBusy = false
+end)
+
+local timeLabel = Instance.new("TextLabel")
+timeLabel.Size = UDim2.new(1, -16, 0, 14)
+timeLabel.Position = UDim2.new(0, 8, 0, 30)
+timeLabel.BackgroundTransparency = 1
+timeLabel.Text = "Play: 00:00  |  Idle: 00:00"
+timeLabel.TextColor3 = Color3.fromRGB(150, 165, 190)
+timeLabel.Font = Enum.Font.GothamMedium
+timeLabel.TextSize = 10
+timeLabel.TextXAlignment = Enum.TextXAlignment.Left
+timeLabel.Parent = statusCard
+
+local kickWarningLabel = Instance.new("TextLabel")
+kickWarningLabel.Size = UDim2.new(0, 80, 0, 14)
+kickWarningLabel.Position = UDim2.new(1, -88, 0, 30)
+kickWarningLabel.BackgroundTransparency = 1
+kickWarningLabel.Text = "DC in 20:00"
+kickWarningLabel.TextColor3 = Color3.fromRGB(0, 200, 125)
+kickWarningLabel.Font = Enum.Font.GothamBold
+kickWarningLabel.TextSize = 10
+kickWarningLabel.TextXAlignment = Enum.TextXAlignment.Right
+kickWarningLabel.Parent = statusCard
+
+-- Status Logic
+local sessionStart = os.time()
+local lastInput = os.time()
+local cachedGameName = "Unknown Game"
+
+task.spawn(function()
+	local s, r = pcall(function() return MarketplaceService:GetProductInfo(game.PlaceId) end)
+	if s and r and r.Name then
+		cachedGameName = r.Name
+	else
+		cachedGameName = "Place ID: " .. tostring(game.PlaceId)
+	end
+	gameNameLabel.Text = cachedGameName
+end)
+
+UserInputService.InputBegan:Connect(function() lastInput = os.time() end)
+UserInputService.InputChanged:Connect(function(inp)
+	if inp.UserInputType == Enum.UserInputType.MouseMovement or inp.UserInputType == Enum.UserInputType.Touch then
+		lastInput = os.time()
+	end
+end)
+
+task.spawn(function()
+	while true do
+		task.wait(1)
+		if not statusCard.Parent then break end
+
+		local now = os.time()
+		local played = now - sessionStart
+
+		if humanoid and humanoid.MoveDirection.Magnitude > 0 then
+			lastInput = now
+		end
+
+		local idle = now - lastInput
+		local kickTime = math.max(0, 1200 - idle)
+
+		local pM = math.floor(played / 60)
+		local pS = played % 60
+		local iM = math.floor(idle / 60)
+		local iS = idle % 60
+		local kM = math.floor(kickTime / 60)
+		local kS = kickTime % 60
+
+		timeLabel.Text = string.format("Play: %02d:%02d  |  Idle: %02d:%02d", pM, pS, iM, iS)
+		kickWarningLabel.Text = string.format("DC in %02d:%02d", kM, kS)
+
+		if kickTime <= 300 then
+			kickWarningLabel.TextColor3 = Color3.fromRGB(255, 60, 60)
+		elseif kickTime <= 600 then
+			kickWarningLabel.TextColor3 = Color3.fromRGB(255, 160, 0)
+		else
+			kickWarningLabel.TextColor3 = Color3.fromRGB(0, 200, 125)
+		end
+	end
+end)
+
 -- ================== MODERN CORNER RESIZE HANDLE ==================
 local resizeGrip = Instance.new("TextButton")
 resizeGrip.Name = "ResizeGrip"
@@ -2033,7 +2162,7 @@ do
 	end)
 end
 
-local currentOrder = 0
+local currentOrder = 1
 local function getOrder() currentOrder = currentOrder + 1; return currentOrder end
 
 -- Collapsible Category Component (No Tofu / No Square Bug)
@@ -2208,67 +2337,6 @@ local function addToggleRow(parent, name, defaultOn, onClick)
 	end)
 end
 
-local function addCopyRow(parent, name, onCopy)
-	local row = Instance.new("Frame")
-	row.Size = UDim2.new(1, 0, 0, 30)
-	row.BackgroundColor3 = Color3.fromRGB(20, 24, 34)
-	row.BorderSizePixel = 0
-	row.LayoutOrder = getOrder()
-	row.Parent = parent
-
-	local rCorner = Instance.new("UICorner")
-	rCorner.CornerRadius = UDim.new(0, 6)
-	rCorner.Parent = row
-
-	local lbl = Instance.new("TextLabel")
-	lbl.Size = UDim2.new(1, -65, 1, 0)
-	lbl.Position = UDim2.new(0, 10, 0, 0)
-	lbl.BackgroundTransparency = 1
-	lbl.Text = name
-	lbl.TextColor3 = Color3.fromRGB(215, 225, 240)
-	lbl.Font = Enum.Font.GothamMedium
-	lbl.TextSize = 11
-	lbl.TextXAlignment = Enum.TextXAlignment.Left
-	lbl.Parent = row
-
-	local btn = Instance.new("TextButton")
-	btn.Size = UDim2.new(0, 50, 0, 20)
-	btn.Position = UDim2.new(1, -56, 0.5, -10)
-	btn.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
-	btn.BorderSizePixel = 0
-	btn.Font = Enum.Font.GothamBold
-	btn.TextSize = 9
-	btn.Text = "COPY"
-	btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-	btn.Parent = row
-
-	local bCorner = Instance.new("UICorner")
-	bCorner.CornerRadius = UDim.new(0, 5)
-	bCorner.Parent = btn
-
-	local busy = false
-	btn.MouseButton1Click:Connect(function()
-		if busy then return end
-		busy = true
-
-		local success = onCopy()
-		if success then
-			btn.Text = "DONE"
-			btn.BackgroundColor3 = Color3.fromRGB(0, 200, 125)
-		else
-			btn.Text = "FAIL"
-			btn.BackgroundColor3 = Color3.fromRGB(220, 50, 65)
-		end
-
-		task.wait(1.5)
-		btn.Text = "COPY"
-		btn.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
-		busy = false
-	end)
-
-	return row
-end
-
 local function addInputToggleRow(parent, name, defaultVal, defaultOn, onToggle, onValChange)
 	local row = Instance.new("Frame")
 	row.Size = UDim2.new(1, 0, 0, 32)
@@ -2400,11 +2468,6 @@ addToggleRow(utilitiesContent, "Full Bright", state.fullBright, function(_, rend
 	state.fullBright = not state.fullBright
 	render(state.fullBright)
 	applyFullBright(state.fullBright)
-end)
-
-addCopyRow(utilitiesContent, "Copy Gamename", function()
-	local copied, _ = copyGameName()
-	return copied
 end)
 
 -- [3] VISUAL
