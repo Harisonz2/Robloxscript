@@ -9,6 +9,7 @@ local CoreGui = game:GetService("CoreGui")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
+local targetContainer = pcall(function() return CoreGui end) and CoreGui or playerGui
 
 -- ================== STATE ==================
 local state = {
@@ -32,6 +33,7 @@ local state = {
 	fullBright = false,
 	esp = false,
 	espTeamMode = true,
+	botEsp = false,
 	fpsBooster = false,
 
 	baseMaxHealth = 100,
@@ -40,15 +42,21 @@ local state = {
 	_noclipConn = nil,
 	_antiRDConns = {},
 	_fbConn = nil,
-	_espConns = {},
+	_espConn = nil,
+	_botEspConn = nil,
+	_botDescConn = nil,
 	_tpWalkConn = nil,
 	_fpsConn = nil,
 
-	-- Backups
+	-- Backups & ESP Storage
 	fbBackup = nil,
 	potatoBackup = nil,
 	savedPosition1 = nil,
-	savedPosition2 = nil
+	savedPosition2 = nil,
+	espFolder = nil,
+	espCache = {},
+	botEspFolder = nil,
+	botEspCache = {}
 }
 
 local character = player.Character or player.CharacterAdded:Wait()
@@ -472,7 +480,6 @@ end
 
 -- ================== PLAYER TELEPORT SCRIPT FUNCTION ==================
 local function launchPlayerTeleportScript()
-	local targetContainer = pcall(function() return CoreGui end) and CoreGui or playerGui
 	local existing = targetContainer:FindFirstChild("TeleportUI")
 	if existing then
 		existing:Destroy()
@@ -582,7 +589,7 @@ local function launchPlayerTeleportScript()
 				PlayerButton.Parent = ScrollingFrame
 
 				PlayerButton.MouseButton1Click:Connect(function()
-					teleportTarget = plr.Character and plr.Character:FindFirstChild("HumanoidRootPart")
+					teleportTarget = plr.Character and (plr.Character:FindFirstChild("HumanoidRootPart") or plr.Character:FindFirstChild("Torso") or plr.Character.PrimaryPart)
 					TPButton.Text = "Teleport to: " .. plr.Name
 				end)
 			end
@@ -912,7 +919,7 @@ local function applyFullBright(on)
 	end
 end
 
--- ================== ADVANCED PLAYER ESP SYSTEM ==================
+-- ================== ULTRA-RELIABLE ESP ENGINE ==================
 local espRayParams = RaycastParams.new()
 espRayParams.FilterType = Enum.RaycastFilterType.Exclude
 espRayParams.IgnoreWater = true
@@ -955,132 +962,338 @@ local function getTeamOrPlayerColor(plr)
 	end
 end
 
-local function createESP(plr)
-	if plr == player then return end
+local function getCharacterParts(char)
+	if not char then return nil, nil end
+	local root = char:FindFirstChild("HumanoidRootPart")
+		or char:FindFirstChild("Torso")
+		or char:FindFirstChild("UpperTorso")
+		or char.PrimaryPart
 
-	local function addESPToChar(char)
-		pcall(function()
-			if char:FindFirstChild("DracoESPHighlight") then return end
+	local head = char:FindFirstChild("Head") or root
 
-			local root = char:WaitForChild("HumanoidRootPart", 5)
-			local head = char:WaitForChild("Head", 5)
-			if not root or not head then return end
-
-			local col = getTeamOrPlayerColor(plr)
-
-			local hl = Instance.new("Highlight")
-			hl.Name = "DracoESPHighlight"
-			hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-			hl.FillColor = col
-			hl.FillTransparency = 0.35
-			hl.OutlineColor = col
-			hl.OutlineTransparency = 0
-			hl.Enabled = false
-			hl.Adornee = char
-			hl.Parent = char
-
-			local bb = Instance.new("BillboardGui")
-			bb.Name = "DracoESPName"
-			bb.Adornee = head
-			bb.Size = UDim2.new(0, 260, 0, 52)
-			bb.StudsOffset = Vector3.new(0, 4.4, 0)
-			bb.AlwaysOnTop = true
-			bb.LightInfluence = 0
-			bb.MaxDistance = 10000
-			bb.Parent = head
-
-			local label = Instance.new("TextLabel")
-			label.Name = "ESPLabel"
-			label.Size = UDim2.new(1, 0, 1, 0)
-			label.BackgroundTransparency = 1
-			label.Text = plr.DisplayName or plr.Name
-			label.TextColor3 = Color3.fromRGB(255, 255, 255)
-			label.TextStrokeTransparency = 0
-			label.TextStrokeColor3 = col
-			label.Font = Enum.Font.GothamBold
-			label.TextSize = 16
-			label.Parent = bb
-		end)
+	if not root then
+		root = char:FindFirstChildWhichIsA("BasePart")
 	end
+	if not head then
+		head = root
+	end
+	return root, head
+end
 
-	if plr.Character then addESPToChar(plr.Character) end
-	local charConn = plr.CharacterAdded:Connect(function(char)
-		if state.esp then addESPToChar(char) end
-	end)
-	table.insert(state._espConns, charConn)
+local function cleanESPForPlayer(plr)
+	local data = state.espCache[plr]
+	if data then
+		if data.Highlight then pcall(function() data.Highlight:Destroy() end) end
+		if data.Billboard then pcall(function() data.Billboard:Destroy() end) end
+		state.espCache[plr] = nil
+	end
 end
 
 local function removeESP()
-	for _, plr in ipairs(Players:GetPlayers()) do
-		if plr.Character then
-			pcall(function()
-				local hl = plr.Character:FindFirstChild("DracoESPHighlight")
-				if hl then hl:Destroy() end
-
-				local head = plr.Character:FindFirstChild("Head")
-				if head then
-					local bb = head:FindFirstChild("DracoESPName")
-					if bb then bb:Destroy() end
-				end
-			end)
-		end
+	if state._espConn then
+		state._espConn:Disconnect()
+		state._espConn = nil
+	end
+	for plr, _ in pairs(state.espCache) do
+		cleanESPForPlayer(plr)
+	end
+	state.espCache = {}
+	if state.espFolder then
+		pcall(function() state.espFolder:Destroy() end)
+		state.espFolder = nil
 	end
 end
 
 local function applyESP(on)
-	for _, conn in ipairs(state._espConns) do pcall(function() conn:Disconnect() end) end
-	state._espConns = {}
+	removeESP()
+	if not on then return end
 
-	if on then
-		for _, plr in ipairs(Players:GetPlayers()) do createESP(plr) end
+	state.espFolder = Instance.new("Folder")
+	state.espFolder.Name = "Phumipad_ESP_Storage"
+	state.espFolder.Parent = targetContainer
 
-		table.insert(state._espConns, Players.PlayerAdded:Connect(function(plr)
-			if state.esp then createESP(plr) end
-		end))
+	state._espConn = RunService.RenderStepped:Connect(function()
+		if not state.esp then return end
+		local myChar = player.Character
+		local myRoot = myChar and (myChar:FindFirstChild("HumanoidRootPart") or myChar.PrimaryPart)
 
-		table.insert(state._espConns, RunService.RenderStepped:Connect(function()
-			if not state.esp then return end
-			local myChar = player.Character
-			local myHrp = myChar and myChar:FindFirstChild("HumanoidRootPart")
+		local activePlayers = {}
 
-			for _, plr in ipairs(Players:GetPlayers()) do
-				if plr ~= player and plr.Character then
-					local root = plr.Character:FindFirstChild("HumanoidRootPart")
-					local head = plr.Character:FindFirstChild("Head")
-					local targetPart = head or root
-					local col = getTeamOrPlayerColor(plr)
+		for _, plr in ipairs(Players:GetPlayers()) do
+			if plr ~= player then
+				activePlayers[plr] = true
+				local char = plr.Character or Workspace:FindFirstChild(plr.Name)
+				local hum = char and char:FindFirstChildOfClass("Humanoid")
+				local root, head = getCharacterParts(char)
 
-					local occluded = isPlayerOccluded(plr.Character, targetPart)
+				local isAlive = char and char.Parent and hum and (hum.Health > 0) and root and head
 
-					local hl = plr.Character:FindFirstChild("DracoESPHighlight")
-					if hl then
-						hl.FillColor = col
-						hl.OutlineColor = col
-						hl.Enabled = occluded
+				if isAlive then
+					local data = state.espCache[plr]
+					if not data or not data.Highlight or not data.Highlight.Parent or not data.Billboard or not data.Billboard.Parent then
+						local hl = Instance.new("Highlight")
+						hl.Name = plr.Name .. "_HL"
+						hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+						hl.FillTransparency = 0.35
+						hl.OutlineTransparency = 0
+						hl.Parent = state.espFolder
+
+						local bb = Instance.new("BillboardGui")
+						bb.Name = plr.Name .. "_BB"
+						bb.Size = UDim2.new(0, 260, 0, 52)
+						bb.StudsOffset = Vector3.new(0, 4.4, 0)
+						bb.AlwaysOnTop = true
+						bb.LightInfluence = 0
+						bb.MaxDistance = 10000
+						bb.Parent = state.espFolder
+
+						local label = Instance.new("TextLabel")
+						label.Name = "ESPLabel"
+						label.Size = UDim2.new(1, 0, 1, 0)
+						label.BackgroundTransparency = 1
+						label.TextColor3 = Color3.fromRGB(255, 255, 255)
+						label.TextStrokeTransparency = 0
+						label.Font = Enum.Font.GothamBold
+						label.TextSize = 16
+						label.Parent = bb
+
+						data = {Highlight = hl, Billboard = bb, Label = label}
+						state.espCache[plr] = data
 					end
 
-					if head then
-						local bb = head:FindFirstChild("DracoESPName")
-						if bb then
-							local label = bb:FindFirstChild("ESPLabel")
-							if label then
-								label.TextColor3 = Color3.fromRGB(255, 255, 255)
-								label.TextStrokeColor3 = col
-								if myHrp and root then
-									local dist = math.floor((myHrp.Position - root.Position).Magnitude)
-									label.Text = string.format("%s\n[%d studs]", plr.DisplayName or plr.Name, dist)
-								else
-									label.Text = plr.DisplayName or plr.Name
-								end
-							end
-						end
+					data.Highlight.Adornee = char
+					data.Billboard.Adornee = head
+					data.Billboard.Enabled = true
+
+					local col = getTeamOrPlayerColor(plr)
+					local occluded = isPlayerOccluded(char, head or root)
+
+					data.Highlight.FillColor = col
+					data.Highlight.OutlineColor = col
+					data.Highlight.Enabled = occluded
+
+					data.Label.TextColor3 = Color3.fromRGB(255, 255, 255)
+					data.Label.TextStrokeColor3 = col
+
+					if myRoot then
+						local dist = math.floor((myRoot.Position - root.Position).Magnitude)
+						data.Label.Text = string.format("%s\n[%d studs]", plr.DisplayName or plr.Name, dist)
+					else
+						data.Label.Text = plr.DisplayName or plr.Name
+					end
+				else
+					local data = state.espCache[plr]
+					if data then
+						if data.Highlight then data.Highlight.Enabled = false end
+						if data.Billboard then data.Billboard.Enabled = false end
 					end
 				end
 			end
-		end))
-	else
-		removeESP()
+		end
+
+		for cachedPlr, _ in pairs(state.espCache) do
+			if not activePlayers[cachedPlr] then
+				cleanESPForPlayer(cachedPlr)
+			end
+		end
+	end)
+end
+
+-- ================== BOT ESP SYSTEM (NAME + DISTANCE) ==================
+local botColors = {
+	Color3.fromRGB(255, 0, 0),
+	Color3.fromRGB(0, 255, 0),
+	Color3.fromRGB(0, 170, 255),
+	Color3.fromRGB(255, 255, 0),
+	Color3.fromRGB(255, 0, 255),
+	Color3.fromRGB(0, 255, 255),
+	Color3.fromRGB(255, 128, 0),
+	Color3.fromRGB(128, 0, 255),
+	Color3.fromRGB(255, 80, 150),
+	Color3.fromRGB(80, 255, 120),
+	Color3.fromRGB(180, 255, 0),
+	Color3.fromRGB(255, 180, 0),
+	Color3.fromRGB(100, 180, 255),
+	Color3.fromRGB(200, 100, 255),
+	Color3.fromRGB(255, 100, 100),
+}
+local usedBotColors = {}
+
+local function getUniqueBotColor()
+	local available = {}
+	for i = 1, #botColors do
+		if not usedBotColors[i] then
+			table.insert(available, i)
+		end
 	end
+	if #available == 0 then
+		usedBotColors = {}
+		for i = 1, #botColors do
+			table.insert(available, i)
+		end
+	end
+	local index = available[math.random(1, #available)]
+	usedBotColors[index] = true
+	return botColors[index]
+end
+
+local function isPlayerCharacter(model)
+	for _, plr in ipairs(Players:GetPlayers()) do
+		if plr.Character == model then
+			return true
+		end
+	end
+	return false
+end
+
+local function isBot(model)
+	if not model or not model:IsA("Model") then return false end
+	local hum = model:FindFirstChildOfClass("Humanoid")
+	if not hum or hum.Health <= 0 then return false end
+	if isPlayerCharacter(model) then return false end
+	if not model:FindFirstChild("HumanoidRootPart") and not model:FindFirstChild("Head") and not model:FindFirstChildWhichIsA("BasePart") then
+		return false
+	end
+	return true
+end
+
+local function cleanBotESP(bot)
+	local data = state.botEspCache[bot]
+	if data then
+		if data.Highlight then pcall(function() data.Highlight:Destroy() end) end
+		if data.Billboard then pcall(function() data.Billboard:Destroy() end) end
+		state.botEspCache[bot] = nil
+	end
+end
+
+local function removeBotESP()
+	if state._botEspConn then
+		state._botEspConn:Disconnect()
+		state._botEspConn = nil
+	end
+	if state._botDescConn then
+		state._botDescConn:Disconnect()
+		state._botDescConn = nil
+	end
+	for bot, _ in pairs(state.botEspCache) do
+		cleanBotESP(bot)
+	end
+	state.botEspCache = {}
+	if state.botEspFolder then
+		pcall(function() state.botEspFolder:Destroy() end)
+		state.botEspFolder = nil
+	end
+	usedBotColors = {}
+end
+
+local function applyBotESP(on)
+	removeBotESP()
+	if not on then return end
+
+	state.botEspFolder = Instance.new("Folder")
+	state.botEspFolder.Name = "Phumipad_BotESP_Storage"
+	state.botEspFolder.Parent = targetContainer
+
+	local function registerBot(bot)
+		if not isBot(bot) then return end
+		if state.botEspCache[bot] then return end
+
+		local root, head = getCharacterParts(bot)
+		if not root or not head then return end
+
+		local col = getUniqueBotColor()
+
+		local hl = Instance.new("Highlight")
+		hl.Name = bot.Name .. "_BotHL"
+		hl.Adornee = bot
+		hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+		hl.FillColor = col
+		hl.OutlineColor = col
+		hl.FillTransparency = 0.45
+		hl.OutlineTransparency = 0
+		hl.Parent = state.botEspFolder
+
+		local bb = Instance.new("BillboardGui")
+		bb.Name = bot.Name .. "_BotBB"
+		bb.Adornee = head
+		bb.Size = UDim2.new(0, 260, 0, 52)
+		bb.StudsOffset = Vector3.new(0, 4.4, 0)
+		bb.AlwaysOnTop = true
+		bb.LightInfluence = 0
+		bb.MaxDistance = 10000
+		bb.Parent = state.botEspFolder
+
+		local label = Instance.new("TextLabel")
+		label.Name = "BotESPLabel"
+		label.Size = UDim2.new(1, 0, 1, 0)
+		label.BackgroundTransparency = 1
+		label.TextColor3 = Color3.fromRGB(255, 255, 255)
+		label.TextStrokeColor3 = col
+		label.TextStrokeTransparency = 0
+		label.Font = Enum.Font.GothamBold
+		label.TextSize = 16
+		label.Text = bot.Name
+		label.Parent = bb
+
+		state.botEspCache[bot] = {
+			Highlight = hl,
+			Billboard = bb,
+			Label = label,
+			Root = root,
+			Head = head,
+			Color = col
+		}
+
+		bot.AncestryChanged:Connect(function(_, parent)
+			if not parent then
+				cleanBotESP(bot)
+			end
+		end)
+	end
+
+	for _, obj in ipairs(Workspace:GetDescendants()) do
+		if isBot(obj) then
+			registerBot(obj)
+		end
+	end
+
+	state._botDescConn = Workspace.DescendantAdded:Connect(function(obj)
+		task.wait(0.1)
+		if state.botEsp and isBot(obj) then
+			registerBot(obj)
+		end
+	end)
+
+	-- Render Loop: อัปเดตระยะห่างแบบเรียลไทม์ และตรวจสอบสถานะบอท
+	state._botEspConn = RunService.RenderStepped:Connect(function()
+		if not state.botEsp then return end
+		local myChar = player.Character
+		local myRoot = myChar and (myChar:FindFirstChild("HumanoidRootPart") or myChar.PrimaryPart)
+
+		for bot, data in pairs(state.botEspCache) do
+			if not bot or not bot.Parent then
+				cleanBotESP(bot)
+			else
+				local hum = bot:FindFirstChildOfClass("Humanoid")
+				local isAlive = hum and (hum.Health > 0)
+
+				if isAlive and data.Root and data.Head then
+					data.Highlight.Enabled = true
+					data.Billboard.Enabled = true
+
+					if myRoot then
+						local dist = math.floor((myRoot.Position - data.Root.Position).Magnitude)
+						data.Label.Text = string.format("%s\n[%d studs]", bot.Name, dist)
+					else
+						data.Label.Text = bot.Name
+					end
+				else
+					data.Highlight.Enabled = false
+					data.Billboard.Enabled = false
+				end
+			end
+		end
+	end)
 end
 
 player.CharacterAdded:Connect(function(char)
@@ -1614,7 +1827,7 @@ end, function(val)
 	state.tpWalkSpeed = val
 end)
 
--- [2] 🛠️ MORE TOOLS (เพิ่ม Aiming)
+-- [2] 🛠️ MORE TOOLS
 local toolsContent = addCollapsibleCategory("🛠️", "More Tools", true)
 
 addActionButton(toolsContent, "🎯 Aiming", function()
@@ -1674,7 +1887,7 @@ addToggleRow(utilitiesContent, "Full Bright", state.fullBright, function(_, rend
 	applyFullBright(state.fullBright)
 end)
 
--- [4] 👁️ VISUAL
+-- [4] 👁️ VISUAL (รวม Player ESP, Bot ESP + Distance และ FPS Booster)
 local visualContent = addCollapsibleCategory("👁️", "Visual", true)
 
 addToggleRow(visualContent, "Player ESP", state.esp, function(_, render)
@@ -1686,6 +1899,12 @@ end)
 addToggleRow(visualContent, "ESP Team Colors", state.espTeamMode, function(_, render)
 	state.espTeamMode = not state.espTeamMode
 	render(state.espTeamMode)
+end)
+
+addToggleRow(visualContent, "Bot ESP", state.botEsp, function(_, render)
+	state.botEsp = not state.botEsp
+	render(state.botEsp)
+	applyBotESP(state.botEsp)
 end)
 
 addToggleRow(visualContent, "FPS Booster (potato)", state.fpsBooster, function(_, render)
