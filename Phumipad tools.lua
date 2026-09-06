@@ -205,28 +205,28 @@ local function launchFlyScript()
 	closebutton.Name = "Close"
 	closebutton.Parent = Frame
 	closebutton.BackgroundColor3 = Color3.fromRGB(225, 25, 0)
-	closebutton.Font = Enum.Font.SourceSans
+	closebutton.Font = Enum.Font.GothamBold
 	closebutton.Size = UDim2.new(0, 45, 0, 28)
 	closebutton.Text = "X"
-	closebutton.TextSize = 30
+	closebutton.TextSize = 18
 	closebutton.Position = UDim2.new(0, 0, -1, 27)
 
 	mini.Name = "minimize"
 	mini.Parent = Frame
 	mini.BackgroundColor3 = Color3.fromRGB(192, 150, 230)
-	mini.Font = Enum.Font.SourceSans
+	mini.Font = Enum.Font.GothamBold
 	mini.Size = UDim2.new(0, 45, 0, 28)
 	mini.Text = "-"
-	mini.TextSize = 40
+	mini.TextSize = 20
 	mini.Position = UDim2.new(0, 44, -1, 27)
 
 	mini2.Name = "minimize2"
 	mini2.Parent = Frame
 	mini2.BackgroundColor3 = Color3.fromRGB(192, 150, 230)
-	mini2.Font = Enum.Font.SourceSans
+	mini2.Font = Enum.Font.GothamBold
 	mini2.Size = UDim2.new(0, 45, 0, 28)
 	mini2.Text = "+"
-	mini2.TextSize = 40
+	mini2.TextSize = 20
 	mini2.Position = UDim2.new(0, 44, -1, 57)
 	mini2.Visible = false
 
@@ -525,80 +525,115 @@ local function launchPlayerTeleportScript()
 	local MainFrame = Instance.new("Frame")
 	MainFrame.Size = UDim2.new(0, 250, 0, 300)
 	MainFrame.Position = UDim2.new(0.5, -125, 0.4, 0)
-	MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-	MainFrame.BorderSizePixel = 2
+	MainFrame.BackgroundColor3 = Color3.fromRGB(15, 17, 23)
+	MainFrame.BorderSizePixel = 0
 	MainFrame.ClipsDescendants = true
 	MainFrame.Parent = ScreenGui
 
+	local mfCorner = Instance.new("UICorner")
+	mfCorner.CornerRadius = UDim.new(0, 10)
+	mfCorner.Parent = MainFrame
+
+	local mfStroke = Instance.new("UIStroke")
+	mfStroke.Color = Color3.fromRGB(45, 52, 70)
+	mfStroke.Thickness = 1.2
+	mfStroke.Parent = MainFrame
+
 	local TopBar = Instance.new("Frame")
-	TopBar.Size = UDim2.new(1, 0, 0, 30)
+	TopBar.Size = UDim2.new(1, 0, 0, 34)
 	TopBar.Position = UDim2.new(0, 0, 0, 0)
-	TopBar.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+	TopBar.BackgroundColor3 = Color3.fromRGB(22, 25, 35)
 	TopBar.BorderSizePixel = 0
 	TopBar.Parent = MainFrame
 
+	local tbCorner = Instance.new("UICorner")
+	tbCorner.CornerRadius = UDim.new(0, 10)
+	tbCorner.Parent = TopBar
+
 	local Title = Instance.new("TextLabel")
-	Title.Size = UDim2.new(1, -60, 1, 0)
-	Title.Position = UDim2.new(0, 10, 0, 0)
+	Title.Size = UDim2.new(1, -70, 1, 0)
+	Title.Position = UDim2.new(0, 12, 0, 0)
 	Title.BackgroundTransparency = 1
-	Title.Text = "Player Teleport GUI"
-	Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+	Title.Text = "Player Teleport"
+	Title.TextColor3 = Color3.fromRGB(240, 245, 255)
 	Title.TextXAlignment = Enum.TextXAlignment.Left
 	Title.Font = Enum.Font.GothamBold
-	Title.TextSize = 14
+	Title.TextSize = 13
 	Title.Parent = TopBar
 
 	local MinButton = Instance.new("TextButton")
-	MinButton.Size = UDim2.new(0, 30, 0, 30)
-	MinButton.Position = UDim2.new(1, -60, 0, 0)
-	MinButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+	MinButton.Size = UDim2.new(0, 24, 0, 24)
+	MinButton.Position = UDim2.new(1, -56, 0.5, -12)
+	MinButton.BackgroundColor3 = Color3.fromRGB(35, 40, 55)
 	MinButton.BorderSizePixel = 0
 	MinButton.Text = "-"
-	MinButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+	MinButton.TextColor3 = Color3.fromRGB(200, 210, 230)
 	MinButton.Font = Enum.Font.GothamBold
-	MinButton.TextSize = 18
+	MinButton.TextSize = 16
 	MinButton.Parent = TopBar
+	local minCorner = Instance.new("UICorner")
+	minCorner.CornerRadius = UDim.new(0, 6)
+	minCorner.Parent = MinButton
 
 	local CloseButton = Instance.new("TextButton")
-	CloseButton.Size = UDim2.new(0, 30, 0, 30)
-	CloseButton.Position = UDim2.new(1, -30, 0, 0)
-	CloseButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+	CloseButton.Size = UDim2.new(0, 24, 0, 24)
+	CloseButton.Position = UDim2.new(1, -28, 0.5, -12)
+	CloseButton.BackgroundColor3 = Color3.fromRGB(220, 50, 65)
 	CloseButton.BorderSizePixel = 0
 	CloseButton.Text = "X"
 	CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 	CloseButton.Font = Enum.Font.GothamBold
-	CloseButton.TextSize = 14
+	CloseButton.TextSize = 12
 	CloseButton.Parent = TopBar
+	local clsCorner = Instance.new("UICorner")
+	clsCorner.CornerRadius = UDim.new(0, 6)
+	clsCorner.Parent = CloseButton
 
 	local ContentFrame = Instance.new("Frame")
-	ContentFrame.Size = UDim2.new(1, 0, 0, 270)
-	ContentFrame.Position = UDim2.new(0, 0, 0, 30)
+	ContentFrame.Size = UDim2.new(1, 0, 1, -34)
+	ContentFrame.Position = UDim2.new(0, 0, 0, 34)
 	ContentFrame.BackgroundTransparency = 1
 	ContentFrame.Parent = MainFrame
 
 	local ScrollingFrame = Instance.new("ScrollingFrame")
-	ScrollingFrame.Size = UDim2.new(1, -10, 1, -45)
-	ScrollingFrame.Position = UDim2.new(0, 5, 0, 5)
-	ScrollingFrame.CanvasSize = UDim2.new(0, 0, 5, 0)
-	ScrollingFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+	ScrollingFrame.Size = UDim2.new(1, -16, 1, -48)
+	ScrollingFrame.Position = UDim2.new(0, 8, 0, 8)
+	ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+	ScrollingFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	ScrollingFrame.BackgroundColor3 = Color3.fromRGB(18, 20, 28)
 	ScrollingFrame.BorderSizePixel = 0
+	ScrollingFrame.ScrollBarThickness = 3
+	ScrollingFrame.ScrollBarImageColor3 = Color3.fromRGB(0, 180, 255)
 	ScrollingFrame.Parent = ContentFrame
+	local sfCorner = Instance.new("UICorner")
+	sfCorner.CornerRadius = UDim.new(0, 6)
+	sfCorner.Parent = ScrollingFrame
 
 	local UIListLayout = Instance.new("UIListLayout")
 	UIListLayout.Parent = ScrollingFrame
 	UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-	UIListLayout.Padding = UDim.new(0, 2)
+	UIListLayout.Padding = UDim.new(0, 4)
+
+	local sfPadding = Instance.new("UIPadding")
+	sfPadding.PaddingTop = UDim.new(0, 4)
+	sfPadding.PaddingBottom = UDim.new(0, 4)
+	sfPadding.PaddingLeft = UDim.new(0, 4)
+	sfPadding.PaddingRight = UDim.new(0, 4)
+	sfPadding.Parent = ScrollingFrame
 
 	local TPButton = Instance.new("TextButton")
-	TPButton.Size = UDim2.new(1, -10, 0, 30)
-	TPButton.Position = UDim2.new(0, 5, 1, -35)
-	TPButton.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
+	TPButton.Size = UDim2.new(1, -16, 0, 28)
+	TPButton.Position = UDim2.new(0, 8, 1, -34)
+	TPButton.BackgroundColor3 = Color3.fromRGB(0, 175, 115)
 	TPButton.BorderSizePixel = 0
 	TPButton.Text = "Teleport"
 	TPButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 	TPButton.Font = Enum.Font.GothamBold
-	TPButton.TextSize = 14
+	TPButton.TextSize = 12
 	TPButton.Parent = ContentFrame
+	local tpbCorner = Instance.new("UICorner")
+	tpbCorner.CornerRadius = UDim.new(0, 6)
+	tpbCorner.Parent = TPButton
 
 	local function updatePlayerList()
 		for _, child in pairs(ScrollingFrame:GetChildren()) do
@@ -609,17 +644,22 @@ local function launchPlayerTeleportScript()
 		for _, plr in pairs(Players:GetPlayers()) do
 			if plr ~= player then
 				local PlayerButton = Instance.new("TextButton")
-				PlayerButton.Size = UDim2.new(1, 0, 0, 25)
-				PlayerButton.Text = plr.Name
-				PlayerButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-				PlayerButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-				PlayerButton.Font = Enum.Font.Gotham
-				PlayerButton.TextSize = 12
+				PlayerButton.Size = UDim2.new(1, 0, 0, 26)
+				PlayerButton.Text = plr.DisplayName .. " (@" .. plr.Name .. ")"
+				PlayerButton.TextColor3 = Color3.fromRGB(220, 230, 245)
+				PlayerButton.BackgroundColor3 = Color3.fromRGB(26, 30, 42)
+				PlayerButton.BorderSizePixel = 0
+				PlayerButton.Font = Enum.Font.GothamMedium
+				PlayerButton.TextSize = 11
 				PlayerButton.Parent = ScrollingFrame
+
+				local pbCorner = Instance.new("UICorner")
+				pbCorner.CornerRadius = UDim.new(0, 5)
+				pbCorner.Parent = PlayerButton
 
 				PlayerButton.MouseButton1Click:Connect(function()
 					teleportTarget = plr.Character and (plr.Character:FindFirstChild("HumanoidRootPart") or plr.Character:FindFirstChild("Torso") or plr.Character.PrimaryPart)
-					TPButton.Text = "Teleport to: " .. plr.Name
+					TPButton.Text = "Teleport to: " .. plr.DisplayName
 				end)
 			end
 		end
@@ -646,14 +686,14 @@ local function launchPlayerTeleportScript()
 		tpMinimized = not tpMinimized
 		if tpMinimized then
 			MinButton.Text = "+"
-			MainFrame:TweenSize(UDim2.new(0, 250, 0, 30), "Out", "Quart", 0.3, true)
+			MainFrame:TweenSize(UDim2.new(0, 250, 0, 34), "Out", "Quart", 0.3, true)
 		else
 			MinButton.Text = "-"
 			MainFrame:TweenSize(UDim2.new(0, 250, 0, 300), "Out", "Quart", 0.3, true)
 		end
 	end)
 
-	local dragging, dragInput, dragStart, startPos
+	local dragging, dragStart, startPos
 	local function update(input)
 		local delta = input.Position - dragStart
 		MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
@@ -1293,7 +1333,6 @@ local function applyBotESP(on)
 		end
 	end)
 
-	-- Render Loop: อัปเดตระยะห่างแบบเรียลไทม์ และตรวจสอบสถานะบอท
 	state._botEspConn = RunService.RenderStepped:Connect(function()
 		if not state.botEsp then return end
 		local myChar = player.Character
@@ -1350,9 +1389,9 @@ sg.Parent = playerGui
 -- Main Window
 local f = Instance.new("Frame")
 f.Name = "MainFrame"
-f.Size = UDim2.new(0, 260, 0, 435)
-f.Position = UDim2.new(0.04, 0, 0.45, -215)
-f.BackgroundColor3 = Color3.fromRGB(16, 18, 24)
+f.Size = UDim2.new(0, 275, 0, 450)
+f.Position = UDim2.new(0.04, 0, 0.45, -225)
+f.BackgroundColor3 = Color3.fromRGB(12, 14, 20)
 f.BorderSizePixel = 0
 f.Active = true
 f.ClipsDescendants = true
@@ -1363,21 +1402,21 @@ corner.CornerRadius = UDim.new(0, 12)
 corner.Parent = f
 
 local stroke = Instance.new("UIStroke")
-stroke.Color = Color3.fromRGB(48, 54, 75)
+stroke.Color = Color3.fromRGB(35, 42, 60)
 stroke.Thickness = 1.2
 stroke.Parent = f
 
 -- Top-Left Pop-Up Dock Button
 local openBtn = Instance.new("TextButton")
 openBtn.Name = "TopLeftOpenButton"
-openBtn.Size = UDim2.new(0, 105, 0, 32)
-openBtn.Position = UDim2.new(0, 12, 0, 52)
-openBtn.BackgroundColor3 = Color3.fromRGB(20, 23, 32)
+openBtn.Size = UDim2.new(0, 115, 0, 32)
+openBtn.Position = UDim2.new(0, 14, 0, 52)
+openBtn.BackgroundColor3 = Color3.fromRGB(15, 18, 26)
 openBtn.BorderSizePixel = 0
-openBtn.Text = "⚡ Phumipad"
-openBtn.TextColor3 = Color3.fromRGB(0, 210, 255)
+openBtn.Text = "PHUMIPAD"
+openBtn.TextColor3 = Color3.fromRGB(0, 225, 255)
 openBtn.Font = Enum.Font.GothamBold
-openBtn.TextSize = 12
+openBtn.TextSize = 11
 openBtn.Visible = false
 openBtn.Active = true
 openBtn.Parent = sg
@@ -1387,7 +1426,7 @@ openCorner.CornerRadius = UDim.new(0, 8)
 openCorner.Parent = openBtn
 
 local openStroke = Instance.new("UIStroke")
-openStroke.Color = Color3.fromRGB(0, 180, 255)
+openStroke.Color = Color3.fromRGB(0, 190, 255)
 openStroke.Thickness = 1
 openStroke.Parent = openBtn
 
@@ -1443,8 +1482,8 @@ end
 -- Top Bar
 local bar = Instance.new("Frame")
 bar.Name = "TopBar"
-bar.Size = UDim2.new(1, 0, 0, 38)
-bar.BackgroundColor3 = Color3.fromRGB(24, 27, 38)
+bar.Size = UDim2.new(1, 0, 0, 40)
+bar.BackgroundColor3 = Color3.fromRGB(18, 22, 32)
 bar.BorderSizePixel = 0
 bar.Active = true
 bar.Parent = f
@@ -1454,25 +1493,25 @@ barCorner.CornerRadius = UDim.new(0, 12)
 barCorner.Parent = bar
 
 local title = Instance.new("TextLabel")
-title.Size = UDim2.new(1, -70, 1, 0)
-title.Position = UDim2.new(0, 12, 0, 0)
+title.Size = UDim2.new(1, -75, 1, 0)
+title.Position = UDim2.new(0, 14, 0, 0)
 title.BackgroundTransparency = 1
-title.Text = "⚡ Phumipad Toolbox v3.1 beta"
-title.TextColor3 = Color3.fromRGB(235, 240, 255)
+title.Text = "PHUMIPAD TOOLBOX v3.1"
+title.TextColor3 = Color3.fromRGB(240, 245, 255)
 title.Font = Enum.Font.GothamBold
-title.TextSize = 12
+title.TextSize = 11
 title.TextXAlignment = Enum.TextXAlignment.Left
 title.Parent = bar
 
 local miniBtn = Instance.new("TextButton")
 miniBtn.Size = UDim2.new(0, 24, 0, 24)
-miniBtn.Position = UDim2.new(1, -56, 0, 7)
-miniBtn.BackgroundColor3 = Color3.fromRGB(38, 42, 56)
+miniBtn.Position = UDim2.new(1, -58, 0.5, -12)
+miniBtn.BackgroundColor3 = Color3.fromRGB(30, 36, 50)
 miniBtn.BorderSizePixel = 0
-miniBtn.Text = "—"
-miniBtn.TextColor3 = Color3.fromRGB(180, 190, 210)
+miniBtn.Text = "-"
+miniBtn.TextColor3 = Color3.fromRGB(180, 195, 220)
 miniBtn.Font = Enum.Font.GothamBold
-miniBtn.TextSize = 12
+miniBtn.TextSize = 14
 miniBtn.Parent = bar
 local miniCorner = Instance.new("UICorner")
 miniCorner.CornerRadius = UDim.new(0, 6)
@@ -1480,10 +1519,10 @@ miniCorner.Parent = miniBtn
 
 local closeBtn = Instance.new("TextButton")
 closeBtn.Size = UDim2.new(0, 24, 0, 24)
-closeBtn.Position = UDim2.new(1, -28, 0, 7)
+closeBtn.Position = UDim2.new(1, -30, 0.5, -12)
 closeBtn.BackgroundColor3 = Color3.fromRGB(220, 50, 65)
 closeBtn.BorderSizePixel = 0
-closeBtn.Text = "✕"
+closeBtn.Text = "X"
 closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 closeBtn.Font = Enum.Font.GothamBold
 closeBtn.TextSize = 11
@@ -1496,47 +1535,64 @@ closeBtn.MouseButton1Click:Connect(function() sg:Destroy() end)
 
 miniBtn.MouseButton1Click:Connect(function()
 	f.Visible = false
-	openBtn.Position = UDim2.new(0, 12, 0, 52)
+	openBtn.Position = UDim2.new(0, 14, 0, 52)
 	openBtn.Visible = true
 end)
 
 -- Scroll Container
 local scroll = Instance.new("ScrollingFrame")
 scroll.Name = "Content"
-scroll.Size = UDim2.new(1, 0, 1, -38)
-scroll.Position = UDim2.new(0, 0, 0, 38)
+scroll.Size = UDim2.new(1, 0, 1, -40)
+scroll.Position = UDim2.new(0, 0, 0, 40)
 scroll.BackgroundTransparency = 1
 scroll.BorderSizePixel = 0
 scroll.ScrollBarThickness = 3
-scroll.ScrollBarImageColor3 = Color3.fromRGB(0, 175, 255)
+scroll.ScrollBarImageColor3 = Color3.fromRGB(0, 185, 255)
 scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
 scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
 scroll.Parent = f
 
 local layout = Instance.new("UIListLayout")
 layout.SortOrder = Enum.SortOrder.LayoutOrder
-layout.Padding = UDim.new(0, 6)
+layout.Padding = UDim.new(0, 8)
 layout.Parent = scroll
 
 local scrollPadding = Instance.new("UIPadding")
 scrollPadding.PaddingTop = UDim.new(0, 8)
-scrollPadding.PaddingBottom = UDim.new(0, 14)
+scrollPadding.PaddingBottom = UDim.new(0, 18)
 scrollPadding.PaddingLeft = UDim.new(0, 10)
 scrollPadding.PaddingRight = UDim.new(0, 10)
 scrollPadding.Parent = scroll
 
--- Resize Handle
+-- ================== MODERN CORNER RESIZE HANDLE ==================
 local resizeGrip = Instance.new("TextButton")
 resizeGrip.Name = "ResizeGrip"
-resizeGrip.Size = UDim2.new(0, 14, 0, 14)
-resizeGrip.Position = UDim2.new(1, -14, 1, -14)
+resizeGrip.Size = UDim2.new(0, 18, 0, 18)
+resizeGrip.Position = UDim2.new(1, -18, 1, -18)
 resizeGrip.BackgroundTransparency = 1
-resizeGrip.Text = "◢"
-resizeGrip.TextColor3 = Color3.fromRGB(90, 100, 130)
-resizeGrip.TextSize = 11
-resizeGrip.Font = Enum.Font.GothamBold
-resizeGrip.ZIndex = 50
+resizeGrip.Text = ""
+resizeGrip.AutoButtonColor = false
+resizeGrip.ZIndex = 60
 resizeGrip.Parent = f
+
+-- เส้น Grip คู่สไตล์โมเดิร์น (หมดปัญหา Glyph สี่เหลี่ยมบัค)
+local gripLine1 = Instance.new("Frame")
+gripLine1.Size = UDim2.new(0, 10, 0, 2)
+gripLine1.Position = UDim2.new(0, 5, 0, 11)
+gripLine1.Rotation = -45
+gripLine1.BackgroundColor3 = Color3.fromRGB(0, 185, 255)
+gripLine1.BorderSizePixel = 0
+gripLine1.ZIndex = 61
+gripLine1.Parent = resizeGrip
+
+local gripLine2 = Instance.new("Frame")
+gripLine2.Size = UDim2.new(0, 5, 0, 2)
+gripLine2.Position = UDim2.new(0, 10, 0, 14)
+gripLine2.Rotation = -45
+gripLine2.BackgroundColor3 = Color3.fromRGB(0, 185, 255)
+gripLine2.BorderSizePixel = 0
+gripLine2.ZIndex = 61
+gripLine2.Parent = resizeGrip
 
 -- Drag Window Logic
 do
@@ -1562,24 +1618,37 @@ do
 	end)
 end
 
--- Resize Window Logic
+-- Resize Window Logic (รองรับทั้งนิ้วสัมผัสบนมือถือ และเมาส์บน PC)
 do
-	local resizing, resizeStart, startSize = false, nil, nil
+	local resizing = false
+	local resizeStart = nil
+	local startSize = nil
+
 	resizeGrip.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 			resizing = true
 			resizeStart = input.Position
 			startSize = f.AbsoluteSize
-			input.Changed:Connect(function()
-				if input.UserInputState == Enum.UserInputState.End then resizing = false end
-			end)
+			gripLine1.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+			gripLine2.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 		end
 	end)
+
+	UserInputService.InputEnded:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			if resizing then
+				resizing = false
+				gripLine1.BackgroundColor3 = Color3.fromRGB(0, 185, 255)
+				gripLine2.BackgroundColor3 = Color3.fromRGB(0, 185, 255)
+			end
+		end
+	end)
+
 	UserInputService.InputChanged:Connect(function(input)
 		if resizing and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
 			local delta = input.Position - resizeStart
-			local targetW = math.clamp(startSize.X + delta.X, 230, 500)
-			local targetH = math.clamp(startSize.Y + delta.Y, 220, 700)
+			local targetW = math.clamp(startSize.X + delta.X, 230, 600)
+			local targetH = math.clamp(startSize.Y + delta.Y, 220, 800)
 			f.Size = UDim2.new(0, targetW, 0, targetH)
 		end
 	end)
@@ -1588,8 +1657,8 @@ end
 local currentOrder = 0
 local function getOrder() currentOrder = currentOrder + 1; return currentOrder end
 
--- Collapsible Category Component with Smooth Slide Animation
-local function addCollapsibleCategory(emoji, name, defaultOpen)
+-- Collapsible Category Component (No Tofu / No Square Bug)
+local function addCollapsibleCategory(name, defaultOpen)
 	local catFrame = Instance.new("Frame")
 	catFrame.Name = name .. "Category"
 	catFrame.Size = UDim2.new(1, 0, 0, 0)
@@ -1600,13 +1669,13 @@ local function addCollapsibleCategory(emoji, name, defaultOpen)
 
 	local catLayout = Instance.new("UIListLayout")
 	catLayout.SortOrder = Enum.SortOrder.LayoutOrder
-	catLayout.Padding = UDim.new(0, 3)
+	catLayout.Padding = UDim.new(0, 4)
 	catLayout.Parent = catFrame
 
 	local headerBtn = Instance.new("TextButton")
 	headerBtn.Name = "Header"
-	headerBtn.Size = UDim2.new(1, 0, 0, 24)
-	headerBtn.BackgroundColor3 = Color3.fromRGB(22, 25, 36)
+	headerBtn.Size = UDim2.new(1, 0, 0, 26)
+	headerBtn.BackgroundColor3 = Color3.fromRGB(18, 22, 32)
 	headerBtn.BorderSizePixel = 0
 	headerBtn.Font = Enum.Font.GothamBold
 	headerBtn.TextSize = 11
@@ -1620,7 +1689,7 @@ local function addCollapsibleCategory(emoji, name, defaultOpen)
 	headerCorner.Parent = headerBtn
 
 	local headerPadding = Instance.new("UIPadding")
-	headerPadding.PaddingLeft = UDim.new(0, 8)
+	headerPadding.PaddingLeft = UDim.new(0, 10)
 	headerPadding.Parent = headerBtn
 
 	local clipWrapper = Instance.new("Frame")
@@ -1646,9 +1715,9 @@ local function addCollapsibleCategory(emoji, name, defaultOpen)
 	local isOpen = (defaultOpen ~= false)
 
 	local function updateHeader()
-		local arrow = isOpen and "▾" or "▸"
-		headerBtn.Text = string.format("%s  %s %s", arrow, emoji, name:upper())
-		headerBtn.TextColor3 = isOpen and Color3.fromRGB(0, 195, 255) or Color3.fromRGB(130, 140, 165)
+		local arrow = isOpen and "[-] " or "[+] "
+		headerBtn.Text = arrow .. name:upper()
+		headerBtn.TextColor3 = isOpen and Color3.fromRGB(0, 215, 255) or Color3.fromRGB(120, 135, 160)
 	end
 
 	local function toggleAccordion()
@@ -1684,8 +1753,8 @@ end
 
 local function addActionButton(parent, name, onClick)
 	local row = Instance.new("Frame")
-	row.Size = UDim2.new(1, 0, 0, 28)
-	row.BackgroundColor3 = Color3.fromRGB(24, 27, 38)
+	row.Size = UDim2.new(1, 0, 0, 30)
+	row.BackgroundColor3 = Color3.fromRGB(20, 24, 34)
 	row.BorderSizePixel = 0
 	row.LayoutOrder = getOrder()
 	row.Parent = parent
@@ -1697,7 +1766,7 @@ local function addActionButton(parent, name, onClick)
 	local btn = Instance.new("TextButton")
 	btn.Size = UDim2.new(1, -6, 1, -6)
 	btn.Position = UDim2.new(0, 3, 0, 3)
-	btn.BackgroundColor3 = Color3.fromRGB(33, 38, 54)
+	btn.BackgroundColor3 = Color3.fromRGB(28, 33, 48)
 	btn.BorderSizePixel = 0
 	btn.Text = name
 	btn.TextColor3 = Color3.fromRGB(225, 235, 255)
@@ -1715,8 +1784,8 @@ end
 
 local function addToggleRow(parent, name, defaultOn, onClick)
 	local row = Instance.new("Frame")
-	row.Size = UDim2.new(1, 0, 0, 28)
-	row.BackgroundColor3 = Color3.fromRGB(24, 27, 38)
+	row.Size = UDim2.new(1, 0, 0, 30)
+	row.BackgroundColor3 = Color3.fromRGB(20, 24, 34)
 	row.BorderSizePixel = 0
 	row.LayoutOrder = getOrder()
 	row.Parent = parent
@@ -1726,19 +1795,19 @@ local function addToggleRow(parent, name, defaultOn, onClick)
 	rCorner.Parent = row
 
 	local lbl = Instance.new("TextLabel")
-	lbl.Size = UDim2.new(1, -55, 1, 0)
-	lbl.Position = UDim2.new(0, 8, 0, 0)
+	lbl.Size = UDim2.new(1, -60, 1, 0)
+	lbl.Position = UDim2.new(0, 10, 0, 0)
 	lbl.BackgroundTransparency = 1
 	lbl.Text = name
 	lbl.TextColor3 = Color3.fromRGB(215, 225, 240)
 	lbl.Font = Enum.Font.GothamMedium
-	lbl.TextSize = 12
+	lbl.TextSize = 11
 	lbl.TextXAlignment = Enum.TextXAlignment.Left
 	lbl.Parent = row
 
 	local btn = Instance.new("TextButton")
-	btn.Size = UDim2.new(0, 42, 0, 20)
-	btn.Position = UDim2.new(1, -48, 0.5, -10)
+	btn.Size = UDim2.new(0, 44, 0, 20)
+	btn.Position = UDim2.new(1, -50, 0.5, -10)
 	btn.BorderSizePixel = 0
 	btn.Font = Enum.Font.GothamBold
 	btn.TextSize = 10
@@ -1750,8 +1819,8 @@ local function addToggleRow(parent, name, defaultOn, onClick)
 
 	local function render(v)
 		btn.Text = v and "ON" or "OFF"
-		btn.BackgroundColor3 = v and Color3.fromRGB(0, 195, 125) or Color3.fromRGB(48, 52, 68)
-		btn.TextColor3 = v and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(155, 165, 185)
+		btn.BackgroundColor3 = v and Color3.fromRGB(0, 200, 125) or Color3.fromRGB(38, 44, 60)
+		btn.TextColor3 = v and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(150, 160, 180)
 	end
 	render(defaultOn)
 
@@ -1760,11 +1829,10 @@ local function addToggleRow(parent, name, defaultOn, onClick)
 	end)
 end
 
--- ฟังก์ชันสร้างแถวที่มีปุ่ม COPY แทนปุ่ม ON/OFF
 local function addCopyRow(parent, name, onCopy)
 	local row = Instance.new("Frame")
-	row.Size = UDim2.new(1, 0, 0, 28)
-	row.BackgroundColor3 = Color3.fromRGB(24, 27, 38)
+	row.Size = UDim2.new(1, 0, 0, 30)
+	row.BackgroundColor3 = Color3.fromRGB(20, 24, 34)
 	row.BorderSizePixel = 0
 	row.LayoutOrder = getOrder()
 	row.Parent = parent
@@ -1774,23 +1842,23 @@ local function addCopyRow(parent, name, onCopy)
 	rCorner.Parent = row
 
 	local lbl = Instance.new("TextLabel")
-	lbl.Size = UDim2.new(1, -60, 1, 0)
-	lbl.Position = UDim2.new(0, 8, 0, 0)
+	lbl.Size = UDim2.new(1, -65, 1, 0)
+	lbl.Position = UDim2.new(0, 10, 0, 0)
 	lbl.BackgroundTransparency = 1
 	lbl.Text = name
 	lbl.TextColor3 = Color3.fromRGB(215, 225, 240)
 	lbl.Font = Enum.Font.GothamMedium
-	lbl.TextSize = 12
+	lbl.TextSize = 11
 	lbl.TextXAlignment = Enum.TextXAlignment.Left
 	lbl.Parent = row
 
 	local btn = Instance.new("TextButton")
-	btn.Size = UDim2.new(0, 48, 0, 20)
-	btn.Position = UDim2.new(1, -54, 0.5, -10)
-	btn.BackgroundColor3 = Color3.fromRGB(0, 140, 255)
+	btn.Size = UDim2.new(0, 50, 0, 20)
+	btn.Position = UDim2.new(1, -56, 0.5, -10)
+	btn.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
 	btn.BorderSizePixel = 0
 	btn.Font = Enum.Font.GothamBold
-	btn.TextSize = 10
+	btn.TextSize = 9
 	btn.Text = "COPY"
 	btn.TextColor3 = Color3.fromRGB(255, 255, 255)
 	btn.Parent = row
@@ -1807,7 +1875,7 @@ local function addCopyRow(parent, name, onCopy)
 		local success = onCopy()
 		if success then
 			btn.Text = "DONE"
-			btn.BackgroundColor3 = Color3.fromRGB(0, 195, 125)
+			btn.BackgroundColor3 = Color3.fromRGB(0, 200, 125)
 		else
 			btn.Text = "FAIL"
 			btn.BackgroundColor3 = Color3.fromRGB(220, 50, 65)
@@ -1815,7 +1883,7 @@ local function addCopyRow(parent, name, onCopy)
 
 		task.wait(1.5)
 		btn.Text = "COPY"
-		btn.BackgroundColor3 = Color3.fromRGB(0, 140, 255)
+		btn.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
 		busy = false
 	end)
 
@@ -1824,8 +1892,8 @@ end
 
 local function addInputToggleRow(parent, name, defaultVal, defaultOn, onToggle, onValChange)
 	local row = Instance.new("Frame")
-	row.Size = UDim2.new(1, 0, 0, 30)
-	row.BackgroundColor3 = Color3.fromRGB(24, 27, 38)
+	row.Size = UDim2.new(1, 0, 0, 32)
+	row.BackgroundColor3 = Color3.fromRGB(20, 24, 34)
 	row.BorderSizePixel = 0
 	row.LayoutOrder = getOrder()
 	row.Parent = parent
@@ -1836,19 +1904,19 @@ local function addInputToggleRow(parent, name, defaultVal, defaultOn, onToggle, 
 
 	local lbl = Instance.new("TextLabel")
 	lbl.Size = UDim2.new(0.48, 0, 1, 0)
-	lbl.Position = UDim2.new(0, 8, 0, 0)
+	lbl.Position = UDim2.new(0, 10, 0, 0)
 	lbl.BackgroundTransparency = 1
 	lbl.Text = name
 	lbl.TextColor3 = Color3.fromRGB(215, 225, 240)
 	lbl.Font = Enum.Font.GothamMedium
-	lbl.TextSize = 12
+	lbl.TextSize = 11
 	lbl.TextXAlignment = Enum.TextXAlignment.Left
 	lbl.Parent = row
 
 	local box = Instance.new("TextBox")
-	box.Size = UDim2.new(0, 38, 0, 20)
-	box.Position = UDim2.new(1, -94, 0.5, -10)
-	box.BackgroundColor3 = Color3.fromRGB(33, 38, 54)
+	box.Size = UDim2.new(0, 42, 0, 20)
+	box.Position = UDim2.new(1, -98, 0.5, -10)
+	box.BackgroundColor3 = Color3.fromRGB(28, 33, 48)
 	box.BorderSizePixel = 0
 	box.Text = tostring(defaultVal)
 	box.TextColor3 = Color3.fromRGB(240, 245, 255)
@@ -1862,8 +1930,8 @@ local function addInputToggleRow(parent, name, defaultVal, defaultOn, onToggle, 
 	boxCorner.Parent = box
 
 	local btn = Instance.new("TextButton")
-	btn.Size = UDim2.new(0, 42, 0, 20)
-	btn.Position = UDim2.new(1, -48, 0.5, -10)
+	btn.Size = UDim2.new(0, 44, 0, 20)
+	btn.Position = UDim2.new(1, -50, 0.5, -10)
 	btn.BorderSizePixel = 0
 	btn.Font = Enum.Font.GothamBold
 	btn.TextSize = 10
@@ -1875,8 +1943,8 @@ local function addInputToggleRow(parent, name, defaultVal, defaultOn, onToggle, 
 
 	local function render(v)
 		btn.Text = v and "ON" or "OFF"
-		btn.BackgroundColor3 = v and Color3.fromRGB(0, 195, 125) or Color3.fromRGB(48, 52, 68)
-		btn.TextColor3 = v and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(155, 165, 185)
+		btn.BackgroundColor3 = v and Color3.fromRGB(0, 200, 125) or Color3.fromRGB(38, 44, 60)
+		btn.TextColor3 = v and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(150, 160, 180)
 	end
 	render(defaultOn)
 
@@ -1896,8 +1964,8 @@ end
 
 -- ================== POPULATE CATEGORIES ==================
 
--- [1] 🏃 MOVEMENT
-local movementContent = addCollapsibleCategory("🏃", "Movement", true)
+-- [1] MOVEMENT
+local movementContent = addCollapsibleCategory("Movement", true)
 
 addInputToggleRow(movementContent, "Walk Speed", state.speedValue, state.speedEnabled, function(_, render)
 	state.speedEnabled = not state.speedEnabled
@@ -1918,37 +1986,8 @@ end, function(val)
 	state.tpWalkSpeed = val
 end)
 
--- [2] 🛠️ MORE TOOLS
-local toolsContent = addCollapsibleCategory("🛠️", "More Tools", true)
-
-addActionButton(toolsContent, "🎯 Aiming", function()
-	pcall(function()
-		loadstring(game:HttpGet("https://raw.githubusercontent.com/DanielHubll/DanielHubll/refs/heads/main/Aimbot%20Mobile"))()
-	end)
-end)
-
-addActionButton(toolsContent, "🕊️ Open Fly GUI (V3)", function()
-	launchFlyScript()
-end)
-
-addActionButton(toolsContent, "⏱️ Anti AFK", function()
-	pcall(function()
-		loadstring(game:HttpGet("https://raw.githubusercontent.com/hassanxzayn-lua/Anti-afk/main/antiafkbyhassanxzyn"))()
-	end)
-end)
-
-addActionButton(toolsContent, "👥 Player Teleport", function()
-	launchPlayerTeleportScript()
-end)
-
--- [3] 🧰 UTILITIES
-local utilitiesContent = addCollapsibleCategory("🧰", "Utilities", true)
-
--- เพิ่มปุ่ม Copy Gamename (ปุ่มสไตล์ COPY แทน ON/OFF)
-addCopyRow(utilitiesContent, "Copy Gamename", function()
-	local copied, _ = copyGameName()
-	return copied
-end)
+-- [2] UTILITIES
+local utilitiesContent = addCollapsibleCategory("Utilities", true)
 
 addToggleRow(utilitiesContent, "Instant Interact", state.instantInteract, function(_, render)
 	state.instantInteract = not state.instantInteract
@@ -1984,8 +2023,14 @@ addToggleRow(utilitiesContent, "Full Bright", state.fullBright, function(_, rend
 	applyFullBright(state.fullBright)
 end)
 
--- [4] 👁️ VISUAL (รวม Player ESP, Bot ESP + Distance และ FPS Booster)
-local visualContent = addCollapsibleCategory("👁️", "Visual", true)
+-- Copy Gamename อยู่หลัง Full Bright
+addCopyRow(utilitiesContent, "Copy Gamename", function()
+	local copied, _ = copyGameName()
+	return copied
+end)
+
+-- [3] VISUAL
+local visualContent = addCollapsibleCategory("Visual", true)
 
 addToggleRow(visualContent, "Player ESP", state.esp, function(_, render)
 	state.esp = not state.esp
@@ -2004,23 +2049,46 @@ addToggleRow(visualContent, "Bot ESP", state.botEsp, function(_, render)
 	applyBotESP(state.botEsp)
 end)
 
-addToggleRow(visualContent, "FPS Booster (potato)", state.fpsBooster, function(_, render)
+addToggleRow(visualContent, "FPS Booster (Potato)", state.fpsBooster, function(_, render)
 	state.fpsBooster = not state.fpsBooster
 	render(state.fpsBooster)
 	applyFPSBooster(state.fpsBooster)
 end)
 
--- [5] 📍 WAYPOINTS
-local waypointsContent = addCollapsibleCategory("📍", "Waypoints", true)
+-- [4] MORE TOOLS
+local toolsContent = addCollapsibleCategory("More Tools", true)
+
+addActionButton(toolsContent, "Aiming (Aimbot)", function()
+	pcall(function()
+		loadstring(game:HttpGet("https://raw.githubusercontent.com/DanielHubll/DanielHubll/refs/heads/main/Aimbot%20Mobile"))()
+	end)
+end)
+
+addActionButton(toolsContent, "Open Fly GUI (V3)", function()
+	launchFlyScript()
+end)
+
+addActionButton(toolsContent, "Anti AFK", function()
+	pcall(function()
+		loadstring(game:HttpGet("https://raw.githubusercontent.com/hassanxzayn-lua/Anti-afk/main/antiafkbyhassanxzyn"))()
+	end)
+end)
+
+addActionButton(toolsContent, "Player Teleport", function()
+	launchPlayerTeleportScript()
+end)
+
+-- [5] WAYPOINTS
+local waypointsContent = addCollapsibleCategory("Waypoints", true)
 
 local spotGrid = Instance.new("Frame")
-spotGrid.Size = UDim2.new(1, 0, 0, 26)
+spotGrid.Size = UDim2.new(1, 0, 0, 28)
 spotGrid.BackgroundTransparency = 1
 spotGrid.LayoutOrder = getOrder()
 spotGrid.Parent = waypointsContent
 
 local clearGrid = Instance.new("Frame")
-clearGrid.Size = UDim2.new(1, 0, 0, 24)
+clearGrid.Size = UDim2.new(1, 0, 0, 26)
 clearGrid.BackgroundTransparency = 1
 clearGrid.LayoutOrder = getOrder()
 clearGrid.Parent = waypointsContent
@@ -2030,8 +2098,8 @@ local spotButtons = {}
 local function resetSpotUI(slot)
 	state["savedPosition" .. slot] = nil
 	if spotButtons[slot] then
-		spotButtons[slot].Text = "📍 Spot " .. slot
-		spotButtons[slot].BackgroundColor3 = Color3.fromRGB(33, 38, 54)
+		spotButtons[slot].Text = "Spot " .. slot
+		spotButtons[slot].BackgroundColor3 = Color3.fromRGB(28, 33, 48)
 	end
 end
 
@@ -2039,9 +2107,9 @@ local function makeGridSpotBtn(slot, posX, sizeX)
 	local btn = Instance.new("TextButton")
 	btn.Size = UDim2.new(sizeX, -4, 1, 0)
 	btn.Position = UDim2.new(posX, 0, 0, 0)
-	btn.BackgroundColor3 = Color3.fromRGB(33, 38, 54)
+	btn.BackgroundColor3 = Color3.fromRGB(28, 33, 48)
 	btn.BorderSizePixel = 0
-	btn.Text = "📍 Spot " .. slot
+	btn.Text = "Spot " .. slot
 	btn.TextColor3 = Color3.fromRGB(225, 235, 255)
 	btn.Font = Enum.Font.GothamBold
 	btn.TextSize = 11
@@ -2065,8 +2133,8 @@ local function makeGridSpotBtn(slot, posX, sizeX)
 			local root = char:FindFirstChild("HumanoidRootPart")
 			if root then
 				state[key] = root.Position
-				btn.Text = "🚀 Go " .. slot
-				btn.BackgroundColor3 = Color3.fromRGB(0, 195, 125)
+				btn.Text = "Go " .. slot
+				btn.BackgroundColor3 = Color3.fromRGB(0, 200, 125)
 			end
 		end
 	end)
@@ -2078,7 +2146,7 @@ local function makeGridClearBtn(slot, posX, sizeX)
 	btn.Position = UDim2.new(posX, 0, 0, 0)
 	btn.BackgroundColor3 = Color3.fromRGB(185, 45, 55)
 	btn.BorderSizePixel = 0
-	btn.Text = "🗑️ Clear " .. slot
+	btn.Text = "Clear " .. slot
 	btn.TextColor3 = Color3.fromRGB(255, 255, 255)
 	btn.Font = Enum.Font.GothamBold
 	btn.TextSize = 10
