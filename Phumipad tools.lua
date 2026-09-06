@@ -831,59 +831,102 @@ local function applyFullBright(on)
 	end
 end
 
+-- ================== ADVANCED PLAYER ESP SYSTEM ==================
+local function isTeammate(plr)
+	if not player.Team or not plr.Team then
+		return false
+	end
+	return player.Team == plr.Team
+end
+
+local espRayParams = RaycastParams.new()
+espRayParams.FilterType = Enum.RaycastFilterType.Exclude
+espRayParams.IgnoreWater = true
+
+local function isPlayerOccluded(targetChar, targetPart)
+	local cam = Workspace.CurrentCamera
+	if not cam or not targetPart then return false end
+
+	local myChar = player.Character
+	espRayParams.FilterDescendantsInstances = {myChar, targetChar}
+
+	local origin = cam.CFrame.Position
+	local direction = targetPart.Position - origin
+	local result = Workspace:Raycast(origin, direction, espRayParams)
+
+	return result ~= nil
+end
+
 local function createESP(plr)
 	if plr == player then return end
+
 	local function addESPToChar(char)
 		pcall(function()
-			if char:FindFirstChild("ESPBox") then return end
+			if char:FindFirstChild("DracoESPHighlight") then return end
+
 			local root = char:WaitForChild("HumanoidRootPart", 5)
-			if not root then return end
+			local head = char:WaitForChild("Head", 5)
+			if not root or not head then return end
 
-			local box = Instance.new("BoxHandleAdornment")
-			box.Name = "ESPBox"
-			box.Size = root.Size * 1.2
-			box.Color3 = Color3.fromRGB(255, 75, 75)
-			box.Transparency = 0.65
-			box.AlwaysOnTop = true
-			box.ZIndex = 10
-			box.Adornee = root
-			box.Parent = root
+			local isAlly = isTeammate(plr)
+			local teamCol = isAlly and Color3.fromRGB(0, 160, 255) or Color3.fromRGB(255, 50, 50)
 
-			local billboard = Instance.new("BillboardGui")
-			billboard.Name = "ESPName"
-			billboard.Adornee = char:WaitForChild("Head", 5)
-			billboard.Size = UDim2.new(0, 160, 0, 30)
-			billboard.StudsOffset = Vector3.new(0, 2.5, 0)
-			billboard.AlwaysOnTop = true
-			billboard.Parent = char:WaitForChild("Head", 5)
+			-- Highlight แบบ AlwaysOnTop แต่จะเปิดทำงานเฉพาะตอนอยู่นอกสายตา
+			local hl = Instance.new("Highlight")
+			hl.Name = "DracoESPHighlight"
+			hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+			hl.FillColor = teamCol
+			hl.FillTransparency = 0.35
+			hl.OutlineColor = teamCol
+			hl.OutlineTransparency = 0
+			hl.Enabled = false
+			hl.Adornee = char
+			hl.Parent = char
 
-			local nameLabel = Instance.new("TextLabel")
-			nameLabel.Size = UDim2.new(1, 0, 1, 0)
-			nameLabel.BackgroundTransparency = 1
-			nameLabel.Text = plr.DisplayName or plr.Name
-			nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-			nameLabel.TextStrokeTransparency = 0.6
-			nameLabel.Font = Enum.Font.GothamBold
-			nameLabel.TextSize = 12
-			nameLabel.Parent = billboard
+			-- ป้ายชื่อ + ระยะห่าง
+			local bb = Instance.new("BillboardGui")
+			bb.Name = "DracoESPName"
+			bb.Adornee = head
+			bb.Size = UDim2.new(0, 200, 0, 36)
+			bb.StudsOffset = Vector3.new(0, 2.5, 0)
+			bb.AlwaysOnTop = true
+			bb.LightInfluence = 0
+			bb.MaxDistance = 10000
+			bb.Parent = head
+
+			local label = Instance.new("TextLabel")
+			label.Name = "ESPLabel"
+			label.Size = UDim2.new(1, 0, 1, 0)
+			label.BackgroundTransparency = 1
+			label.Text = plr.DisplayName or plr.Name
+			label.TextColor3 = teamCol
+			label.TextStrokeTransparency = 0
+			label.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+			label.Font = Enum.Font.GothamBold
+			label.TextSize = 12
+			label.Parent = bb
 		end)
 	end
 
 	if plr.Character then addESPToChar(plr.Character) end
-	local conn = plr.CharacterAdded:Connect(function(char)
+	local charConn = plr.CharacterAdded:Connect(function(char)
 		if state.esp then addESPToChar(char) end
 	end)
-	table.insert(state._espConns, conn)
+	table.insert(state._espConns, charConn)
 end
 
 local function removeESP()
 	for _, plr in ipairs(Players:GetPlayers()) do
 		if plr.Character then
 			pcall(function()
-				local root = plr.Character:FindFirstChild("HumanoidRootPart")
-				if root and root:FindFirstChild("ESPBox") then root.ESPBox:Destroy() end
+				local hl = plr.Character:FindFirstChild("DracoESPHighlight")
+				if hl then hl:Destroy() end
+
 				local head = plr.Character:FindFirstChild("Head")
-				if head and head:FindFirstChild("ESPName") then head.ESPName:Destroy() end
+				if head then
+					local bb = head:FindFirstChild("DracoESPName")
+					if bb then bb:Destroy() end
+				end
 			end)
 		end
 	end
@@ -892,10 +935,56 @@ end
 local function applyESP(on)
 	for _, conn in ipairs(state._espConns) do pcall(function() conn:Disconnect() end) end
 	state._espConns = {}
+
 	if on then
 		for _, plr in ipairs(Players:GetPlayers()) do createESP(plr) end
+
 		table.insert(state._espConns, Players.PlayerAdded:Connect(function(plr)
 			if state.esp then createESP(plr) end
+		end))
+
+		-- Render Loop: Raycast ตรวจสอบสายตาและระยะห่างแบบเรียลไทม์
+		table.insert(state._espConns, RunService.RenderStepped:Connect(function()
+			if not state.esp then return end
+			local myChar = player.Character
+			local myHrp = myChar and myChar:FindFirstChild("HumanoidRootPart")
+
+			for _, plr in ipairs(Players:GetPlayers()) do
+				if plr ~= player and plr.Character then
+					local root = plr.Character:FindFirstChild("HumanoidRootPart")
+					local head = plr.Character:FindFirstChild("Head")
+					local targetPart = head or root
+					local isAlly = isTeammate(plr)
+					local teamCol = isAlly and Color3.fromRGB(0, 160, 255) or Color3.fromRGB(255, 50, 50)
+
+					-- Raycast เช็คว่าอยู่หลังกำแพงหรือไม่
+					local occluded = isPlayerOccluded(plr.Character, targetPart)
+
+					local hl = plr.Character:FindFirstChild("DracoESPHighlight")
+					if hl then
+						hl.FillColor = teamCol
+						hl.OutlineColor = teamCol
+						-- แสดงสีเมื่ออยู่นอกสายตา (หลังกำแพง) และปิดการย้อมสีเมื่ออยู่ในสายตา
+						hl.Enabled = occluded
+					end
+
+					if head then
+						local bb = head:FindFirstChild("DracoESPName")
+						if bb then
+							local label = bb:FindFirstChild("ESPLabel")
+							if label then
+								label.TextColor3 = teamCol
+								if myHrp and root then
+									local dist = math.floor((myHrp.Position - root.Position).Magnitude)
+									label.Text = string.format("%s\n[%d studs]", plr.DisplayName or plr.Name, dist)
+								else
+									label.Text = plr.DisplayName or plr.Name
+								end
+							end
+						end
+					end
+				end
+			end
 		end))
 	else
 		removeESP()
@@ -1034,7 +1123,7 @@ local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, -70, 1, 0)
 title.Position = UDim2.new(0, 12, 0, 0)
 title.BackgroundTransparency = 1
-title.Text = "ItsDraco  •  v2.8"
+title.Text = "ItsDraco  •  v3.0"
 title.TextColor3 = Color3.fromRGB(230, 235, 245)
 title.Font = Enum.Font.GothamBold
 title.TextSize = 12
@@ -1352,19 +1441,16 @@ end, function(val)
 	state.tpWalkSpeed = val
 end)
 
--- ปุ่ม Fly Script (V3)
 addActionButton("🕊️ Open Fly GUI (V3)", function()
 	launchFlyScript()
 end)
 
--- ปุ่ม Anti AFK
 addActionButton("⏱️ Anti AFK", function()
 	pcall(function()
 		loadstring(game:HttpGet("https://raw.githubusercontent.com/hassanxzayn-lua/Anti-afk/main/antiafkbyhassanxzyn"))()
 	end)
 end)
 
--- ปุ่ม Player Teleport
 addActionButton("👥 Player Teleport", function()
 	launchPlayerTeleportScript()
 end)
