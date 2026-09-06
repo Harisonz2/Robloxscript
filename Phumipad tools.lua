@@ -1615,3 +1615,4 @@ end)
 
 state.baseWalkSpeed = humanoid and humanoid.WalkSpeed or 16
 state.baseMaxHealth = humanoid and humanoid.MaxHealth or 100
+
