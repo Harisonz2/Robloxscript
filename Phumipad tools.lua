@@ -124,7 +124,6 @@ end
 
 -- ================== SCREEN TIME SYSTEM ==================
 local screenTimeGui = nil
-local screenTimeRenderFunc = nil
 
 local function getLeaderstatsString()
 	local lstats = player:FindFirstChild("leaderstats")
@@ -148,9 +147,6 @@ end
 
 local function applyScreenTime(on)
 	state.screenTime = on
-	if screenTimeRenderFunc then
-		screenTimeRenderFunc(state.screenTime)
-	end
 
 	if screenTimeGui then
 		screenTimeGui:Destroy()
@@ -2198,7 +2194,6 @@ sg.Name = "PhumipadToolboxMinimalGui"
 sg.ResetOnSpawn = false
 safeParentGui(sg)
 
--- ปรับความกว้างเริ่มต้นเป็น 230px (ความกว้างที่แคบที่สุดตามภาพ)
 local f = Instance.new("Frame")
 f.Name = "MainFrame"
 f.Size = UDim2.new(0, 230, 0, 300)
@@ -2632,7 +2627,6 @@ local function adjustPanelHeight(animate)
 	end)
 end
 
--- เพิ่มพารามิเตอร์ emoji ต่อท้ายชื่อหมวดหมู่
 local function addCollapsibleCategory(name, emoji, defaultOpen)
 	local catFrame = Instance.new("Frame")
 	catFrame.Name = name .. "Category"
@@ -2886,7 +2880,7 @@ local function addInputToggleRow(parent, name, defaultVal, defaultOn, onToggle, 
 	end)
 end
 
--- ================== POPULATE CATEGORIES WITH EMOJIS ==================
+-- ================== POPULATE CATEGORIES ==================
 
 -- [1] MOVEMENT 🏃
 local movementContent = addCollapsibleCategory("Movement", "🏃", false)
@@ -2941,12 +2935,6 @@ addToggleRow(utilitiesContent, "Anti Ragdoll", state.antiRagdoll, function(_, re
 	applyAntiRagdoll(state.antiRagdoll)
 end)
 
-addToggleRow(utilitiesContent, "Full Bright", state.fullBright, function(_, render)
-	state.fullBright = not state.fullBright
-	render(state.fullBright)
-	applyFullBright(state.fullBright)
-end)
-
 -- [3] VISUAL 👁️
 local visualContent = addCollapsibleCategory("Visual", "👁️", false)
 
@@ -2973,9 +2961,76 @@ addToggleRow(visualContent, "FPS Booster (Potato)", state.fpsBooster, function(_
 	applyFPSBooster(state.fpsBooster)
 end)
 
-addToggleRow(visualContent, "Screen Time", state.screenTime, function(_, render)
-	screenTimeRenderFunc = render
-	applyScreenTime(not state.screenTime)
+addToggleRow(visualContent, "Full Bright", state.fullBright, function(_, render)
+	state.fullBright = not state.fullBright
+	render(state.fullBright)
+	applyFullBright(state.fullBright)
+end)
+
+-- [ CYBERPUNK SCREEN TIME BUTTON ]
+local stSpecialRow = Instance.new("Frame")
+stSpecialRow.Size = UDim2.new(1, 0, 0, 34)
+stSpecialRow.BackgroundTransparency = 1 
+stSpecialRow.LayoutOrder = getOrder()
+stSpecialRow.Parent = visualContent
+
+local stBtn = Instance.new("TextButton")
+stBtn.Size = UDim2.new(1, -6, 1, -4) 
+stBtn.Position = UDim2.new(0, 3, 0, 2)
+stBtn.BackgroundColor3 = Color3.fromRGB(10, 12, 18) 
+stBtn.BorderSizePixel = 0
+stBtn.Text = "[ SCREEN TIME ]"
+stBtn.TextColor3 = Color3.fromRGB(0, 255, 255) 
+stBtn.Font = Enum.Font.GothamBold
+stBtn.TextSize = 11
+stBtn.AutoButtonColor = false
+stBtn.Parent = stSpecialRow
+
+local stCorner = Instance.new("UICorner")
+stCorner.CornerRadius = UDim.new(0, 3) 
+stCorner.Parent = stBtn
+
+local stStroke = Instance.new("UIStroke")
+stStroke.Color = Color3.fromRGB(0, 255, 255)
+stStroke.Thickness = 1
+stStroke.Transparency = 0.4
+stStroke.Parent = stBtn
+
+local leftAccent = Instance.new("Frame")
+leftAccent.Size = UDim2.new(0, 3, 1, 0)
+leftAccent.BackgroundColor3 = Color3.fromRGB(255, 0, 85) 
+leftAccent.BorderSizePixel = 0
+leftAccent.Parent = stBtn
+local accentCorner = Instance.new("UICorner")
+accentCorner.CornerRadius = UDim.new(0, 3)
+accentCorner.Parent = leftAccent
+
+stBtn.MouseEnter:Connect(function()
+	TweenService:Create(stStroke, TweenInfo.new(0.2), {Transparency = 0}):Play()
+	TweenService:Create(stBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(15, 20, 30)}):Play()
+	TweenService:Create(stBtn, TweenInfo.new(0.2), {TextColor3 = Color3.fromRGB(255, 255, 255)}):Play()
+end)
+
+stBtn.MouseLeave:Connect(function()
+	TweenService:Create(stStroke, TweenInfo.new(0.2), {Transparency = 0.4}):Play()
+	TweenService:Create(stBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(10, 12, 18)}):Play()
+	TweenService:Create(stBtn, TweenInfo.new(0.2), {TextColor3 = Color3.fromRGB(0, 255, 255)}):Play()
+end)
+
+stBtn.MouseButton1Click:Connect(function()
+	local flash = Instance.new("Frame")
+	flash.Size = UDim2.new(1, 0, 1, 0)
+	flash.BackgroundColor3 = Color3.fromRGB(0, 255, 255)
+	flash.BackgroundTransparency = 0.3
+	flash.Parent = stBtn
+	local fCorner = Instance.new("UICorner")
+	fCorner.CornerRadius = UDim.new(0, 3)
+	fCorner.Parent = flash
+	
+	TweenService:Create(flash, TweenInfo.new(0.4), {BackgroundTransparency = 1}):Play()
+	task.delay(0.45, function() flash:Destroy() end)
+
+	applyScreenTime(true)
 end)
 
 -- [4] WAYPOINTS 📍
@@ -3127,7 +3182,6 @@ state.baseMaxHealth = humanoid and humanoid.MaxHealth or 100
 
 -- ================== COMPLETE GLOBAL CLEANUP FUNCTION ==================
 local function fullCleanup()
-	-- 1. รีเซ็ตทุกฟังก์ชันที่เปิดใช้งานให้กลับเป็นค่าเดิม
 	if state.godMode then applyGodMode(false) end
 	if state.noclip then applyNoclip(false) end
 	if state.tpWalkEnabled then applyTPWalk(false) end
@@ -3142,17 +3196,14 @@ local function fullCleanup()
 		humanoid.WalkSpeed = state.baseWalkSpeed
 	end
 
-	-- 2. ยกเลิก Event Connections ทั้งหมด
 	for _, c in ipairs(globalConns) do
 		pcall(function() c:Disconnect() end)
 	end
 
-	-- 3. รีเซ็ตสคริปต์ย่อย & ตัวแปร Global
 	if _G.StalkConnection then pcall(function() _G.StalkConnection:Disconnect() end) end
 	_G.active = false
 	_G.user = ""
 
-	-- 4. ปิดและลบ GUI ทั้งหมด
 	local subUIs = {
 		"Phumipad_ScreenTime_Overlay",
 		"StalkerUI",
