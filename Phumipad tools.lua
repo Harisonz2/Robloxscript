@@ -2303,7 +2303,7 @@ local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, -75, 1, 0)
 title.Position = UDim2.new(0, 14, 0, 0)
 title.BackgroundTransparency = 1
-title.Text = "PHUMIPAD TOOLBOX Beta"
+title.Text = "PHUMIPAD TOOLS 🛠️"
 title.TextColor3 = Color3.fromRGB(240, 245, 255)
 title.Font = Enum.Font.GothamBold
 title.TextSize = 10
@@ -2967,68 +2967,101 @@ addToggleRow(visualContent, "Full Bright", state.fullBright, function(_, render)
 	applyFullBright(state.fullBright)
 end)
 
--- [ CYBERPUNK SCREEN TIME BUTTON ]
+-- [ GLOSSY BLACK SCREEN TIME BUTTON ]
 local stSpecialRow = Instance.new("Frame")
-stSpecialRow.Size = UDim2.new(1, 0, 0, 34)
+stSpecialRow.Size = UDim2.new(1, 0, 0, 36) 
 stSpecialRow.BackgroundTransparency = 1 
 stSpecialRow.LayoutOrder = getOrder()
 stSpecialRow.Parent = visualContent
 
 local stBtn = Instance.new("TextButton")
-stBtn.Size = UDim2.new(1, -6, 1, -4) 
-stBtn.Position = UDim2.new(0, 3, 0, 2)
-stBtn.BackgroundColor3 = Color3.fromRGB(10, 12, 18) 
+stBtn.Size = UDim2.new(1, -10, 1, -4) 
+stBtn.Position = UDim2.new(0, 5, 0, 2)
+stBtn.BackgroundColor3 = Color3.fromRGB(15, 15, 15) 
 stBtn.BorderSizePixel = 0
-stBtn.Text = "[ SCREEN TIME ]"
-stBtn.TextColor3 = Color3.fromRGB(0, 255, 255) 
-stBtn.Font = Enum.Font.GothamBold
-stBtn.TextSize = 11
 stBtn.AutoButtonColor = false
+stBtn.Text = "" 
 stBtn.Parent = stSpecialRow
 
 local stCorner = Instance.new("UICorner")
-stCorner.CornerRadius = UDim.new(0, 3) 
+stCorner.CornerRadius = UDim.new(1, 0)
 stCorner.Parent = stBtn
 
 local stStroke = Instance.new("UIStroke")
-stStroke.Color = Color3.fromRGB(0, 255, 255)
-stStroke.Thickness = 1
-stStroke.Transparency = 0.4
+stStroke.Color = Color3.fromRGB(0, 0, 0)
+stStroke.Thickness = 2
 stStroke.Parent = stBtn
 
-local leftAccent = Instance.new("Frame")
-leftAccent.Size = UDim2.new(0, 3, 1, 0)
-leftAccent.BackgroundColor3 = Color3.fromRGB(255, 0, 85) 
-leftAccent.BorderSizePixel = 0
-leftAccent.Parent = stBtn
-local accentCorner = Instance.new("UICorner")
-accentCorner.CornerRadius = UDim.new(0, 3)
-accentCorner.Parent = leftAccent
+local highlight = Instance.new("Frame")
+highlight.Size = UDim2.new(1, -6, 0.45, 0)
+highlight.Position = UDim2.new(0, 3, 0, 2)
+highlight.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+highlight.BorderSizePixel = 0
+highlight.Parent = stBtn
+
+local hlCorner = Instance.new("UICorner")
+hlCorner.CornerRadius = UDim.new(1, 0)
+hlCorner.Parent = highlight
+
+local hlGradient = Instance.new("UIGradient")
+hlGradient.Rotation = 90
+hlGradient.Transparency = NumberSequence.new({
+	NumberSequenceKeypoint.new(0, 0.65),
+	NumberSequenceKeypoint.new(1, 1.0)
+})
+hlGradient.Parent = highlight
+
+local innerShadow = Instance.new("UIGradient")
+innerShadow.Rotation = 90
+innerShadow.Color = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(30, 30, 30)),
+	ColorSequenceKeypoint.new(0.5, Color3.fromRGB(10, 10, 10)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 0, 0))
+})
+innerShadow.Parent = stBtn
+
+local stText = Instance.new("TextLabel")
+stText.Size = UDim2.new(1, 0, 1, 0)
+stText.BackgroundTransparency = 1
+stText.Text = "SCREEN TIME"
+stText.TextColor3 = Color3.fromRGB(255, 255, 255)
+stText.Font = Enum.Font.GothamBold
+stText.TextSize = 12
+stText.ZIndex = 2
+stText.Parent = stBtn
 
 stBtn.MouseEnter:Connect(function()
-	TweenService:Create(stStroke, TweenInfo.new(0.2), {Transparency = 0}):Play()
-	TweenService:Create(stBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(15, 20, 30)}):Play()
-	TweenService:Create(stBtn, TweenInfo.new(0.2), {TextColor3 = Color3.fromRGB(255, 255, 255)}):Play()
+	TweenService:Create(innerShadow, TweenInfo.new(0.2), {
+		Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(45, 45, 45)),
+			ColorSequenceKeypoint.new(0.5, Color3.fromRGB(20, 20, 20)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 0, 0))
+		})
+	}):Play()
 end)
 
 stBtn.MouseLeave:Connect(function()
-	TweenService:Create(stStroke, TweenInfo.new(0.2), {Transparency = 0.4}):Play()
-	TweenService:Create(stBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(10, 12, 18)}):Play()
-	TweenService:Create(stBtn, TweenInfo.new(0.2), {TextColor3 = Color3.fromRGB(0, 255, 255)}):Play()
+	TweenService:Create(innerShadow, TweenInfo.new(0.2), {
+		Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(30, 30, 30)),
+			ColorSequenceKeypoint.new(0.5, Color3.fromRGB(10, 10, 10)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 0, 0))
+		})
+	}):Play()
 end)
 
 stBtn.MouseButton1Click:Connect(function()
-	local flash = Instance.new("Frame")
-	flash.Size = UDim2.new(1, 0, 1, 0)
-	flash.BackgroundColor3 = Color3.fromRGB(0, 255, 255)
-	flash.BackgroundTransparency = 0.3
-	flash.Parent = stBtn
-	local fCorner = Instance.new("UICorner")
-	fCorner.CornerRadius = UDim.new(0, 3)
-	fCorner.Parent = flash
+	local bumpIn = TweenService:Create(stBtn, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		Size = UDim2.new(1, -14, 1, -8), 
+		Position = UDim2.new(0, 7, 0, 4)
+	})
+	local bumpOut = TweenService:Create(stBtn, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		Size = UDim2.new(1, -10, 1, -4), 
+		Position = UDim2.new(0, 5, 0, 2)
+	})
 	
-	TweenService:Create(flash, TweenInfo.new(0.4), {BackgroundTransparency = 1}):Play()
-	task.delay(0.45, function() flash:Destroy() end)
+	bumpIn:Play()
+	bumpIn.Completed:Connect(function() bumpOut:Play() end)
 
 	applyScreenTime(true)
 end)
