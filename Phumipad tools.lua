@@ -122,25 +122,89 @@ local function copyGameName()
 	return copied, gameName
 end
 
--- ================== BATTERY SAVER (PROFESSIONAL SCREEN TIME) ==================
-local screenTimeGui = nil
+-- ================== STATS PARSER & TRACKER ==================
+local initialLeaderstats = {}
+
+local function parseStatNumber(val)
+	if type(val) == "number" then return val end
+	if type(val) ~= "string" then return nil end
+	local clean = string.gsub(val, "[,%$]", "")
+	local numStr, suffix = string.match(clean, "([%d%.]+)%s*([kKmMbBtT]?)")
+	local num = tonumber(numStr)
+	if not num then return nil end
+	suffix = string.lower(suffix or "")
+	if suffix == "k" then
+		num = num * 1e3
+	elseif suffix == "m" then
+		num = num * 1e6
+	elseif suffix == "b" then
+		num = num * 1e9
+	elseif suffix == "t" then
+		num = num * 1e12
+	end
+	return num
+end
+
+local function formatStatDiff(n)
+	if not n then return "0" end
+	local absN = math.abs(n)
+	if absN >= 1e9 then
+		return string.format("%.2fB", n / 1e9)
+	elseif absN >= 1e6 then
+		return string.format("%.2fM", n / 1e6)
+	elseif absN >= 1e3 then
+		return string.format("%.2fK", n / 1e3)
+	else
+		return tostring(math.floor(n))
+	end
+end
+
+local function recordInitialStats()
+	initialLeaderstats = {}
+	local lstats = player:FindFirstChild("leaderstats")
+	if not lstats then return end
+	for _, v in ipairs(lstats:GetChildren()) do
+		if v:IsA("IntValue") or v:IsA("NumberValue") or v:IsA("StringValue") then
+			local num = parseStatNumber(v.Value)
+			if num then
+				initialLeaderstats[v.Name] = num
+			end
+		end
+	end
+end
 
 local function getLeaderstatsString()
 	local lstats = player:FindFirstChild("leaderstats")
 	if not lstats then return "No active stats" end
-	
-	local str = ""
+
+	local parts = {}
 	local count = 0
 	for _, v in ipairs(lstats:GetChildren()) do
 		if v:IsA("IntValue") or v:IsA("NumberValue") or v:IsA("StringValue") then
-			str = str .. v.Name .. ": " .. tostring(v.Value) .. "   |   "
+			local currentStr = tostring(v.Value)
+			local currentNum = parseStatNumber(v.Value)
+			local initNum = initialLeaderstats[v.Name]
+			local diffText = ""
+
+			if currentNum and initNum then
+				local diff = currentNum - initNum
+				if diff > 0 then
+					diffText = string.format(" (+%s)", formatStatDiff(diff))
+				elseif diff < 0 then
+					diffText = string.format(" (-%s)", formatStatDiff(math.abs(diff)))
+				else
+					diffText = " (+0)"
+				end
+			end
+
+			table.insert(parts, string.format("%s: %s%s", v.Name, currentStr, diffText))
 			count = count + 1
 			if count >= 3 then break end
 		end
 	end
-	
-	if str ~= "" then
-		return string.sub(str, 1, -8)
+
+	if #parts > 0 then
+		return table.concat(parts, "  |  ")
 	end
 	return "No active stats"
 end
@@ -156,6 +220,9 @@ local function getBatteryPercentage()
 	return level
 end
 
+-- ================== BATTERY SAVER OVERLAY ==================
+local screenTimeGui = nil
+
 local function applyScreenTime(on)
 	state.screenTime = on
 
@@ -166,6 +233,8 @@ local function applyScreenTime(on)
 
 	if not on then return end
 
+	recordInitialStats()
+
 	local sgST = Instance.new("ScreenGui")
 	sgST.Name = "Phumipad_BatterySaver_Overlay"
 	sgST.ResetOnSpawn = false
@@ -174,7 +243,6 @@ local function applyScreenTime(on)
 	safeParentGui(sgST)
 	screenTimeGui = sgST
 
-	-- Pitch Black Background
 	local bg = Instance.new("Frame")
 	bg.Size = UDim2.new(1, 0, 1, 0)
 	bg.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
@@ -182,7 +250,6 @@ local function applyScreenTime(on)
 	bg.Active = true
 	bg.Parent = sgST
 
-	-- Top Right Battery UI (Enlarged)
 	local topBar = Instance.new("Frame")
 	topBar.Size = UDim2.new(1, -50, 0, 50)
 	topBar.Position = UDim2.new(0, 25, 0, 25)
@@ -190,14 +257,14 @@ local function applyScreenTime(on)
 	topBar.Parent = bg
 
 	local batContainer = Instance.new("Frame")
-	batContainer.Size = UDim2.new(0, 120, 0, 30)
+	batContainer.Size = UDim2.new(0, 130, 0, 32)
 	batContainer.AnchorPoint = Vector2.new(1, 0)
 	batContainer.Position = UDim2.new(1, 0, 0, 0)
 	batContainer.BackgroundTransparency = 1
 	batContainer.Parent = topBar
 
 	local batLabel = Instance.new("TextLabel")
-	batLabel.Size = UDim2.new(1, -48, 1, 0)
+	batLabel.Size = UDim2.new(1, -50, 1, 0)
 	batLabel.Position = UDim2.new(0, 0, 0, 0)
 	batLabel.BackgroundTransparency = 1
 	batLabel.Text = "100%"
@@ -208,8 +275,8 @@ local function applyScreenTime(on)
 	batLabel.Parent = batContainer
 
 	local batOutline = Instance.new("Frame")
-	batOutline.Size = UDim2.new(0, 34, 0, 18)
-	batOutline.Position = UDim2.new(1, -38, 0.5, -9)
+	batOutline.Size = UDim2.new(0, 36, 0, 18)
+	batOutline.Position = UDim2.new(1, -40, 0.5, -9)
 	batOutline.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 	batOutline.BorderColor3 = Color3.fromRGB(180, 190, 210)
 	batOutline.BorderSizePixel = 1.5
@@ -231,28 +298,25 @@ local function applyScreenTime(on)
 	batFill.Parent = batOutline
 	Instance.new("UICorner", batFill).CornerRadius = UDim.new(0, 2)
 
-	-- Center Container
 	local centerBox = Instance.new("Frame")
-	centerBox.Size = UDim2.new(0, 500, 0, 350)
-	centerBox.Position = UDim2.new(0.5, -250, 0.5, -175)
+	centerBox.Size = UDim2.new(0, 560, 0, 360)
+	centerBox.Position = UDim2.new(0.5, -280, 0.5, -180)
 	centerBox.BackgroundTransparency = 1
 	centerBox.Parent = bg
 
-	-- Main Big Clock
 	local clockLabel = Instance.new("TextLabel")
-	clockLabel.Size = UDim2.new(1, 0, 0, 85)
-	clockLabel.Position = UDim2.new(0, 0, 0, 5)
+	clockLabel.Size = UDim2.new(1, 0, 0, 90)
+	clockLabel.Position = UDim2.new(0, 0, 0, 0)
 	clockLabel.BackgroundTransparency = 1
 	clockLabel.Text = os.date("%H:%M:%S")
 	clockLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 	clockLabel.Font = Enum.Font.Gotham
-	clockLabel.TextSize = 78
+	clockLabel.TextSize = 82
 	clockLabel.Parent = centerBox
 
-	-- Elapsed Time Label (+200% Font Size)
 	local elapsedLabel = Instance.new("TextLabel")
-	elapsedLabel.Size = UDim2.new(1, 0, 0, 32)
-	elapsedLabel.Position = UDim2.new(0, 0, 0, 95)
+	elapsedLabel.Size = UDim2.new(1, 0, 0, 34)
+	elapsedLabel.Position = UDim2.new(0, 0, 0, 96)
 	elapsedLabel.BackgroundTransparency = 1
 	elapsedLabel.Text = "Saving Battery • 00:00"
 	elapsedLabel.TextColor3 = Color3.fromRGB(0, 220, 255)
@@ -260,10 +324,9 @@ local function applyScreenTime(on)
 	elapsedLabel.TextSize = 22
 	elapsedLabel.Parent = centerBox
 
-	-- Stats Card (+200% Font Size & Vibrant Yellow Text)
 	local statsCard = Instance.new("Frame")
-	statsCard.Size = UDim2.new(0, 460, 0, 56)
-	statsCard.Position = UDim2.new(0.5, -230, 0, 140)
+	statsCard.Size = UDim2.new(0, 520, 0, 60)
+	statsCard.Position = UDim2.new(0.5, -260, 0, 142)
 	statsCard.BackgroundColor3 = Color3.fromRGB(15, 18, 24)
 	statsCard.BorderSizePixel = 0
 	statsCard.Parent = centerBox
@@ -275,65 +338,89 @@ local function applyScreenTime(on)
 	scStroke.Parent = statsCard
 
 	local statsLabel = Instance.new("TextLabel")
-	statsLabel.Size = UDim2.new(1, -24, 1, 0)
-	statsLabel.Position = UDim2.new(0, 12, 0, 0)
+	statsLabel.Size = UDim2.new(1, -28, 1, 0)
+	statsLabel.Position = UDim2.new(0, 14, 0, 0)
 	statsLabel.BackgroundTransparency = 1
 	statsLabel.Text = "Loading stats..."
-	statsLabel.TextColor3 = Color3.fromRGB(255, 225, 50) -- สีเหลืองสดใสเด่นชัด
+	statsLabel.TextColor3 = Color3.fromRGB(255, 225, 50)
 	statsLabel.Font = Enum.Font.GothamBold
-	statsLabel.TextSize = 22 -- ขยาย 200% ชัดเจน
+	statsLabel.TextSize = 22
 	statsLabel.TextTruncate = Enum.TextTruncate.AtEnd
 	statsLabel.Parent = statsCard
 
-	-- Modern Slide to Unlock Track
 	local slideTrack = Instance.new("Frame")
-	slideTrack.Size = UDim2.new(0, 320, 0, 62)
-	slideTrack.Position = UDim2.new(0.5, -160, 0, 225)
-	slideTrack.BackgroundColor3 = Color3.fromRGB(14, 16, 22)
+	slideTrack.Size = UDim2.new(0, 350, 0, 64)
+	slideTrack.Position = UDim2.new(0.5, -175, 0, 230)
+	slideTrack.BackgroundColor3 = Color3.fromRGB(18, 19, 23)
 	slideTrack.BorderSizePixel = 0
 	slideTrack.Parent = centerBox
-	Instance.new("UICorner", slideTrack).CornerRadius = UDim.new(1, 0)
+	Instance.new("UICorner", slideTrack).CornerRadius = UDim.new(0, 16)
 
 	local sTStroke = Instance.new("UIStroke")
-	sTStroke.Color = Color3.fromRGB(35, 42, 58)
+	sTStroke.Color = Color3.fromRGB(48, 52, 64)
 	sTStroke.Thickness = 1.5
 	sTStroke.Parent = slideTrack
 
 	local slideText = Instance.new("TextLabel")
-	slideText.Size = UDim2.new(1, 0, 1, 0)
+	slideText.Size = UDim2.new(1, -80, 1, 0)
+	slideText.Position = UDim2.new(0, 80, 0, 0)
 	slideText.BackgroundTransparency = 1
-	slideText.Text = "Slide to wake up"
-	slideText.TextColor3 = Color3.fromRGB(120, 135, 160)
-	slideText.Font = Enum.Font.GothamBold
-	slideText.TextSize = 18 -- เพิ่มขนาดตัวหนังสือให้คมชัด
+	slideText.Text = "slide to unlock"
+	slideText.TextColor3 = Color3.fromRGB(185, 190, 205)
+	slideText.Font = Enum.Font.Gotham
+	slideText.TextSize = 20
 	slideText.Parent = slideTrack
 
-	-- Modern Knob (ลูกศร Vector สวยงาม ไม่มีบัคสี่เหลี่ยม)
 	local slideKnob = Instance.new("TextButton")
-	slideKnob.Size = UDim2.new(0, 52, 0, 52)
-	slideKnob.Position = UDim2.new(0, 5, 0.5, 0)
+	slideKnob.Size = UDim2.new(0, 76, 0, 52)
+	slideKnob.Position = UDim2.new(0, 6, 0.5, 0)
 	slideKnob.AnchorPoint = Vector2.new(0, 0.5)
-	slideKnob.BackgroundColor3 = Color3.fromRGB(245, 248, 255)
-	slideKnob.Text = "" -- เอาตัวหนังสือออกเพื่อไม่ให้เกิด Tofu Font
+	slideKnob.BackgroundColor3 = Color3.fromRGB(235, 238, 245)
+	slideKnob.Text = ""
 	slideKnob.AutoButtonColor = false
 	slideKnob.Parent = slideTrack
-	Instance.new("UICorner", slideKnob).CornerRadius = UDim.new(1, 0)
 
-	-- ไอคอนลูกศร (Chevron Vector Image)
+	local knobCorner = Instance.new("UICorner")
+	knobCorner.CornerRadius = UDim.new(0, 11)
+	knobCorner.Parent = slideKnob
+
+	local knobStroke = Instance.new("UIStroke")
+	knobStroke.Color = Color3.fromRGB(100, 104, 115)
+	knobStroke.Thickness = 1.2
+	knobStroke.Parent = slideKnob
+
+	local knobGrad = Instance.new("UIGradient")
+	knobGrad.Rotation = 90
+	knobGrad.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+		ColorSequenceKeypoint.new(0.4, Color3.fromRGB(235, 238, 244)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(165, 170, 180))
+	})
+	knobGrad.Parent = slideKnob
+
+	local arrowShadow = Instance.new("ImageLabel")
+	arrowShadow.Size = UDim2.new(0, 26, 0, 26)
+	arrowShadow.Position = UDim2.new(0.5, 0, 0.5, 1)
+	arrowShadow.AnchorPoint = Vector2.new(0.5, 0.5)
+	arrowShadow.BackgroundTransparency = 1
+	arrowShadow.Image = "rbxassetid://6034818379"
+	arrowShadow.ImageColor3 = Color3.fromRGB(255, 255, 255)
+	arrowShadow.ImageTransparency = 0.4
+	arrowShadow.Parent = slideKnob
+
 	local arrowIcon = Instance.new("ImageLabel")
-	arrowIcon.Size = UDim2.new(0, 28, 0, 28)
+	arrowIcon.Size = UDim2.new(0, 26, 0, 26)
 	arrowIcon.Position = UDim2.new(0.5, 0, 0.5, 0)
 	arrowIcon.AnchorPoint = Vector2.new(0.5, 0.5)
 	arrowIcon.BackgroundTransparency = 1
-	arrowIcon.Image = "rbxassetid://6031094678" -- ไอคอนลูกศรชี้ขวาคมกริบ
-	arrowIcon.ImageColor3 = Color3.fromRGB(14, 18, 26)
+	arrowIcon.Image = "rbxassetid://6034818379"
+	arrowIcon.ImageColor3 = Color3.fromRGB(100, 105, 115)
 	arrowIcon.Parent = slideKnob
 
 	local dragging = false
 	slideKnob.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 			dragging = true
-			TweenService:Create(slideKnob, TweenInfo.new(0.15), {Size = UDim2.new(0, 56, 0, 52)}):Play()
 		end
 	end)
 
@@ -344,7 +431,7 @@ local function applyScreenTime(on)
 			local knobWidth = slideKnob.AbsoluteSize.X
 
 			local relativeX = input.Position.X - trackStart - (knobWidth / 2)
-			local clampedX = math.clamp(relativeX, 5, trackWidth - knobWidth - 5)
+			local clampedX = math.clamp(relativeX, 6, trackWidth - knobWidth - 6)
 
 			slideKnob.Position = UDim2.new(0, clampedX, 0.5, 0)
 			slideText.TextTransparency = clampedX / (trackWidth - knobWidth)
@@ -361,8 +448,7 @@ local function applyScreenTime(on)
 			if dragging then
 				dragging = false
 				TweenService:Create(slideKnob, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-					Position = UDim2.new(0, 5, 0.5, 0),
-					Size = UDim2.new(0, 52, 0, 52)
+					Position = UDim2.new(0, 6, 0.5, 0)
 				}):Play()
 				TweenService:Create(slideText, TweenInfo.new(0.3), {TextTransparency = 0}):Play()
 			end
@@ -392,7 +478,6 @@ local function applyScreenTime(on)
 			
 			statsLabel.Text = getLeaderstatsString()
 
-			-- อัปเดตแบตเตอรี่แบบเรียลไทม์
 			local bl = getBatteryPercentage()
 			batLabel.Text = tostring(math.floor(bl * 100)) .. "%"
 			batFill.Size = UDim2.new(bl, -4, 1, -4)
@@ -659,7 +744,7 @@ local function launchStalkerScript()
 	end)
 end
 
--- ================== AUTO CLICKER PANEL ==================
+-- ================== AUTO CLICKER PANEL (REFINED & COMPACT) ==================
 local function launchAutoClickerScript()
 	local existing = (targetContainer and targetContainer:FindFirstChild("Phumipad_AutoClicker_UI")) 
 		or playerGui:FindFirstChild("Phumipad_AutoClicker_UI") 
@@ -675,9 +760,10 @@ local function launchAutoClickerScript()
 	ScreenGui.IgnoreGuiInset = true 
 	safeParentGui(ScreenGui)
 
+	-- ลดขนาด MainFrame ลงให้พอดีกับปุ่ม (ตัดพื้นที่ว่างสีดำด้านล่างออก)
 	local MainFrame = Instance.new("Frame")
-	MainFrame.Size = UDim2.new(0, 240, 0, 330)
-	MainFrame.Position = UDim2.new(0.5, -120, 0.35, 0)
+	MainFrame.Size = UDim2.new(0, 230, 0, 244)
+	MainFrame.Position = UDim2.new(0.5, -115, 0.38, 0)
 	MainFrame.BackgroundColor3 = Color3.fromRGB(15, 17, 23)
 	MainFrame.BorderSizePixel = 0
 	MainFrame.ClipsDescendants = true
@@ -693,6 +779,60 @@ local function launchAutoClickerScript()
 	mfStroke.Thickness = 1.2
 	mfStroke.Parent = MainFrame
 
+	-- ปุ่ม Pop-up วงกลมเมื่อพับหน้าต่างลง
+	local miniCircle = Instance.new("TextButton")
+	miniCircle.Name = "AutoClicker_MiniCircle"
+	miniCircle.Size = UDim2.new(0, 44, 0, 44)
+	miniCircle.Position = UDim2.new(0.85, 0, 0.45, 0)
+	miniCircle.BackgroundColor3 = Color3.fromRGB(22, 25, 35)
+	miniCircle.BorderSizePixel = 0
+	miniCircle.Text = "⚡"
+	miniCircle.TextColor3 = Color3.fromRGB(255, 140, 40)
+	miniCircle.Font = Enum.Font.GothamBold
+	miniCircle.TextSize = 20
+	miniCircle.Visible = false
+	miniCircle.Active = true
+	miniCircle.ZIndex = 200
+	miniCircle.Parent = ScreenGui
+	Instance.new("UICorner", miniCircle).CornerRadius = UDim.new(1, 0)
+
+	local mcStroke = Instance.new("UIStroke")
+	mcStroke.Color = Color3.fromRGB(255, 120, 30)
+	mcStroke.Thickness = 1.8
+	mcStroke.Parent = miniCircle
+
+	do
+		local dragging, dragStart, startPos = false, nil, nil
+		local hasMoved = false
+		miniCircle.InputBegan:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+				dragging = true
+				hasMoved = false
+				dragStart = input.Position
+				startPos = miniCircle.Position
+			end
+		end)
+		miniCircle.InputChanged:Connect(function(input)
+			if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+				local delta = input.Position - dragStart
+				if delta.Magnitude > 6 then hasMoved = true end
+				if hasMoved then
+					miniCircle.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+				end
+			end
+		end)
+		miniCircle.InputEnded:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+				if not hasMoved then
+					miniCircle.Visible = false
+					MainFrame.Visible = true
+				end
+				dragging = false
+				hasMoved = false
+			end
+		end)
+	end
+
 	local TopBar = Instance.new("Frame")
 	TopBar.Size = UDim2.new(1, 0, 0, 34)
 	TopBar.Position = UDim2.new(0, 0, 0, 0)
@@ -706,39 +846,59 @@ local function launchAutoClickerScript()
 	tbCorner.Parent = TopBar
 
 	local Title = Instance.new("TextLabel")
-	Title.Size = UDim2.new(1, -65, 1, 0)
+	Title.Size = UDim2.new(1, -70, 1, 0)
 	Title.Position = UDim2.new(0, 12, 0, 0)
 	Title.BackgroundTransparency = 1
 	Title.Text = "Auto Clicker"
 	Title.TextColor3 = Color3.fromRGB(240, 245, 255)
 	Title.TextXAlignment = Enum.TextXAlignment.Left
 	Title.Font = Enum.Font.GothamBold
-	Title.TextSize = 13
+	Title.TextSize = 12
 	Title.Parent = TopBar
 
+	-- ปุ่มพับหน้าจอลง (-)
+	local MiniButton = Instance.new("TextButton")
+	MiniButton.Size = UDim2.new(0, 22, 0, 22)
+	MiniButton.Position = UDim2.new(1, -52, 0.5, -11)
+	MiniButton.BackgroundColor3 = Color3.fromRGB(35, 40, 55)
+	MiniButton.BorderSizePixel = 0
+	MiniButton.Text = "-"
+	MiniButton.TextColor3 = Color3.fromRGB(180, 195, 220)
+	MiniButton.Font = Enum.Font.GothamBold
+	MiniButton.TextSize = 14
+	MiniButton.Parent = TopBar
+	local mnCorner = Instance.new("UICorner")
+	mnCorner.CornerRadius = UDim.new(0, 6)
+	mnCorner.Parent = MiniButton
+
 	local CloseButton = Instance.new("TextButton")
-	CloseButton.Size = UDim2.new(0, 24, 0, 24)
-	CloseButton.Position = UDim2.new(1, -28, 0.5, -12)
+	CloseButton.Size = UDim2.new(0, 22, 0, 22)
+	CloseButton.Position = UDim2.new(1, -26, 0.5, -11)
 	CloseButton.BackgroundColor3 = Color3.fromRGB(220, 50, 65)
 	CloseButton.BorderSizePixel = 0
 	CloseButton.Text = "X"
 	CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 	CloseButton.Font = Enum.Font.GothamBold
-	CloseButton.TextSize = 12
+	CloseButton.TextSize = 11
 	CloseButton.Parent = TopBar
 	local clsCorner = Instance.new("UICorner")
 	clsCorner.CornerRadius = UDim.new(0, 6)
 	clsCorner.Parent = CloseButton
 
+	MiniButton.MouseButton1Click:Connect(function()
+		MainFrame.Visible = false
+		miniCircle.Visible = true
+	end)
+
 	local Content = Instance.new("Frame")
-	Content.Size = UDim2.new(1, -20, 1, -44)
-	Content.Position = UDim2.new(0, 10, 0, 38)
+	Content.Size = UDim2.new(1, -16, 0, 196)
+	Content.Position = UDim2.new(0, 8, 0, 40)
 	Content.BackgroundTransparency = 1
 	Content.Parent = MainFrame
 
 	local cLayout = Instance.new("UIListLayout")
 	cLayout.SortOrder = Enum.SortOrder.LayoutOrder
-	cLayout.Padding = UDim.new(0, 6)
+	cLayout.Padding = UDim.new(0, 5)
 	cLayout.Parent = Content
 
 	local marker = Instance.new("Frame")
@@ -750,10 +910,7 @@ local function launchAutoClickerScript()
 	marker.Visible = false
 	marker.ZIndex = 100
 	marker.Parent = ScreenGui
-
-	local markerCorner = Instance.new("UICorner")
-	markerCorner.CornerRadius = UDim.new(1, 0)
-	markerCorner.Parent = marker
+	Instance.new("UICorner", marker).CornerRadius = UDim.new(1, 0)
 
 	local markerStroke = Instance.new("UIStroke")
 	markerStroke.Color = Color3.fromRGB(255, 255, 255)
@@ -785,17 +942,15 @@ local function launchAutoClickerScript()
 	end
 
 	local speedRow = Instance.new("Frame")
-	speedRow.Size = UDim2.new(1, 0, 0, 28)
+	speedRow.Size = UDim2.new(1, 0, 0, 26)
 	speedRow.BackgroundColor3 = Color3.fromRGB(20, 24, 34)
 	speedRow.BorderSizePixel = 0
 	speedRow.LayoutOrder = 1
 	speedRow.Parent = Content
-	local srCorner = Instance.new("UICorner")
-	srCorner.CornerRadius = UDim.new(0, 6)
-	srCorner.Parent = speedRow
+	Instance.new("UICorner", speedRow).CornerRadius = UDim.new(0, 6)
 
 	local speedLabel = Instance.new("TextLabel")
-	speedLabel.Size = UDim2.new(0.6, 0, 1, 0)
+	speedLabel.Size = UDim2.new(0.65, 0, 1, 0)
 	speedLabel.Position = UDim2.new(0, 8, 0, 0)
 	speedLabel.BackgroundTransparency = 1
 	speedLabel.Text = "Clicks / Sec (CPS):"
@@ -806,8 +961,8 @@ local function launchAutoClickerScript()
 	speedLabel.Parent = speedRow
 
 	local speedBox = Instance.new("TextBox")
-	speedBox.Size = UDim2.new(0.35, -4, 1, -8)
-	speedBox.Position = UDim2.new(0.65, 0, 0, 4)
+	speedBox.Size = UDim2.new(0.3, -4, 1, -6)
+	speedBox.Position = UDim2.new(0.7, 0, 0, 3)
 	speedBox.BackgroundColor3 = Color3.fromRGB(28, 33, 48)
 	speedBox.BorderSizePixel = 0
 	speedBox.Text = tostring(cpsValue)
@@ -816,9 +971,7 @@ local function launchAutoClickerScript()
 	speedBox.TextSize = 11
 	speedBox.ClearTextOnFocus = false
 	speedBox.Parent = speedRow
-	local sbCorner = Instance.new("UICorner")
-	sbCorner.CornerRadius = UDim.new(0, 5)
-	sbCorner.Parent = speedBox
+	Instance.new("UICorner", speedBox).CornerRadius = UDim.new(0, 5)
 
 	speedBox.FocusLost:Connect(function()
 		local val = tonumber(speedBox.Text)
@@ -831,19 +984,18 @@ local function launchAutoClickerScript()
 	end)
 
 	local exampleLabel = Instance.new("TextLabel")
-	exampleLabel.Size = UDim2.new(1, 0, 0, 24)
+	exampleLabel.Size = UDim2.new(1, 0, 0, 18)
 	exampleLabel.BackgroundTransparency = 1
-	exampleLabel.Text = "Ex: 1 = 1 CPS (1 คลิก/วินาที)\n10 = 10 CPS | 50 = 50 CPS"
-	exampleLabel.TextColor3 = Color3.fromRGB(130, 145, 175)
+	exampleLabel.Text = "Ex: 1 = 1 CPS | 10 = 10 CPS | 50 = 50 CPS"
+	exampleLabel.TextColor3 = Color3.fromRGB(120, 135, 160)
 	exampleLabel.Font = Enum.Font.Gotham
 	exampleLabel.TextSize = 9
-	exampleLabel.TextWrapped = true
 	exampleLabel.TextXAlignment = Enum.TextXAlignment.Center
 	exampleLabel.LayoutOrder = 2
 	exampleLabel.Parent = Content
 
 	local posBtn = Instance.new("TextButton")
-	posBtn.Size = UDim2.new(1, 0, 0, 28)
+	posBtn.Size = UDim2.new(1, 0, 0, 26)
 	posBtn.BackgroundColor3 = Color3.fromRGB(28, 33, 48)
 	posBtn.BorderSizePixel = 0
 	posBtn.Text = "Set Tap Position (Center)"
@@ -852,9 +1004,7 @@ local function launchAutoClickerScript()
 	posBtn.TextSize = 10
 	posBtn.LayoutOrder = 3
 	posBtn.Parent = Content
-	local pbCorner = Instance.new("UICorner")
-	pbCorner.CornerRadius = UDim.new(0, 6)
-	pbCorner.Parent = posBtn
+	Instance.new("UICorner", posBtn).CornerRadius = UDim.new(0, 6)
 
 	posBtn.MouseButton1Click:Connect(function()
 		if settingPosConn then return end
@@ -887,50 +1037,62 @@ local function launchAutoClickerScript()
 		end)
 	end)
 
+	-- ================== TURBO MODE (สีส้มอ่อนลายไฟ + ปุ่มสีส้มเข้ม) ==================
 	local turboRow = Instance.new("Frame")
 	turboRow.Size = UDim2.new(1, 0, 0, 28)
-	turboRow.BackgroundColor3 = Color3.fromRGB(20, 24, 34)
+	turboRow.BackgroundColor3 = Color3.fromRGB(60, 28, 16)
 	turboRow.BorderSizePixel = 0
 	turboRow.LayoutOrder = 4
 	turboRow.Parent = Content
-	local trCorner = Instance.new("UICorner")
-	trCorner.CornerRadius = UDim.new(0, 6)
-	trCorner.Parent = turboRow
+	Instance.new("UICorner", turboRow).CornerRadius = UDim.new(0, 6)
+
+	local fireGrad = Instance.new("UIGradient")
+	fireGrad.Rotation = 45
+	fireGrad.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(85, 35, 15)),
+		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(130, 55, 20)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(65, 25, 12))
+	})
+	fireGrad.Parent = turboRow
+
+	local fireStroke = Instance.new("UIStroke")
+	fireStroke.Color = Color3.fromRGB(255, 135, 45)
+	fireStroke.Thickness = 1
+	fireStroke.Parent = turboRow
 
 	local turboLabel = Instance.new("TextLabel")
 	turboLabel.Size = UDim2.new(1, -55, 1, 0)
 	turboLabel.Position = UDim2.new(0, 8, 0, 0)
 	turboLabel.BackgroundTransparency = 1
-	turboLabel.Text = "Turbo Mode (Extreme)"
-	turboLabel.TextColor3 = Color3.fromRGB(215, 225, 240)
-	turboLabel.Font = Enum.Font.GothamMedium
+	turboLabel.Text = "🔥 Turbo Mode"
+	turboLabel.TextColor3 = Color3.fromRGB(255, 220, 185)
+	turboLabel.Font = Enum.Font.GothamBold
 	turboLabel.TextSize = 11
 	turboLabel.TextXAlignment = Enum.TextXAlignment.Left
 	turboLabel.Parent = turboRow
 
 	local turboToggleBtn = Instance.new("TextButton")
-	turboToggleBtn.Size = UDim2.new(0, 44, 0, 20)
-	turboToggleBtn.Position = UDim2.new(1, -50, 0.5, -10)
+	turboToggleBtn.Size = UDim2.new(0, 42, 0, 20)
+	turboToggleBtn.Position = UDim2.new(1, -48, 0.5, -10)
 	turboToggleBtn.BorderSizePixel = 0
 	turboToggleBtn.Font = Enum.Font.GothamBold
 	turboToggleBtn.TextSize = 10
 	turboToggleBtn.Text = "OFF"
-	turboToggleBtn.BackgroundColor3 = Color3.fromRGB(38, 44, 60)
-	turboToggleBtn.TextColor3 = Color3.fromRGB(150, 160, 180)
+	turboToggleBtn.BackgroundColor3 = Color3.fromRGB(38, 25, 20)
+	turboToggleBtn.TextColor3 = Color3.fromRGB(180, 150, 140)
 	turboToggleBtn.Parent = turboRow
-	local ttbCorner = Instance.new("UICorner")
-	ttbCorner.CornerRadius = UDim.new(0, 5)
-	ttbCorner.Parent = turboToggleBtn
+	Instance.new("UICorner", turboToggleBtn).CornerRadius = UDim.new(0, 5)
 
 	turboToggleBtn.MouseButton1Click:Connect(function()
 		turboMode = not turboMode
 		turboToggleBtn.Text = turboMode and "ON" or "OFF"
-		turboToggleBtn.BackgroundColor3 = turboMode and Color3.fromRGB(255, 140, 0) or Color3.fromRGB(38, 44, 60)
-		turboToggleBtn.TextColor3 = turboMode and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(150, 160, 180)
+		-- สีส้มเข้มเวลากดเปิด
+		turboToggleBtn.BackgroundColor3 = turboMode and Color3.fromRGB(215, 60, 0) or Color3.fromRGB(38, 25, 20)
+		turboToggleBtn.TextColor3 = turboMode and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(180, 150, 140)
 	end)
 
 	local toggleClickBtn = Instance.new("TextButton")
-	toggleClickBtn.Size = UDim2.new(1, 0, 0, 32)
+	toggleClickBtn.Size = UDim2.new(1, 0, 0, 28)
 	toggleClickBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 125)
 	toggleClickBtn.BorderSizePixel = 0
 	toggleClickBtn.Text = "START AUTO CLICK"
@@ -939,9 +1101,7 @@ local function launchAutoClickerScript()
 	toggleClickBtn.TextSize = 11
 	toggleClickBtn.LayoutOrder = 5
 	toggleClickBtn.Parent = Content
-	local tcbCorner = Instance.new("UICorner")
-	tcbCorner.CornerRadius = UDim.new(0, 6)
-	tcbCorner.Parent = toggleClickBtn
+	Instance.new("UICorner", toggleClickBtn).CornerRadius = UDim.new(0, 6)
 
 	local function stopClicking()
 		isClicking = false
@@ -974,7 +1134,7 @@ local function launchAutoClickerScript()
 	end)
 
 	local forceStopBtn = Instance.new("TextButton")
-	forceStopBtn.Size = UDim2.new(1, 0, 0, 30)
+	forceStopBtn.Size = UDim2.new(1, 0, 0, 26)
 	forceStopBtn.BackgroundColor3 = Color3.fromRGB(200, 35, 45)
 	forceStopBtn.BorderSizePixel = 0
 	forceStopBtn.Text = "FORCE STOP (EMERGENCY)"
@@ -983,9 +1143,7 @@ local function launchAutoClickerScript()
 	forceStopBtn.TextSize = 10
 	forceStopBtn.LayoutOrder = 6
 	forceStopBtn.Parent = Content
-	local fsCorner = Instance.new("UICorner")
-	fsCorner.CornerRadius = UDim.new(0, 6)
-	fsCorner.Parent = forceStopBtn
+	Instance.new("UICorner", forceStopBtn).CornerRadius = UDim.new(0, 6)
 
 	forceStopBtn.MouseButton1Click:Connect(function()
 		stopClicking()
@@ -1127,7 +1285,7 @@ local function launchFlyScript()
 	mine.Name = "mine"
 	mine.Parent = Frame
 	mine.BackgroundColor3 = Color3.fromRGB(123, 255, 247)
-	mine.Position = UDim2.new(0.231, 0, 0.491, 0)
+	mine.Position = UDim2.new(0.231, 0, 0, 0.491, 0)
 	mine.Size = UDim2.new(0, 45, 0, 29)
 	mine.Font = Enum.Font.SourceSans
 	mine.Text = "-"
@@ -2418,7 +2576,7 @@ local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, -75, 1, 0)
 title.Position = UDim2.new(0, 14, 0, 0)
 title.BackgroundTransparency = 1
-title.Text = "PHUMIPAD TOOLS ⚙️"
+title.Text = "PHUMIPAD TOOLBOX "
 title.TextColor3 = Color3.fromRGB(240, 245, 255)
 title.Font = Enum.Font.GothamBold
 title.TextSize = 10
