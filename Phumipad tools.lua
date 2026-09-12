@@ -535,7 +535,7 @@ local function launchStalkerScript()
 	local TopBar = Instance.new("Frame")
 	TopBar.Size = UDim2.new(1, 0, 0, 34)
 	TopBar.Position = UDim2.new(0, 0, 0, 0)
-	TopBar.BackgroundColor3 = Color3.fromRGB(22, 25, 35)
+	TopBar.BackgroundColor3 = Color3.fromRGB(220, 25, 35)
 	TopBar.BorderSizePixel = 0
 	TopBar.Active = true
 	TopBar.Parent = MainFrame
@@ -744,7 +744,7 @@ local function launchStalkerScript()
 	end)
 end
 
--- ================== AUTO CLICKER PANEL (REFINED & COMPACT) ==================
+-- ================== AUTO CLICKER PANEL (COMPACT + POPUP DOCK) ==================
 local function launchAutoClickerScript()
 	local existing = (targetContainer and targetContainer:FindFirstChild("Phumipad_AutoClicker_UI")) 
 		or playerGui:FindFirstChild("Phumipad_AutoClicker_UI") 
@@ -760,7 +760,6 @@ local function launchAutoClickerScript()
 	ScreenGui.IgnoreGuiInset = true 
 	safeParentGui(ScreenGui)
 
-	-- ลดขนาด MainFrame ลงให้พอดีกับปุ่ม (ตัดพื้นที่ว่างสีดำด้านล่างออก)
 	local MainFrame = Instance.new("Frame")
 	MainFrame.Size = UDim2.new(0, 230, 0, 244)
 	MainFrame.Position = UDim2.new(0.5, -115, 0.38, 0)
@@ -779,7 +778,6 @@ local function launchAutoClickerScript()
 	mfStroke.Thickness = 1.2
 	mfStroke.Parent = MainFrame
 
-	-- ปุ่ม Pop-up วงกลมเมื่อพับหน้าต่างลง
 	local miniCircle = Instance.new("TextButton")
 	miniCircle.Name = "AutoClicker_MiniCircle"
 	miniCircle.Size = UDim2.new(0, 44, 0, 44)
@@ -856,7 +854,6 @@ local function launchAutoClickerScript()
 	Title.TextSize = 12
 	Title.Parent = TopBar
 
-	-- ปุ่มพับหน้าจอลง (-)
 	local MiniButton = Instance.new("TextButton")
 	MiniButton.Size = UDim2.new(0, 22, 0, 22)
 	MiniButton.Position = UDim2.new(1, -52, 0.5, -11)
@@ -1037,7 +1034,6 @@ local function launchAutoClickerScript()
 		end)
 	end)
 
-	-- ================== TURBO MODE (สีส้มอ่อนลายไฟ + ปุ่มสีส้มเข้ม) ==================
 	local turboRow = Instance.new("Frame")
 	turboRow.Size = UDim2.new(1, 0, 0, 28)
 	turboRow.BackgroundColor3 = Color3.fromRGB(60, 28, 16)
@@ -1086,7 +1082,6 @@ local function launchAutoClickerScript()
 	turboToggleBtn.MouseButton1Click:Connect(function()
 		turboMode = not turboMode
 		turboToggleBtn.Text = turboMode and "ON" or "OFF"
-		-- สีส้มเข้มเวลากดเปิด
 		turboToggleBtn.BackgroundColor3 = turboMode and Color3.fromRGB(215, 60, 0) or Color3.fromRGB(38, 25, 20)
 		turboToggleBtn.TextColor3 = turboMode and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(180, 150, 140)
 	end)
@@ -1285,7 +1280,7 @@ local function launchFlyScript()
 	mine.Name = "mine"
 	mine.Parent = Frame
 	mine.BackgroundColor3 = Color3.fromRGB(123, 255, 247)
-	mine.Position = UDim2.new(0.231, 0, 0, 0.491, 0)
+	mine.Position = UDim2.new(0.231, 0, 0.491, 0)
 	mine.Size = UDim2.new(0, 45, 0, 29)
 	mine.Font = Enum.Font.SourceSans
 	mine.Text = "-"
@@ -2576,7 +2571,7 @@ local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, -75, 1, 0)
 title.Position = UDim2.new(0, 14, 0, 0)
 title.BackgroundTransparency = 1
-title.Text = "PHUMIPAD TOOLBOX "
+title.Text = "PHUMIPAD TOOLBOX v3.1"
 title.TextColor3 = Color3.fromRGB(240, 245, 255)
 title.Font = Enum.Font.GothamBold
 title.TextSize = 10
@@ -3151,14 +3146,86 @@ local function addInputToggleRow(parent, name, defaultVal, defaultOn, onToggle, 
 	btn.MouseButton1Click:Connect(function()
 		onToggle(btn, render)
 	end)
+
+	return {
+		box = box,
+		btn = btn,
+		setVal = function(v)
+			box.Text = tostring(v)
+			onValChange(v)
+		end
+	}
+end
+
+-- ฟังก์ชันสร้างชุดปุ่ม Preset ขนาดกะทัดรัด (Modern Quick Preset Chips)
+local function addPresetChips(parent, values, onSelect)
+	local row = Instance.new("Frame")
+	row.Size = UDim2.new(1, 0, 0, 22)
+	row.BackgroundTransparency = 1
+	row.LayoutOrder = getOrder()
+	row.Parent = parent
+
+	local pLayout = Instance.new("UIListLayout")
+	pLayout.FillDirection = Enum.FillDirection.Horizontal
+	pLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	pLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+	pLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	pLayout.Padding = UDim.new(0, 4)
+	pLayout.Parent = row
+
+	for i, val in ipairs(values) do
+		local chip = Instance.new("TextButton")
+		chip.Size = UDim2.new(0.2, -4, 1, 0)
+		chip.BackgroundColor3 = Color3.fromRGB(20, 25, 36)
+		chip.BorderSizePixel = 0
+		chip.Text = tostring(val)
+		chip.TextColor3 = Color3.fromRGB(185, 205, 235)
+		chip.Font = Enum.Font.GothamBold
+		chip.TextSize = 10
+		chip.AutoButtonColor = false
+		chip.LayoutOrder = i
+		chip.Parent = row
+
+		local cCorner = Instance.new("UICorner")
+		cCorner.CornerRadius = UDim.new(0, 5)
+		cCorner.Parent = chip
+
+		local cStroke = Instance.new("UIStroke")
+		cStroke.Color = Color3.fromRGB(38, 48, 68)
+		cStroke.Thickness = 1
+		cStroke.Parent = chip
+
+		chip.MouseEnter:Connect(function()
+			TweenService:Create(chip, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(32, 40, 58)}):Play()
+			TweenService:Create(cStroke, TweenInfo.new(0.15), {Color = Color3.fromRGB(0, 200, 255)}):Play()
+		end)
+		chip.MouseLeave:Connect(function()
+			TweenService:Create(chip, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(20, 25, 36)}):Play()
+			TweenService:Create(cStroke, TweenInfo.new(0.15), {Color = Color3.fromRGB(38, 48, 68)}):Play()
+		end)
+
+		chip.MouseButton1Click:Connect(function()
+			local flash = TweenService:Create(chip, TweenInfo.new(0.08, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+				BackgroundColor3 = Color3.fromRGB(0, 185, 255)
+			})
+			local reset = TweenService:Create(chip, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+				BackgroundColor3 = Color3.fromRGB(20, 25, 36)
+			})
+			flash:Play()
+			flash.Completed:Connect(function() reset:Play() end)
+
+			onSelect(val)
+		end)
+	end
+	return row
 end
 
 -- ================== POPULATE CATEGORIES ==================
 
--- [1] MOVEMENT 🏃
+-- [1] MOVEMENT 🏃 (พร้อมปุ่ม Quick Preset 5 ระดับ)
 local movementContent = addCollapsibleCategory("Movement", "🏃", false)
 
-addInputToggleRow(movementContent, "Walk Speed", state.speedValue, state.speedEnabled, function(_, render)
+local walkControl = addInputToggleRow(movementContent, "Walk Speed", state.speedValue, state.speedEnabled, function(_, render)
 	state.speedEnabled = not state.speedEnabled
 	render(state.speedEnabled)
 	if humanoid then
@@ -3169,12 +3236,22 @@ end, function(val)
 	if state.speedEnabled and humanoid then humanoid.WalkSpeed = val end
 end)
 
-addInputToggleRow(movementContent, "TP Walk", state.tpWalkSpeed, state.tpWalkEnabled, function(_, render)
+-- ปุ่ม Preset ใต้ Walk Speed: 20, 40, 60, 80, 100
+addPresetChips(movementContent, {20, 40, 60, 80, 100}, function(val)
+	walkControl.setVal(val)
+end)
+
+local tpControl = addInputToggleRow(movementContent, "TP Walk", state.tpWalkSpeed, state.tpWalkEnabled, function(_, render)
 	state.tpWalkEnabled = not state.tpWalkEnabled
 	render(state.tpWalkEnabled)
 	applyTPWalk(state.tpWalkEnabled)
 end, function(val)
 	state.tpWalkSpeed = val
+end)
+
+-- ปุ่ม Preset ใต้ TP Walk: 1, 2, 3, 4, 5
+addPresetChips(movementContent, {1, 2, 3, 4, 5}, function(val)
+	tpControl.setVal(val)
 end)
 
 -- [2] UTILITIES ⚙️
