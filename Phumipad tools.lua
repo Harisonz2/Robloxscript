@@ -13,6 +13,7 @@ local TweenService = game:GetService("TweenService")
 local CoreGui = game:GetService("CoreGui")
 local MarketplaceService = game:GetService("MarketplaceService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
+local TeleportService = game:GetService("TeleportService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -535,7 +536,7 @@ local function launchStalkerScript()
 	local TopBar = Instance.new("Frame")
 	TopBar.Size = UDim2.new(1, 0, 0, 34)
 	TopBar.Position = UDim2.new(0, 0, 0, 0)
-	TopBar.BackgroundColor3 = Color3.fromRGB(220, 25, 35)
+	TopBar.BackgroundColor3 = Color3.fromRGB(22, 25, 35)
 	TopBar.BorderSizePixel = 0
 	TopBar.Active = true
 	TopBar.Parent = MainFrame
@@ -2571,7 +2572,7 @@ local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, -75, 1, 0)
 title.Position = UDim2.new(0, 14, 0, 0)
 title.BackgroundTransparency = 1
-title.Text = "PHUMIPAD TOOLBOX v3.1"
+title.Text = "PHUMIPAD TOOLS Beta"
 title.TextColor3 = Color3.fromRGB(240, 245, 255)
 title.Font = Enum.Font.GothamBold
 title.TextSize = 10
@@ -2995,7 +2996,8 @@ local function addCollapsibleCategory(name, emoji, defaultOpen)
 	return content
 end
 
-local function addActionButton(parent, name, onClick)
+-- ================== MODERN REFINED MORE TOOLS BUTTON ==================
+local function addRefinedToolButton(parent, name, iconSymbol, accentColor, onClick)
 	local row = Instance.new("Frame")
 	row.Size = UDim2.new(1, 0, 0, 30)
 	row.BackgroundColor3 = Color3.fromRGB(20, 24, 34)
@@ -3007,26 +3009,91 @@ local function addActionButton(parent, name, onClick)
 	rCorner.CornerRadius = UDim.new(0, 6)
 	rCorner.Parent = row
 
+	local rStroke = Instance.new("UIStroke")
+	rStroke.Color = Color3.fromRGB(38, 46, 64)
+	rStroke.Thickness = 1
+	rStroke.Parent = row
+
+	-- Icon Badge
+	local badge = Instance.new("Frame")
+	badge.Size = UDim2.new(0, 22, 0, 22)
+	badge.Position = UDim2.new(0, 5, 0.5, -11)
+	badge.BackgroundColor3 = Color3.fromRGB(15, 18, 26)
+	badge.BorderSizePixel = 0
+	badge.Parent = row
+	Instance.new("UICorner", badge).CornerRadius = UDim.new(0, 5)
+
+	local badgeStroke = Instance.new("UIStroke")
+	badgeStroke.Color = accentColor
+	badgeStroke.Thickness = 1
+	badgeStroke.Transparency = 0.3
+	badgeStroke.Parent = badge
+
+	local badgeText = Instance.new("TextLabel")
+	badgeText.Size = UDim2.new(1, 0, 1, 0)
+	badgeText.BackgroundTransparency = 1
+	badgeText.Text = iconSymbol or "•"
+	badgeText.TextColor3 = accentColor
+	badgeText.Font = Enum.Font.GothamBold
+	badgeText.TextSize = 11
+	badgeText.Parent = badge
+
+	-- Label
+	local lbl = Instance.new("TextLabel")
+	lbl.Size = UDim2.new(1, -62, 1, 0)
+	lbl.Position = UDim2.new(0, 34, 0, 0)
+	lbl.BackgroundTransparency = 1
+	lbl.Text = name
+	lbl.TextColor3 = Color3.fromRGB(230, 238, 250)
+	lbl.Font = Enum.Font.GothamBold
+	lbl.TextSize = 11
+	lbl.TextXAlignment = Enum.TextXAlignment.Left
+	lbl.Parent = row
+
+	-- Right Indicator
+	local arrow = Instance.new("TextLabel")
+	arrow.Size = UDim2.new(0, 20, 1, 0)
+	arrow.Position = UDim2.new(1, -24, 0, 0)
+	arrow.BackgroundTransparency = 1
+	arrow.Text = "›"
+	arrow.TextColor3 = Color3.fromRGB(110, 125, 150)
+	arrow.Font = Enum.Font.GothamBold
+	arrow.TextSize = 16
+	arrow.Parent = row
+
+	-- Trigger Button Overlay
 	local btn = Instance.new("TextButton")
-	btn.Size = UDim2.new(1, -6, 1, -6)
-	btn.Position = UDim2.new(0, 3, 0, 3)
-	btn.BackgroundColor3 = Color3.fromRGB(28, 33, 48)
-	btn.BorderSizePixel = 0
-	btn.Text = name
-	btn.TextColor3 = Color3.fromRGB(225, 235, 255)
-	btn.Font = Enum.Font.GothamBold
-	btn.TextSize = 11
+	btn.Size = UDim2.new(1, 0, 1, 0)
+	btn.BackgroundTransparency = 1
+	btn.Text = ""
 	btn.Parent = row
 
-	local bCorner = Instance.new("UICorner")
-	bCorner.CornerRadius = UDim.new(0, 5)
-	bCorner.Parent = btn
+	btn.MouseEnter:Connect(function()
+		TweenService:Create(row, TweenInfo.new(0.18), {BackgroundColor3 = Color3.fromRGB(26, 32, 46)}):Play()
+		TweenService:Create(rStroke, TweenInfo.new(0.18), {Color = accentColor}):Play()
+		TweenService:Create(arrow, TweenInfo.new(0.18), {TextColor3 = accentColor, Position = UDim2.new(1, -22, 0, 0)}):Play()
+	end)
+
+	btn.MouseLeave:Connect(function()
+		TweenService:Create(row, TweenInfo.new(0.18), {BackgroundColor3 = Color3.fromRGB(20, 24, 34)}):Play()
+		TweenService:Create(rStroke, TweenInfo.new(0.18), {Color = Color3.fromRGB(38, 46, 64)}):Play()
+		TweenService:Create(arrow, TweenInfo.new(0.18), {TextColor3 = Color3.fromRGB(110, 125, 150), Position = UDim2.new(1, -24, 0, 0)}):Play()
+	end)
+
+	btn.MouseButton1Down:Connect(function()
+		TweenService:Create(row, TweenInfo.new(0.08), {BackgroundColor3 = Color3.fromRGB(18, 20, 28)}):Play()
+	end)
+
+	btn.MouseButton1Up:Connect(function()
+		TweenService:Create(row, TweenInfo.new(0.12), {BackgroundColor3 = Color3.fromRGB(26, 32, 46)}):Play()
+	end)
 
 	btn.MouseButton1Click:Connect(function()
 		local ok, err = pcall(onClick)
 		if not ok then warn("[Phumipad Tool Error]: " .. tostring(err)) end
 	end)
-	return btn
+
+	return row
 end
 
 local function addToggleRow(parent, name, defaultOn, onClick)
@@ -3157,7 +3224,6 @@ local function addInputToggleRow(parent, name, defaultVal, defaultOn, onToggle, 
 	}
 end
 
--- ฟังก์ชันสร้างชุดปุ่ม Preset ขนาดกะทัดรัด (Modern Quick Preset Chips)
 local function addPresetChips(parent, values, onSelect)
 	local row = Instance.new("Frame")
 	row.Size = UDim2.new(1, 0, 0, 22)
@@ -3222,7 +3288,7 @@ end
 
 -- ================== POPULATE CATEGORIES ==================
 
--- [1] MOVEMENT 🏃 (พร้อมปุ่ม Quick Preset 5 ระดับ)
+-- [1] MOVEMENT 🏃
 local movementContent = addCollapsibleCategory("Movement", "🏃", false)
 
 local walkControl = addInputToggleRow(movementContent, "Walk Speed", state.speedValue, state.speedEnabled, function(_, render)
@@ -3236,7 +3302,6 @@ end, function(val)
 	if state.speedEnabled and humanoid then humanoid.WalkSpeed = val end
 end)
 
--- ปุ่ม Preset ใต้ Walk Speed: 20, 40, 60, 80, 100
 addPresetChips(movementContent, {20, 40, 60, 80, 100}, function(val)
 	walkControl.setVal(val)
 end)
@@ -3249,7 +3314,6 @@ end, function(val)
 	state.tpWalkSpeed = val
 end)
 
--- ปุ่ม Preset ใต้ TP Walk: 1, 2, 3, 4, 5
 addPresetChips(movementContent, {1, 2, 3, 4, 5}, function(val)
 	tpControl.setVal(val)
 end)
@@ -3527,35 +3591,60 @@ makeGridSpotBtn(2, 0.5, 0.5)
 makeGridClearBtn(1, 0, 0.5)
 makeGridClearBtn(2, 0.5, 0.5)
 
--- [5] MORE TOOLS 🧰
+-- [5] MORE TOOLS 🧰 (MODERN SLATE DESIGN)
 local toolsContent = addCollapsibleCategory("More Tools", "🧰", false)
 
-addActionButton(toolsContent, "Auto Clicker", function()
+-- 1. Auto Clicker
+addRefinedToolButton(toolsContent, "Auto Clicker", "⚡", Color3.fromRGB(255, 150, 0), function()
 	launchAutoClickerScript()
 end)
 
-addActionButton(toolsContent, "Stalker", function()
+-- 2. Stalker
+addRefinedToolButton(toolsContent, "Stalker", "🎯", Color3.fromRGB(255, 65, 80), function()
 	launchStalkerScript()
 end)
 
-addActionButton(toolsContent, "Aiming (Aimbot)", function()
+-- 3. Aiming (Aimbot)
+addRefinedToolButton(toolsContent, "Aiming (Aimbot)", "👁", Color3.fromRGB(170, 85, 255), function()
 	pcall(function()
 		loadstring(game:HttpGet("https://raw.githubusercontent.com/DanielHubll/DanielHubll/refs/heads/main/Aimbot%20Mobile"))()
 	end)
 end)
 
-addActionButton(toolsContent, "Open Fly GUI (V3)", function()
+-- 4. Open Fly GUI (V3)
+addRefinedToolButton(toolsContent, "Fly GUI (V3)", "🚀", Color3.fromRGB(0, 195, 255), function()
 	launchFlyScript()
 end)
 
-addActionButton(toolsContent, "Anti AFK", function()
+-- 5. Anti AFK
+addRefinedToolButton(toolsContent, "Anti AFK", "🛡", Color3.fromRGB(0, 215, 125), function()
 	pcall(function()
 		loadstring(game:HttpGet("https://raw.githubusercontent.com/hassanxzayn-lua/Anti-afk/main/antiafkbyhassanxzyn"))()
 	end)
 end)
 
-addActionButton(toolsContent, "Player Teleport", function()
+-- 6. Player Teleport
+addRefinedToolButton(toolsContent, "Player Teleport", "📍", Color3.fromRGB(100, 140, 255), function()
 	launchPlayerTeleportScript()
+end)
+
+-- 7. Rejoin Place
+addRefinedToolButton(toolsContent, "Rejoin Place", "🔄", Color3.fromRGB(0, 210, 220), function()
+	pcall(function()
+		if #Players:GetPlayers() <= 1 then
+			TeleportService:Teleport(game.PlaceId, player)
+		else
+			TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, player)
+		end
+	end)
+end)
+
+-- 8. Server Hop
+addRefinedToolButton(toolsContent, "Server Hop", "🌐", Color3.fromRGB(60, 130, 255), function()
+	pcall(function()
+		local module = loadstring(game:HttpGet("https://raw.githubusercontent.com/LeoKholYt/roblox/main/lk_serverhop.lua"))()
+		module:Teleport(game.PlaceId)
+	end)
 end)
 
 task.spawn(function()
