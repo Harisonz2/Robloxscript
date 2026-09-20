@@ -40,6 +40,32 @@ local function safeParentGui(gui)
 	end
 end
 
+-- ฟังก์ชันช่วยระบบลากหน้าต่าง (Universal Draggable Helper)
+local function makeDraggable(dragHandle, targetFrame)
+	local dragging, dragStart, startPos = false, nil, nil
+	dragHandle.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			dragging = true
+			dragStart = input.Position
+			startPos = targetFrame.Position
+			input.Changed:Connect(function()
+				if input.UserInputState == Enum.UserInputState.End then
+					dragging = false
+				end
+			end)
+		end
+	end)
+	dragHandle.InputChanged:Connect(function(input)
+		if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+			local delta = input.Position - dragStart
+			targetFrame.Position = UDim2.new(
+				startPos.X.Scale, startPos.X.Offset + delta.X,
+				startPos.Y.Scale, startPos.Y.Offset + delta.Y
+			)
+		end
+	end)
+end
+
 -- ================== STATE ==================
 local state = {
 	ui = nil,
@@ -111,10 +137,13 @@ local function copyGameName()
 	local copied = false
 	if setclipboard then
 		setclipboard(gameName)
+		copied = true
 	elseif toclipboard then
 		toclipboard(gameName)
+		copied = true
 	elseif syn and syn.write_clipboard then
 		syn.write_clipboard(gameName)
+		copied = true
 	end
 
 	return copied, gameName
@@ -1534,28 +1563,7 @@ gripLine2.BorderSizePixel = 0
 gripLine2.ZIndex = 61
 gripLine2.Parent = resizeGrip
 
-do
-	local dragging, dragStart, startPos = false, nil, nil
-	bar.InputBegan:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-			dragging = true
-			dragStart = input.Position
-			startPos = f.Position
-			input.Changed:Connect(function()
-				if input.UserInputState == Enum.UserInputState.End then dragging = false end
-			end)
-		end
-	end)
-	bar.InputChanged:Connect(function(input)
-		if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-			local delta = input.Position - dragStart
-			f.Position = UDim2.new(
-				startPos.X.Scale, startPos.X.Offset + delta.X,
-				startPos.Y.Scale, startPos.Y.Offset + delta.Y
-			)
-		end
-	end)
-end
+makeDraggable(bar, f)
 
 do
 	local resizing = false
@@ -1600,11 +1608,11 @@ local tabItems = {}
 local activeTabId = nil
 
 local tabColors = {
-	move   = Color3.fromRGB(0, 230, 130),   -- Emerald Neon
-	util   = Color3.fromRGB(0, 195, 255),   -- Electric Cyan
-	visual = Color3.fromRGB(210, 70, 255),  -- Cyber Magenta
-	points = Color3.fromRGB(255, 175, 25),  -- Solar Amber
-	tools  = Color3.fromRGB(255, 60, 95)    -- Neon Crimson
+	move   = Color3.fromRGB(0, 230, 130),
+	util   = Color3.fromRGB(0, 195, 255),
+	visual = Color3.fromRGB(210, 70, 255),
+	points = Color3.fromRGB(255, 175, 25),
+	tools  = Color3.fromRGB(255, 60, 95)
 }
 
 local function adjustPanelHeight(animate)
@@ -2315,7 +2323,670 @@ makeGridSpotBtn(2, 0.5, 0.5)
 makeGridClearBtn(1, 0, 0.5)
 makeGridClearBtn(2, 0.5, 0.5)
 
--- [TAB 5] MORE TOOLS 🧰
+-- =========================================================================
+-- ============ EXACT ORIGINAL REPLICAS OF TOOL SUB-PANELS ================
+-- =========================================================================
+
+-- 1. ORIGINAL AUTO CLICKER (Exact Match to Picture 1)
+local function launchAutoClickerScript()
+	local existing = (targetContainer and targetContainer:FindFirstChild("Phumipad_AutoClicker_UI"))
+		or playerGui:FindFirstChild("Phumipad_AutoClicker_UI")
+	if existing then
+		existing.Enabled = not existing.Enabled
+		return
+	end
+
+	local acGui = Instance.new("ScreenGui")
+	acGui.Name = "Phumipad_AutoClicker_UI"
+	acGui.ResetOnSpawn = false
+	safeParentGui(acGui)
+
+	local acFrame = Instance.new("Frame")
+	acFrame.Name = "Main"
+	acFrame.Size = UDim2.new(0, 290, 0, 310)
+	acFrame.Position = UDim2.new(0.5, -145, 0.3, 0)
+	acFrame.BackgroundColor3 = Color3.fromRGB(18, 20, 26)
+	acFrame.BorderSizePixel = 0
+	acFrame.Parent = acGui
+	Instance.new("UICorner", acFrame).CornerRadius = UDim.new(0, 14)
+
+	-- Top Bar / Header
+	local topBar = Instance.new("Frame")
+	topBar.Size = UDim2.new(1, 0, 0, 42)
+	topBar.BackgroundTransparency = 1
+	topBar.Parent = acFrame
+
+	local title = Instance.new("TextLabel")
+	title.Size = UDim2.new(1, -90, 1, 0)
+	title.Position = UDim2.new(0, 16, 0, 0)
+	title.BackgroundTransparency = 1
+	title.Text = "Auto Clicker"
+	title.TextColor3 = Color3.fromRGB(255, 255, 255)
+	title.Font = Enum.Font.GothamBold
+	title.TextSize = 16
+	title.TextXAlignment = Enum.TextXAlignment.Left
+	title.Parent = topBar
+
+	local miniBtn = Instance.new("TextButton")
+	miniBtn.Size = UDim2.new(0, 30, 0, 26)
+	miniBtn.Position = UDim2.new(1, -74, 0.5, -13)
+	miniBtn.BackgroundColor3 = Color3.fromRGB(34, 40, 56)
+	miniBtn.BorderSizePixel = 0
+	miniBtn.Text = "-"
+	miniBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	miniBtn.Font = Enum.Font.GothamBold
+	miniBtn.TextSize = 15
+	miniBtn.Parent = topBar
+	Instance.new("UICorner", miniBtn).CornerRadius = UDim.new(0, 6)
+
+	local closeBtn = Instance.new("TextButton")
+	closeBtn.Size = UDim2.new(0, 30, 0, 26)
+	closeBtn.Position = UDim2.new(1, -38, 0.5, -13)
+	closeBtn.BackgroundColor3 = Color3.fromRGB(235, 75, 90)
+	closeBtn.BorderSizePixel = 0
+	closeBtn.Text = "X"
+	closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	closeBtn.Font = Enum.Font.GothamBold
+	closeBtn.TextSize = 12
+	closeBtn.Parent = topBar
+	Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 6)
+
+	makeDraggable(topBar, acFrame)
+
+	local contentBox = Instance.new("Frame")
+	contentBox.Size = UDim2.new(1, 0, 1, -42)
+	contentBox.Position = UDim2.new(0, 0, 0, 42)
+	contentBox.BackgroundTransparency = 1
+	contentBox.Parent = acFrame
+
+	-- Target Dot Frame
+	local targetDot = Instance.new("Frame")
+	targetDot.Name = "TargetDot"
+	targetDot.Size = UDim2.new(0, 30, 0, 30)
+	targetDot.Position = UDim2.new(0.5, -15, 0.5, -15)
+	targetDot.BackgroundColor3 = Color3.fromRGB(255, 45, 45)
+	targetDot.BackgroundTransparency = 0.35
+	targetDot.BorderSizePixel = 0
+	targetDot.Visible = false
+	targetDot.Active = true
+	targetDot.ZIndex = 1000
+	targetDot.Parent = acGui
+	Instance.new("UICorner", targetDot).CornerRadius = UDim.new(1, 0)
+
+	local dotStroke = Instance.new("UIStroke")
+	dotStroke.Color = Color3.fromRGB(255, 255, 255)
+	dotStroke.Thickness = 1.5
+	dotStroke.Parent = targetDot
+
+	local dotCenter = Instance.new("Frame")
+	dotCenter.Size = UDim2.new(0, 6, 0, 6)
+	dotCenter.Position = UDim2.new(0.5, -3, 0.5, -3)
+	dotCenter.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	dotCenter.BorderSizePixel = 0
+	dotCenter.Parent = targetDot
+	Instance.new("UICorner", dotCenter).CornerRadius = UDim.new(1, 0)
+
+	makeDraggable(targetDot, targetDot)
+
+	-- Clicks / Sec Row
+	local cpsLabel = Instance.new("TextLabel")
+	cpsLabel.Size = UDim2.new(0, 160, 0, 32)
+	cpsLabel.Position = UDim2.new(0, 16, 0, 4)
+	cpsLabel.BackgroundTransparency = 1
+	cpsLabel.Text = "Clicks / Sec (CPS):"
+	cpsLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	cpsLabel.Font = Enum.Font.GothamBold
+	cpsLabel.TextSize = 13.5
+	cpsLabel.TextXAlignment = Enum.TextXAlignment.Left
+	cpsLabel.Parent = contentBox
+
+	local cpsBox = Instance.new("TextBox")
+	cpsBox.Size = UDim2.new(0, 75, 0, 30)
+	cpsBox.Position = UDim2.new(1, -91, 0, 5)
+	cpsBox.BackgroundColor3 = Color3.fromRGB(26, 32, 46)
+	cpsBox.BorderSizePixel = 0
+	cpsBox.Text = "10"
+	cpsBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+	cpsBox.Font = Enum.Font.GothamBold
+	cpsBox.TextSize = 13
+	cpsBox.ClearTextOnFocus = false
+	cpsBox.Parent = contentBox
+	Instance.new("UICorner", cpsBox).CornerRadius = UDim.new(0, 6)
+
+	-- Example text
+	local exLabel = Instance.new("TextLabel")
+	exLabel.Size = UDim2.new(1, -32, 0, 16)
+	exLabel.Position = UDim2.new(0, 16, 0, 42)
+	exLabel.BackgroundTransparency = 1
+	exLabel.Text = "Ex: 1 = 1 CPS | 10 = 10 CPS | 50 = 50 CPS"
+	exLabel.TextColor3 = Color3.fromRGB(155, 170, 195)
+	exLabel.Font = Enum.Font.Gotham
+	exLabel.TextSize = 10.5
+	exLabel.Parent = contentBox
+
+	-- Set Tap Position (Center)
+	local setTapBtn = Instance.new("TextButton")
+	setTapBtn.Size = UDim2.new(1, -32, 0, 36)
+	setTapBtn.Position = UDim2.new(0, 16, 0, 66)
+	setTapBtn.BackgroundColor3 = Color3.fromRGB(28, 38, 56)
+	setTapBtn.BorderSizePixel = 0
+	setTapBtn.Text = "Set Tap Position (Center)"
+	setTapBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	setTapBtn.Font = Enum.Font.GothamBold
+	setTapBtn.TextSize = 12
+	setTapBtn.Parent = contentBox
+	Instance.new("UICorner", setTapBtn).CornerRadius = UDim.new(0, 8)
+
+	-- Turbo Mode Row
+	local turboFrame = Instance.new("Frame")
+	turboFrame.Size = UDim2.new(1, -32, 0, 38)
+	turboFrame.Position = UDim2.new(0, 16, 0, 110)
+	turboFrame.BackgroundColor3 = Color3.fromRGB(18, 20, 26)
+	turboFrame.BorderSizePixel = 0
+	turboFrame.Parent = contentBox
+	Instance.new("UICorner", turboFrame).CornerRadius = UDim.new(0, 8)
+
+	local tfStroke = Instance.new("UIStroke")
+	tfStroke.Color = Color3.fromRGB(235, 140, 35)
+	tfStroke.Thickness = 1.3
+	tfStroke.Parent = turboFrame
+
+	local turboLabel = Instance.new("TextLabel")
+	turboLabel.Size = UDim2.new(0, 140, 1, 0)
+	turboLabel.Position = UDim2.new(0, 12, 0, 0)
+	turboLabel.BackgroundTransparency = 1
+	turboLabel.Text = "🔥 Turbo Mode"
+	turboLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	turboLabel.Font = Enum.Font.GothamBold
+	turboLabel.TextSize = 12.5
+	turboLabel.TextXAlignment = Enum.TextXAlignment.Left
+	turboLabel.Parent = turboFrame
+
+	local turboBtn = Instance.new("TextButton")
+	turboBtn.Size = UDim2.new(0, 50, 1, 0)
+	turboBtn.Position = UDim2.new(1, -60, 0, 0)
+	turboBtn.BackgroundTransparency = 1
+	turboBtn.Text = "OFF"
+	turboBtn.TextColor3 = Color3.fromRGB(180, 195, 220)
+	turboBtn.Font = Enum.Font.GothamBold
+	turboBtn.TextSize = 12
+	turboBtn.Parent = turboFrame
+
+	-- Start Auto Click
+	local startBtn = Instance.new("TextButton")
+	startBtn.Size = UDim2.new(1, -32, 0, 38)
+	startBtn.Position = UDim2.new(0, 16, 0, 156)
+	startBtn.BackgroundColor3 = Color3.fromRGB(85, 215, 115)
+	startBtn.BorderSizePixel = 0
+	startBtn.Text = "START AUTO CLICK"
+	startBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	startBtn.Font = Enum.Font.GothamBold
+	startBtn.TextSize = 12
+	startBtn.Parent = contentBox
+	Instance.new("UICorner", startBtn).CornerRadius = UDim.new(0, 8)
+
+	-- Force Stop
+	local stopBtn = Instance.new("TextButton")
+	stopBtn.Size = UDim2.new(1, -32, 0, 38)
+	stopBtn.Position = UDim2.new(0, 16, 0, 202)
+	stopBtn.BackgroundColor3 = Color3.fromRGB(235, 60, 65)
+	stopBtn.BorderSizePixel = 0
+	stopBtn.Text = "FORCE STOP (EMERGENCY)"
+	stopBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	stopBtn.Font = Enum.Font.GothamBold
+	stopBtn.TextSize = 11.5
+	stopBtn.Parent = contentBox
+	Instance.new("UICorner", stopBtn).CornerRadius = UDim.new(0, 8)
+
+	-- Auto Clicker Runtime Logic
+	local isClicking = false
+	local isTurbo = false
+	local isCustomPos = false
+
+	local function stopClicking()
+		isClicking = false
+		startBtn.Text = "START AUTO CLICK"
+		startBtn.BackgroundColor3 = Color3.fromRGB(85, 215, 115)
+		pcall(function()
+			local m = UserInputService:GetMouseLocation()
+			VirtualInputManager:SendMouseButtonEvent(m.X, m.Y, 0, false, game, 0)
+		end)
+	end
+
+	setTapBtn.MouseButton1Click:Connect(function()
+		isCustomPos = not isCustomPos
+		targetDot.Visible = isCustomPos
+		if isCustomPos then
+			setTapBtn.BackgroundColor3 = Color3.fromRGB(45, 65, 95)
+		else
+			setTapBtn.BackgroundColor3 = Color3.fromRGB(28, 38, 56)
+		end
+	end)
+
+	turboBtn.MouseButton1Click:Connect(function()
+		isTurbo = not isTurbo
+		turboBtn.Text = isTurbo and "ON" or "OFF"
+		turboBtn.TextColor3 = isTurbo and Color3.fromRGB(255, 160, 35) or Color3.fromRGB(180, 195, 220)
+	end)
+
+	startBtn.MouseButton1Click:Connect(function()
+		isClicking = not isClicking
+		if isClicking then
+			startBtn.Text = "STOPPING AUTO CLICK"
+			startBtn.BackgroundColor3 = Color3.fromRGB(235, 160, 45)
+			task.spawn(function()
+				while isClicking and acGui and acGui.Parent do
+					local clickX, clickY = 0, 0
+					if isCustomPos and targetDot and targetDot.Visible then
+						clickX = targetDot.AbsolutePosition.X + (targetDot.AbsoluteSize.X / 2)
+						clickY = targetDot.AbsolutePosition.Y + (targetDot.AbsoluteSize.Y / 2)
+					else
+						local m = UserInputService:GetMouseLocation()
+						clickX = m.X
+						clickY = m.Y
+					end
+
+					pcall(function()
+						VirtualInputManager:SendMouseButtonEvent(clickX, clickY, 0, true, game, 0)
+						task.wait(0.005)
+						VirtualInputManager:SendMouseButtonEvent(clickX, clickY, 0, false, game, 0)
+					end)
+
+					if isTurbo then
+						RunService.RenderStepped:Wait()
+					else
+						local cps = tonumber(cpsBox.Text) or 10
+						task.wait(1 / math.clamp(cps, 1, 100))
+					end
+				end
+			end)
+		else
+			stopClicking()
+		end
+	end)
+
+	stopBtn.MouseButton1Click:Connect(function()
+		stopClicking()
+	end)
+
+	local minimized = false
+	miniBtn.MouseButton1Click:Connect(function()
+		minimized = not minimized
+		contentBox.Visible = not minimized
+		acFrame.Size = minimized and UDim2.new(0, 290, 0, 42) or UDim2.new(0, 290, 0, 310)
+	end)
+
+	closeBtn.MouseButton1Click:Connect(function()
+		stopClicking()
+		acGui:Destroy()
+	end)
+end
+
+-- 2. ORIGINAL STALKER TOOLBOX (Exact Match to Picture 2)
+local function launchStalkerScript()
+	local existing = (targetContainer and targetContainer:FindFirstChild("StalkerUI"))
+		or playerGui:FindFirstChild("StalkerUI")
+	if existing then
+		existing.Enabled = not existing.Enabled
+		return
+	end
+
+	local stGui = Instance.new("ScreenGui")
+	stGui.Name = "StalkerUI"
+	stGui.ResetOnSpawn = false
+	safeParentGui(stGui)
+
+	local sFrame = Instance.new("Frame")
+	sFrame.Name = "Main"
+	sFrame.Size = UDim2.new(0, 280, 0, 330)
+	sFrame.Position = UDim2.new(0.5, -140, 0.3, 0)
+	sFrame.BackgroundColor3 = Color3.fromRGB(18, 20, 26)
+	sFrame.BorderSizePixel = 0
+	sFrame.Parent = stGui
+	Instance.new("UICorner", sFrame).CornerRadius = UDim.new(0, 14)
+
+	local topBar = Instance.new("Frame")
+	topBar.Size = UDim2.new(1, 0, 0, 44)
+	topBar.BackgroundTransparency = 1
+	topBar.Parent = sFrame
+
+	local title = Instance.new("TextLabel")
+	title.Size = UDim2.new(1, -60, 1, 0)
+	title.Position = UDim2.new(0, 16, 0, 0)
+	title.BackgroundTransparency = 1
+	title.Text = "Stalker Toolbox"
+	title.TextColor3 = Color3.fromRGB(255, 255, 255)
+	title.Font = Enum.Font.GothamBold
+	title.TextSize = 16
+	title.TextXAlignment = Enum.TextXAlignment.Left
+	title.Parent = topBar
+
+	local closeBtn = Instance.new("TextButton")
+	closeBtn.Size = UDim2.new(0, 30, 0, 26)
+	closeBtn.Position = UDim2.new(1, -38, 0.5, -13)
+	closeBtn.BackgroundColor3 = Color3.fromRGB(235, 75, 90)
+	closeBtn.BorderSizePixel = 0
+	closeBtn.Text = "X"
+	closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	closeBtn.Font = Enum.Font.GothamBold
+	closeBtn.TextSize = 12
+	closeBtn.Parent = topBar
+	Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 6)
+
+	makeDraggable(topBar, sFrame)
+
+	-- Target status banner
+	local targetBanner = Instance.new("Frame")
+	targetBanner.Size = UDim2.new(1, -32, 0, 34)
+	targetBanner.Position = UDim2.new(0, 16, 0, 46)
+	targetBanner.BackgroundColor3 = Color3.fromRGB(24, 28, 40)
+	targetBanner.BorderSizePixel = 0
+	targetBanner.Parent = sFrame
+	Instance.new("UICorner", targetBanner).CornerRadius = UDim.new(0, 8)
+
+	local targetText = Instance.new("TextLabel")
+	targetText.Size = UDim2.new(1, 0, 1, 0)
+	targetText.BackgroundTransparency = 1
+	targetText.Text = "Target: None"
+	targetText.TextColor3 = Color3.fromRGB(0, 220, 255)
+	targetText.Font = Enum.Font.GothamBold
+	targetText.TextSize = 13.5
+	targetText.Parent = targetBanner
+
+	-- Player List (Scroll)
+	local scroll = Instance.new("ScrollingFrame")
+	scroll.Size = UDim2.new(1, -32, 0, 120)
+	scroll.Position = UDim2.new(0, 16, 0, 88)
+	scroll.BackgroundTransparency = 1
+	scroll.BorderSizePixel = 0
+	scroll.ScrollBarThickness = 3
+	scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+	scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	scroll.Parent = sFrame
+
+	local sLayout = Instance.new("UIListLayout")
+	sLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	sLayout.Padding = UDim.new(0, 6)
+	sLayout.Parent = scroll
+
+	local selectedUser = nil
+	local selectedBtn = nil
+
+	local function populateList()
+		for _, child in ipairs(scroll:GetChildren()) do
+			if child:IsA("TextButton") then child:Destroy() end
+		end
+
+		for _, p in ipairs(Players:GetPlayers()) do
+			if p ~= player then
+				local pBtn = Instance.new("TextButton")
+				pBtn.Size = UDim2.new(1, 0, 0, 34)
+				pBtn.BackgroundColor3 = Color3.fromRGB(26, 32, 46)
+				pBtn.BorderSizePixel = 0
+				pBtn.Text = string.format("%s (@%s)", p.DisplayName or p.Name, p.Name)
+				pBtn.TextColor3 = Color3.fromRGB(240, 245, 255)
+				pBtn.Font = Enum.Font.GothamMedium
+				pBtn.TextSize = 12
+				pBtn.Parent = scroll
+				Instance.new("UICorner", pBtn).CornerRadius = UDim.new(0, 7)
+
+				pBtn.MouseButton1Click:Connect(function()
+					selectedUser = p.Name
+					targetText.Text = "Target: " .. p.DisplayName
+					if selectedBtn and selectedBtn.Parent then
+						selectedBtn.BackgroundColor3 = Color3.fromRGB(26, 32, 46)
+					end
+					selectedBtn = pBtn
+					pBtn.BackgroundColor3 = Color3.fromRGB(38, 50, 72)
+				end)
+			end
+		end
+	end
+
+	populateList()
+
+	-- Refresh Players Button
+	local refreshBtn = Instance.new("TextButton")
+	refreshBtn.Size = UDim2.new(1, -32, 0, 36)
+	refreshBtn.Position = UDim2.new(0, 16, 0, 222)
+	refreshBtn.BackgroundColor3 = Color3.fromRGB(30, 125, 245)
+	refreshBtn.BorderSizePixel = 0
+	refreshBtn.Text = "Refresh Players"
+	refreshBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	refreshBtn.Font = Enum.Font.GothamBold
+	refreshBtn.TextSize = 12
+	refreshBtn.Parent = sFrame
+	Instance.new("UICorner", refreshBtn).CornerRadius = UDim.new(0, 8)
+
+	refreshBtn.MouseButton1Click:Connect(function()
+		populateList()
+	end)
+
+	-- START and STOP Buttons
+	local startBtn = Instance.new("TextButton")
+	startBtn.Size = UDim2.new(0.5, -20, 0, 40)
+	startBtn.Position = UDim2.new(0, 16, 0, 268)
+	startBtn.BackgroundColor3 = Color3.fromRGB(85, 215, 115)
+	startBtn.BorderSizePixel = 0
+	startBtn.Text = "START"
+	startBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	startBtn.Font = Enum.Font.GothamBold
+	startBtn.TextSize = 12.5
+	startBtn.Parent = sFrame
+	Instance.new("UICorner", startBtn).CornerRadius = UDim.new(0, 8)
+
+	local stopBtn = Instance.new("TextButton")
+	stopBtn.Size = UDim2.new(0.5, -20, 0, 40)
+	stopBtn.Position = UDim2.new(0.5, 4, 0, 268)
+	stopBtn.BackgroundColor3 = Color3.fromRGB(235, 60, 65)
+	stopBtn.BorderSizePixel = 0
+	stopBtn.Text = "STOP"
+	stopBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	stopBtn.Font = Enum.Font.GothamBold
+	stopBtn.TextSize = 12.5
+	stopBtn.Parent = sFrame
+	Instance.new("UICorner", stopBtn).CornerRadius = UDim.new(0, 8)
+
+	startBtn.MouseButton1Click:Connect(function()
+		if not selectedUser then return end
+		if _G.StalkConnection then
+			pcall(function() _G.StalkConnection:Disconnect() end)
+			_G.StalkConnection = nil
+		end
+		_G.active = true
+		_G.user = selectedUser
+		_G.StalkConnection = RunService.RenderStepped:Connect(function()
+			if not _G.active then return end
+			local tPlr = Players:FindFirstChild(_G.user)
+			local tChar = tPlr and tPlr.Character
+			local tRoot = tChar and tChar:FindFirstChild("HumanoidRootPart")
+			local myChar = player.Character
+			local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
+			if tRoot and myRoot then
+				myRoot.CFrame = tRoot.CFrame * CFrame.new(0, 0, 3)
+			end
+		end)
+	end)
+
+	stopBtn.MouseButton1Click:Connect(function()
+		_G.active = false
+		_G.user = ""
+		if _G.StalkConnection then
+			pcall(function() _G.StalkConnection:Disconnect() end)
+			_G.StalkConnection = nil
+		end
+	end)
+
+	closeBtn.MouseButton1Click:Connect(function()
+		_G.active = false
+		if _G.StalkConnection then
+			pcall(function() _G.StalkConnection:Disconnect() end)
+			_G.StalkConnection = nil
+		end
+		stGui:Destroy()
+	end)
+end
+
+-- 3. ORIGINAL PLAYER TELEPORT (Exact Match to Picture 3)
+local function launchPlayerTeleportScript()
+	local existing = (targetContainer and targetContainer:FindFirstChild("TeleportUI"))
+		or playerGui:FindFirstChild("TeleportUI")
+	if existing then
+		existing.Enabled = not existing.Enabled
+		return
+	end
+
+	local tpGui = Instance.new("ScreenGui")
+	tpGui.Name = "TeleportUI"
+	tpGui.ResetOnSpawn = false
+	safeParentGui(tpGui)
+
+	local tpFrame = Instance.new("Frame")
+	tpFrame.Name = "Main"
+	tpFrame.Size = UDim2.new(0, 280, 0, 330)
+	tpFrame.Position = UDim2.new(0.5, -140, 0.3, 0)
+	tpFrame.BackgroundColor3 = Color3.fromRGB(18, 20, 26)
+	tpFrame.BorderSizePixel = 0
+	tpFrame.Parent = tpGui
+	Instance.new("UICorner", tpFrame).CornerRadius = UDim.new(0, 14)
+
+	local topBar = Instance.new("Frame")
+	topBar.Size = UDim2.new(1, 0, 0, 44)
+	topBar.BackgroundTransparency = 1
+	topBar.Parent = tpFrame
+
+	local title = Instance.new("TextLabel")
+	title.Size = UDim2.new(1, -90, 1, 0)
+	title.Position = UDim2.new(0, 16, 0, 0)
+	title.BackgroundTransparency = 1
+	title.Text = "Player Teleport"
+	title.TextColor3 = Color3.fromRGB(255, 255, 255)
+	title.Font = Enum.Font.GothamBold
+	title.TextSize = 16
+	title.TextXAlignment = Enum.TextXAlignment.Left
+	title.Parent = topBar
+
+	local miniBtn = Instance.new("TextButton")
+	miniBtn.Size = UDim2.new(0, 30, 0, 26)
+	miniBtn.Position = UDim2.new(1, -74, 0.5, -13)
+	miniBtn.BackgroundColor3 = Color3.fromRGB(34, 40, 56)
+	miniBtn.BorderSizePixel = 0
+	miniBtn.Text = "-"
+	miniBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	miniBtn.Font = Enum.Font.GothamBold
+	miniBtn.TextSize = 15
+	miniBtn.Parent = topBar
+	Instance.new("UICorner", miniBtn).CornerRadius = UDim.new(0, 6)
+
+	local closeBtn = Instance.new("TextButton")
+	closeBtn.Size = UDim2.new(0, 30, 0, 26)
+	closeBtn.Position = UDim2.new(1, -38, 0.5, -13)
+	closeBtn.BackgroundColor3 = Color3.fromRGB(235, 75, 90)
+	closeBtn.BorderSizePixel = 0
+	closeBtn.Text = "X"
+	closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	closeBtn.Font = Enum.Font.GothamBold
+	closeBtn.TextSize = 12
+	closeBtn.Parent = topBar
+	Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 6)
+
+	makeDraggable(topBar, tpFrame)
+
+	local contentBox = Instance.new("Frame")
+	contentBox.Size = UDim2.new(1, 0, 1, -44)
+	contentBox.Position = UDim2.new(0, 0, 0, 44)
+	contentBox.BackgroundTransparency = 1
+	contentBox.Parent = tpFrame
+
+	local scroll = Instance.new("ScrollingFrame")
+	scroll.Size = UDim2.new(1, -32, 1, -66)
+	scroll.Position = UDim2.new(0, 16, 0, 6)
+	scroll.BackgroundTransparency = 1
+	scroll.BorderSizePixel = 0
+	scroll.ScrollBarThickness = 3
+	scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+	scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	scroll.Parent = contentBox
+
+	local tpListLayout = Instance.new("UIListLayout")
+	tpListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	tpListLayout.Padding = UDim.new(0, 8)
+	tpListLayout.Parent = scroll
+
+	local targetPlr = nil
+	local currentSelectedBtn = nil
+
+	local function refreshTeleportList()
+		for _, v in ipairs(scroll:GetChildren()) do
+			if v:IsA("TextButton") then v:Destroy() end
+		end
+
+		for _, p in ipairs(Players:GetPlayers()) do
+			if p ~= player then
+				local btn = Instance.new("TextButton")
+				btn.Size = UDim2.new(1, 0, 0, 36)
+				btn.BackgroundColor3 = Color3.fromRGB(26, 32, 46)
+				btn.BorderSizePixel = 0
+				btn.Text = string.format("%s (@%s)", p.DisplayName or p.Name, p.Name)
+				btn.TextColor3 = Color3.fromRGB(240, 245, 255)
+				btn.Font = Enum.Font.GothamMedium
+				btn.TextSize = 12.5
+				btn.Parent = scroll
+				Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
+
+				btn.MouseButton1Click:Connect(function()
+					targetPlr = p
+					if currentSelectedBtn and currentSelectedBtn.Parent then
+						currentSelectedBtn.BackgroundColor3 = Color3.fromRGB(26, 32, 46)
+					end
+					currentSelectedBtn = btn
+					btn.BackgroundColor3 = Color3.fromRGB(40, 56, 84)
+				end)
+			end
+		end
+	end
+
+	refreshTeleportList()
+	Players.PlayerAdded:Connect(refreshTeleportList)
+	Players.PlayerRemoving:Connect(refreshTeleportList)
+
+	-- Teleport Action Button
+	local tpActionBtn = Instance.new("TextButton")
+	tpActionBtn.Size = UDim2.new(1, -32, 0, 42)
+	tpActionBtn.Position = UDim2.new(0, 16, 1, -52)
+	tpActionBtn.BackgroundColor3 = Color3.fromRGB(85, 215, 115)
+	tpActionBtn.BorderSizePixel = 0
+	tpActionBtn.Text = "Teleport"
+	tpActionBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	tpActionBtn.Font = Enum.Font.GothamBold
+	tpActionBtn.TextSize = 14
+	tpActionBtn.Parent = contentBox
+	Instance.new("UICorner", tpActionBtn).CornerRadius = UDim.new(0, 8)
+
+	tpActionBtn.MouseButton1Click:Connect(function()
+		if targetPlr and targetPlr.Character then
+			local tRoot = targetPlr.Character:FindFirstChild("HumanoidRootPart")
+			local myChar = player.Character
+			local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
+			if tRoot and myRoot then
+				myRoot.CFrame = tRoot.CFrame * CFrame.new(0, 0, 3)
+			end
+		end
+	end)
+
+	local minimized = false
+	miniBtn.MouseButton1Click:Connect(function()
+		minimized = not minimized
+		contentBox.Visible = not minimized
+		tpFrame.Size = minimized and UDim2.new(0, 280, 0, 44) or UDim2.new(0, 280, 0, 330)
+	end)
+
+	closeBtn.MouseButton1Click:Connect(function()
+		tpGui:Destroy()
+	end)
+end
+
+-- ================== [TAB 5] MORE TOOLS 🧰 ==================
 local toolsPage = registerTab("tools", "Tools", "🧰", false)
 
 -- 1. Auto Clicker
@@ -2337,7 +3008,9 @@ end)
 
 -- 4. Fly GUI (V3)
 addRefinedToolButton(toolsPage, "Fly GUI (V3)", "🚀", Color3.fromRGB(0, 195, 255), function()
-	launchFlyScript()
+	pcall(function()
+		loadstring(game:HttpGet("https://raw.githubusercontent.com/XNEOFF/FlyGuiV3/main/FlyGuiV3.txt"))()
+	end)
 end)
 
 -- 5. Anti AFK
@@ -2430,7 +3103,6 @@ local function fullCleanup()
 		"Phumipad_BatterySaver_Overlay",
 		"StalkerUI",
 		"Phumipad_AutoClicker_UI",
-		"FlyGuiV3_Main",
 		"TeleportUI",
 		"PhumipadToolboxMinimalGui",
 		"Phumipad_ESP_Storage",
