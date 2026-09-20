@@ -18,6 +18,10 @@ local TeleportService = game:GetService("TeleportService")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
+pcall(function()
+	UserInputService.MouseIconEnabled = true
+end)
+
 -- ตรวจสอบ Container ที่ปลอดภัยที่สุดเพื่อป้องกัน Permission Error
 local targetContainer = playerGui
 pcall(function()
@@ -390,7 +394,7 @@ local function applyScreenTime(on)
 
 	local slideText = Instance.new("TextLabel")
 	slideText.Size = UDim2.new(1, -80, 1, 0)
-	slideText.Position = UDim2.new(0, 80, 0, 0)
+	slideText.Position = UDim2.new(0, 8, 0, 0)
 	slideText.BackgroundTransparency = 1
 	slideText.Text = "slide to unlock"
 	slideText.TextColor3 = Color3.fromRGB(185, 190, 205)
@@ -2324,305 +2328,445 @@ makeGridClearBtn(1, 0, 0.5)
 makeGridClearBtn(2, 0.5, 0.5)
 
 -- =========================================================================
--- ============ EXACT ORIGINAL REPLICAS OF TOOL SUB-PANELS ================
+-- ============ TOOL SUB-PANELS (MORE TOOLS) ===============================
 -- =========================================================================
 
--- 1. ORIGINAL AUTO CLICKER (Exact Match to Picture 1)
+-- 1. AUTO CLICKER (อัปเดตเป็นสคริปต์ใหม่ที่กำหนด)
 local function launchAutoClickerScript()
-	local existing = (targetContainer and targetContainer:FindFirstChild("Phumipad_AutoClicker_UI"))
-		or playerGui:FindFirstChild("Phumipad_AutoClicker_UI")
+	local existing = (targetContainer and targetContainer:FindFirstChild("Phumipad_AutoClicker_UI")) 
+		or playerGui:FindFirstChild("Phumipad_AutoClicker_UI") 
+		or (CoreGui and CoreGui:FindFirstChild("Phumipad_AutoClicker_UI"))
 	if existing then
-		existing.Enabled = not existing.Enabled
+		existing:Destroy()
 		return
 	end
 
-	local acGui = Instance.new("ScreenGui")
-	acGui.Name = "Phumipad_AutoClicker_UI"
-	acGui.ResetOnSpawn = false
-	safeParentGui(acGui)
+	local ScreenGui = Instance.new("ScreenGui")
+	ScreenGui.Name = "Phumipad_AutoClicker_UI"
+	ScreenGui.ResetOnSpawn = false
+	ScreenGui.IgnoreGuiInset = true 
+	safeParentGui(ScreenGui)
 
-	local acFrame = Instance.new("Frame")
-	acFrame.Name = "Main"
-	acFrame.Size = UDim2.new(0, 290, 0, 310)
-	acFrame.Position = UDim2.new(0.5, -145, 0.3, 0)
-	acFrame.BackgroundColor3 = Color3.fromRGB(18, 20, 26)
-	acFrame.BorderSizePixel = 0
-	acFrame.Parent = acGui
-	Instance.new("UICorner", acFrame).CornerRadius = UDim.new(0, 14)
+	local MainFrame = Instance.new("Frame")
+	MainFrame.Size = UDim2.new(0, 230, 0, 244)
+	MainFrame.Position = UDim2.new(0.5, -115, 0.38, 0)
+	MainFrame.BackgroundColor3 = Color3.fromRGB(15, 17, 23)
+	MainFrame.BorderSizePixel = 0
+	MainFrame.ClipsDescendants = true
+	MainFrame.Active = true
+	MainFrame.Parent = ScreenGui
 
-	-- Top Bar / Header
-	local topBar = Instance.new("Frame")
-	topBar.Size = UDim2.new(1, 0, 0, 42)
-	topBar.BackgroundTransparency = 1
-	topBar.Parent = acFrame
+	local mfCorner = Instance.new("UICorner")
+	mfCorner.CornerRadius = UDim.new(0, 10)
+	mfCorner.Parent = MainFrame
 
-	local title = Instance.new("TextLabel")
-	title.Size = UDim2.new(1, -90, 1, 0)
-	title.Position = UDim2.new(0, 16, 0, 0)
-	title.BackgroundTransparency = 1
-	title.Text = "Auto Clicker"
-	title.TextColor3 = Color3.fromRGB(255, 255, 255)
-	title.Font = Enum.Font.GothamBold
-	title.TextSize = 16
-	title.TextXAlignment = Enum.TextXAlignment.Left
-	title.Parent = topBar
+	local mfStroke = Instance.new("UIStroke")
+	mfStroke.Color = Color3.fromRGB(45, 52, 70)
+	mfStroke.Thickness = 1.2
+	mfStroke.Parent = MainFrame
 
-	local miniBtn = Instance.new("TextButton")
-	miniBtn.Size = UDim2.new(0, 30, 0, 26)
-	miniBtn.Position = UDim2.new(1, -74, 0.5, -13)
-	miniBtn.BackgroundColor3 = Color3.fromRGB(34, 40, 56)
-	miniBtn.BorderSizePixel = 0
-	miniBtn.Text = "-"
-	miniBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-	miniBtn.Font = Enum.Font.GothamBold
-	miniBtn.TextSize = 15
-	miniBtn.Parent = topBar
-	Instance.new("UICorner", miniBtn).CornerRadius = UDim.new(0, 6)
+	local miniCircle = Instance.new("TextButton")
+	miniCircle.Name = "AutoClicker_MiniCircle"
+	miniCircle.Size = UDim2.new(0, 44, 0, 44)
+	miniCircle.Position = UDim2.new(0.85, 0, 0.45, 0)
+	miniCircle.BackgroundColor3 = Color3.fromRGB(22, 25, 35)
+	miniCircle.BorderSizePixel = 0
+	miniCircle.Text = "⚡"
+	miniCircle.TextColor3 = Color3.fromRGB(255, 140, 40)
+	miniCircle.Font = Enum.Font.GothamBold
+	miniCircle.TextSize = 20
+	miniCircle.Visible = false
+	miniCircle.Active = true
+	miniCircle.ZIndex = 200
+	miniCircle.Parent = ScreenGui
+	Instance.new("UICorner", miniCircle).CornerRadius = UDim.new(1, 0)
 
-	local closeBtn = Instance.new("TextButton")
-	closeBtn.Size = UDim2.new(0, 30, 0, 26)
-	closeBtn.Position = UDim2.new(1, -38, 0.5, -13)
-	closeBtn.BackgroundColor3 = Color3.fromRGB(235, 75, 90)
-	closeBtn.BorderSizePixel = 0
-	closeBtn.Text = "X"
-	closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-	closeBtn.Font = Enum.Font.GothamBold
-	closeBtn.TextSize = 12
-	closeBtn.Parent = topBar
-	Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 6)
+	local mcStroke = Instance.new("UIStroke")
+	mcStroke.Color = Color3.fromRGB(255, 120, 30)
+	mcStroke.Thickness = 1.8
+	mcStroke.Parent = miniCircle
 
-	makeDraggable(topBar, acFrame)
-
-	local contentBox = Instance.new("Frame")
-	contentBox.Size = UDim2.new(1, 0, 1, -42)
-	contentBox.Position = UDim2.new(0, 0, 0, 42)
-	contentBox.BackgroundTransparency = 1
-	contentBox.Parent = acFrame
-
-	-- Target Dot Frame
-	local targetDot = Instance.new("Frame")
-	targetDot.Name = "TargetDot"
-	targetDot.Size = UDim2.new(0, 30, 0, 30)
-	targetDot.Position = UDim2.new(0.5, -15, 0.5, -15)
-	targetDot.BackgroundColor3 = Color3.fromRGB(255, 45, 45)
-	targetDot.BackgroundTransparency = 0.35
-	targetDot.BorderSizePixel = 0
-	targetDot.Visible = false
-	targetDot.Active = true
-	targetDot.ZIndex = 1000
-	targetDot.Parent = acGui
-	Instance.new("UICorner", targetDot).CornerRadius = UDim.new(1, 0)
-
-	local dotStroke = Instance.new("UIStroke")
-	dotStroke.Color = Color3.fromRGB(255, 255, 255)
-	dotStroke.Thickness = 1.5
-	dotStroke.Parent = targetDot
-
-	local dotCenter = Instance.new("Frame")
-	dotCenter.Size = UDim2.new(0, 6, 0, 6)
-	dotCenter.Position = UDim2.new(0.5, -3, 0.5, -3)
-	dotCenter.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-	dotCenter.BorderSizePixel = 0
-	dotCenter.Parent = targetDot
-	Instance.new("UICorner", dotCenter).CornerRadius = UDim.new(1, 0)
-
-	makeDraggable(targetDot, targetDot)
-
-	-- Clicks / Sec Row
-	local cpsLabel = Instance.new("TextLabel")
-	cpsLabel.Size = UDim2.new(0, 160, 0, 32)
-	cpsLabel.Position = UDim2.new(0, 16, 0, 4)
-	cpsLabel.BackgroundTransparency = 1
-	cpsLabel.Text = "Clicks / Sec (CPS):"
-	cpsLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-	cpsLabel.Font = Enum.Font.GothamBold
-	cpsLabel.TextSize = 13.5
-	cpsLabel.TextXAlignment = Enum.TextXAlignment.Left
-	cpsLabel.Parent = contentBox
-
-	local cpsBox = Instance.new("TextBox")
-	cpsBox.Size = UDim2.new(0, 75, 0, 30)
-	cpsBox.Position = UDim2.new(1, -91, 0, 5)
-	cpsBox.BackgroundColor3 = Color3.fromRGB(26, 32, 46)
-	cpsBox.BorderSizePixel = 0
-	cpsBox.Text = "10"
-	cpsBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-	cpsBox.Font = Enum.Font.GothamBold
-	cpsBox.TextSize = 13
-	cpsBox.ClearTextOnFocus = false
-	cpsBox.Parent = contentBox
-	Instance.new("UICorner", cpsBox).CornerRadius = UDim.new(0, 6)
-
-	-- Example text
-	local exLabel = Instance.new("TextLabel")
-	exLabel.Size = UDim2.new(1, -32, 0, 16)
-	exLabel.Position = UDim2.new(0, 16, 0, 42)
-	exLabel.BackgroundTransparency = 1
-	exLabel.Text = "Ex: 1 = 1 CPS | 10 = 10 CPS | 50 = 50 CPS"
-	exLabel.TextColor3 = Color3.fromRGB(155, 170, 195)
-	exLabel.Font = Enum.Font.Gotham
-	exLabel.TextSize = 10.5
-	exLabel.Parent = contentBox
-
-	-- Set Tap Position (Center)
-	local setTapBtn = Instance.new("TextButton")
-	setTapBtn.Size = UDim2.new(1, -32, 0, 36)
-	setTapBtn.Position = UDim2.new(0, 16, 0, 66)
-	setTapBtn.BackgroundColor3 = Color3.fromRGB(28, 38, 56)
-	setTapBtn.BorderSizePixel = 0
-	setTapBtn.Text = "Set Tap Position (Center)"
-	setTapBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-	setTapBtn.Font = Enum.Font.GothamBold
-	setTapBtn.TextSize = 12
-	setTapBtn.Parent = contentBox
-	Instance.new("UICorner", setTapBtn).CornerRadius = UDim.new(0, 8)
-
-	-- Turbo Mode Row
-	local turboFrame = Instance.new("Frame")
-	turboFrame.Size = UDim2.new(1, -32, 0, 38)
-	turboFrame.Position = UDim2.new(0, 16, 0, 110)
-	turboFrame.BackgroundColor3 = Color3.fromRGB(18, 20, 26)
-	turboFrame.BorderSizePixel = 0
-	turboFrame.Parent = contentBox
-	Instance.new("UICorner", turboFrame).CornerRadius = UDim.new(0, 8)
-
-	local tfStroke = Instance.new("UIStroke")
-	tfStroke.Color = Color3.fromRGB(235, 140, 35)
-	tfStroke.Thickness = 1.3
-	tfStroke.Parent = turboFrame
-
-	local turboLabel = Instance.new("TextLabel")
-	turboLabel.Size = UDim2.new(0, 140, 1, 0)
-	turboLabel.Position = UDim2.new(0, 12, 0, 0)
-	turboLabel.BackgroundTransparency = 1
-	turboLabel.Text = "🔥 Turbo Mode"
-	turboLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-	turboLabel.Font = Enum.Font.GothamBold
-	turboLabel.TextSize = 12.5
-	turboLabel.TextXAlignment = Enum.TextXAlignment.Left
-	turboLabel.Parent = turboFrame
-
-	local turboBtn = Instance.new("TextButton")
-	turboBtn.Size = UDim2.new(0, 50, 1, 0)
-	turboBtn.Position = UDim2.new(1, -60, 0, 0)
-	turboBtn.BackgroundTransparency = 1
-	turboBtn.Text = "OFF"
-	turboBtn.TextColor3 = Color3.fromRGB(180, 195, 220)
-	turboBtn.Font = Enum.Font.GothamBold
-	turboBtn.TextSize = 12
-	turboBtn.Parent = turboFrame
-
-	-- Start Auto Click
-	local startBtn = Instance.new("TextButton")
-	startBtn.Size = UDim2.new(1, -32, 0, 38)
-	startBtn.Position = UDim2.new(0, 16, 0, 156)
-	startBtn.BackgroundColor3 = Color3.fromRGB(85, 215, 115)
-	startBtn.BorderSizePixel = 0
-	startBtn.Text = "START AUTO CLICK"
-	startBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-	startBtn.Font = Enum.Font.GothamBold
-	startBtn.TextSize = 12
-	startBtn.Parent = contentBox
-	Instance.new("UICorner", startBtn).CornerRadius = UDim.new(0, 8)
-
-	-- Force Stop
-	local stopBtn = Instance.new("TextButton")
-	stopBtn.Size = UDim2.new(1, -32, 0, 38)
-	stopBtn.Position = UDim2.new(0, 16, 0, 202)
-	stopBtn.BackgroundColor3 = Color3.fromRGB(235, 60, 65)
-	stopBtn.BorderSizePixel = 0
-	stopBtn.Text = "FORCE STOP (EMERGENCY)"
-	stopBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-	stopBtn.Font = Enum.Font.GothamBold
-	stopBtn.TextSize = 11.5
-	stopBtn.Parent = contentBox
-	Instance.new("UICorner", stopBtn).CornerRadius = UDim.new(0, 8)
-
-	-- Auto Clicker Runtime Logic
-	local isClicking = false
-	local isTurbo = false
-	local isCustomPos = false
-
-	local function stopClicking()
-		isClicking = false
-		startBtn.Text = "START AUTO CLICK"
-		startBtn.BackgroundColor3 = Color3.fromRGB(85, 215, 115)
-		pcall(function()
-			local m = UserInputService:GetMouseLocation()
-			VirtualInputManager:SendMouseButtonEvent(m.X, m.Y, 0, false, game, 0)
+	do
+		local dragging, dragStart, startPos = false, nil, nil
+		local hasMoved = false
+		miniCircle.InputBegan:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+				dragging = true
+				hasMoved = false
+				dragStart = input.Position
+				startPos = miniCircle.Position
+			end
+		end)
+		miniCircle.InputChanged:Connect(function(input)
+			if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+				local delta = input.Position - dragStart
+				if delta.Magnitude > 6 then hasMoved = true end
+				if hasMoved then
+					miniCircle.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+				end
+			end
+		end)
+		miniCircle.InputEnded:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+				if not hasMoved then
+					miniCircle.Visible = false
+					MainFrame.Visible = true
+				end
+				dragging = false
+				hasMoved = false
+			end
 		end)
 	end
 
-	setTapBtn.MouseButton1Click:Connect(function()
-		isCustomPos = not isCustomPos
-		targetDot.Visible = isCustomPos
-		if isCustomPos then
-			setTapBtn.BackgroundColor3 = Color3.fromRGB(45, 65, 95)
+	local TopBar = Instance.new("Frame")
+	TopBar.Size = UDim2.new(1, 0, 0, 34)
+	TopBar.Position = UDim2.new(0, 0, 0, 0)
+	TopBar.BackgroundColor3 = Color3.fromRGB(22, 25, 35)
+	TopBar.BorderSizePixel = 0
+	TopBar.Active = true
+	TopBar.Parent = MainFrame
+
+	local tbCorner = Instance.new("UICorner")
+	tbCorner.CornerRadius = UDim.new(0, 10)
+	tbCorner.Parent = TopBar
+
+	local Title = Instance.new("TextLabel")
+	Title.Size = UDim2.new(1, -70, 1, 0)
+	Title.Position = UDim2.new(0, 12, 0, 0)
+	Title.BackgroundTransparency = 1
+	Title.Text = "Auto Clicker"
+	Title.TextColor3 = Color3.fromRGB(240, 245, 255)
+	Title.TextXAlignment = Enum.TextXAlignment.Left
+	Title.Font = Enum.Font.GothamBold
+	Title.TextSize = 12
+	Title.Parent = TopBar
+
+	local MiniButton = Instance.new("TextButton")
+	MiniButton.Size = UDim2.new(0, 22, 0, 22)
+	MiniButton.Position = UDim2.new(1, -52, 0.5, -11)
+	MiniButton.BackgroundColor3 = Color3.fromRGB(35, 40, 55)
+	MiniButton.BorderSizePixel = 0
+	MiniButton.Text = "-"
+	MiniButton.TextColor3 = Color3.fromRGB(180, 195, 220)
+	MiniButton.Font = Enum.Font.GothamBold
+	MiniButton.TextSize = 14
+	MiniButton.Parent = TopBar
+	local mnCorner = Instance.new("UICorner")
+	mnCorner.CornerRadius = UDim.new(0, 6)
+	mnCorner.Parent = MiniButton
+
+	local CloseButton = Instance.new("TextButton")
+	CloseButton.Size = UDim2.new(0, 22, 0, 22)
+	CloseButton.Position = UDim2.new(1, -26, 0.5, -11)
+	CloseButton.BackgroundColor3 = Color3.fromRGB(220, 50, 65)
+	CloseButton.BorderSizePixel = 0
+	CloseButton.Text = "X"
+	CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+	CloseButton.Font = Enum.Font.GothamBold
+	CloseButton.TextSize = 11
+	CloseButton.Parent = TopBar
+	local clsCorner = Instance.new("UICorner")
+	clsCorner.CornerRadius = UDim.new(0, 6)
+	clsCorner.Parent = CloseButton
+
+	MiniButton.MouseButton1Click:Connect(function()
+		MainFrame.Visible = false
+		miniCircle.Visible = true
+	end)
+
+	local Content = Instance.new("Frame")
+	Content.Size = UDim2.new(1, -16, 0, 196)
+	Content.Position = UDim2.new(0, 8, 0, 40)
+	Content.BackgroundTransparency = 1
+	Content.Parent = MainFrame
+
+	local cLayout = Instance.new("UIListLayout")
+	cLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	cLayout.Padding = UDim.new(0, 5)
+	cLayout.Parent = Content
+
+	local marker = Instance.new("Frame")
+	marker.Name = "ClickIndicatorMarker"
+	marker.Size = UDim2.new(0, 14, 0, 14)
+	marker.AnchorPoint = Vector2.new(0.5, 0.5)
+	marker.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+	marker.BorderSizePixel = 0
+	marker.Visible = false
+	marker.ZIndex = 100
+	marker.Parent = ScreenGui
+	Instance.new("UICorner", marker).CornerRadius = UDim.new(1, 0)
+
+	local markerStroke = Instance.new("UIStroke")
+	markerStroke.Color = Color3.fromRGB(255, 255, 255)
+	markerStroke.Thickness = 1.5
+	markerStroke.Parent = marker
+
+	local isClicking = false
+	local turboMode = false
+	local cpsValue = 10
+	local clickPosition = nil
+	local settingPosConn = nil
+
+	local function releaseMouse()
+		local pos = clickPosition or UserInputService:GetMouseLocation()
+		pcall(function()
+			VirtualInputManager:SendMouseButtonEvent(pos.X, pos.Y, 0, false, game, 0)
+		end)
+	end
+
+	local function triggerClick(pos)
+		local x = pos and pos.X or (Workspace.CurrentCamera.ViewportSize.X / 2)
+		local y = pos and pos.Y or (Workspace.CurrentCamera.ViewportSize.Y / 2)
+
+		pcall(function()
+			VirtualInputManager:SendMouseButtonEvent(x, y, 0, true, game, 0)
+			task.wait(0.001)
+			VirtualInputManager:SendMouseButtonEvent(x, y, 0, false, game, 0)
+		end)
+	end
+
+	local speedRow = Instance.new("Frame")
+	speedRow.Size = UDim2.new(1, 0, 0, 26)
+	speedRow.BackgroundColor3 = Color3.fromRGB(20, 24, 34)
+	speedRow.BorderSizePixel = 0
+	speedRow.LayoutOrder = 1
+	speedRow.Parent = Content
+	Instance.new("UICorner", speedRow).CornerRadius = UDim.new(0, 6)
+
+	local speedLabel = Instance.new("TextLabel")
+	speedLabel.Size = UDim2.new(0.65, 0, 1, 0)
+	speedLabel.Position = UDim2.new(0, 8, 0, 0)
+	speedLabel.BackgroundTransparency = 1
+	speedLabel.Text = "Clicks / Sec (CPS):"
+	speedLabel.TextColor3 = Color3.fromRGB(215, 225, 240)
+	speedLabel.Font = Enum.Font.GothamMedium
+	speedLabel.TextSize = 11
+	speedLabel.TextXAlignment = Enum.TextXAlignment.Left
+	speedLabel.Parent = speedRow
+
+	local speedBox = Instance.new("TextBox")
+	speedBox.Size = UDim2.new(0.3, -4, 1, -6)
+	speedBox.Position = UDim2.new(0.7, 0, 0, 3)
+	speedBox.BackgroundColor3 = Color3.fromRGB(28, 33, 48)
+	speedBox.BorderSizePixel = 0
+	speedBox.Text = tostring(cpsValue)
+	speedBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+	speedBox.Font = Enum.Font.GothamBold
+	speedBox.TextSize = 11
+	speedBox.ClearTextOnFocus = false
+	speedBox.Parent = speedRow
+	Instance.new("UICorner", speedBox).CornerRadius = UDim.new(0, 5)
+
+	speedBox.FocusLost:Connect(function()
+		local val = tonumber(speedBox.Text)
+		if val and val > 0 then
+			cpsValue = val
+			speedBox.Text = tostring(val)
 		else
-			setTapBtn.BackgroundColor3 = Color3.fromRGB(28, 38, 56)
+			speedBox.Text = tostring(cpsValue)
 		end
 	end)
 
-	turboBtn.MouseButton1Click:Connect(function()
-		isTurbo = not isTurbo
-		turboBtn.Text = isTurbo and "ON" or "OFF"
-		turboBtn.TextColor3 = isTurbo and Color3.fromRGB(255, 160, 35) or Color3.fromRGB(180, 195, 220)
+	local exampleLabel = Instance.new("TextLabel")
+	exampleLabel.Size = UDim2.new(1, 0, 0, 18)
+	exampleLabel.BackgroundTransparency = 1
+	exampleLabel.Text = "Ex: 1 = 1 CPS | 10 = 10 CPS | 50 = 50 CPS"
+	exampleLabel.TextColor3 = Color3.fromRGB(120, 135, 160)
+	exampleLabel.Font = Enum.Font.Gotham
+	exampleLabel.TextSize = 9
+	exampleLabel.TextXAlignment = Enum.TextXAlignment.Center
+	exampleLabel.LayoutOrder = 2
+	exampleLabel.Parent = Content
+
+	local posBtn = Instance.new("TextButton")
+	posBtn.Size = UDim2.new(1, 0, 0, 26)
+	posBtn.BackgroundColor3 = Color3.fromRGB(28, 33, 48)
+	posBtn.BorderSizePixel = 0
+	posBtn.Text = "Set Tap Position (Center)"
+	posBtn.TextColor3 = Color3.fromRGB(225, 235, 255)
+	posBtn.Font = Enum.Font.GothamBold
+	posBtn.TextSize = 10
+	posBtn.LayoutOrder = 3
+	posBtn.Parent = Content
+	Instance.new("UICorner", posBtn).CornerRadius = UDim.new(0, 6)
+
+	posBtn.MouseButton1Click:Connect(function()
+		if settingPosConn then return end
+		posBtn.Text = "Tap Screen to Set..."
+		posBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+
+		task.wait(0.1)
+		settingPosConn = UserInputService.InputBegan:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+				local posX, posY
+				if input.UserInputType == Enum.UserInputType.MouseButton1 then
+					local mousePos = UserInputService:GetMouseLocation()
+					posX = mousePos.X
+					posY = mousePos.Y
+				else
+					posX = input.Position.X
+					posY = input.Position.Y
+				end
+
+				clickPosition = Vector2.new(posX, posY)
+				marker.Position = UDim2.new(0, posX, 0, posY)
+				marker.Visible = true
+
+				posBtn.Text = string.format("Pos: (%d, %d)", posX, posY)
+				posBtn.BackgroundColor3 = Color3.fromRGB(28, 33, 48)
+
+				settingPosConn:Disconnect()
+				settingPosConn = nil
+			end
+		end)
 	end)
 
-	startBtn.MouseButton1Click:Connect(function()
-		isClicking = not isClicking
-		if isClicking then
-			startBtn.Text = "STOPPING AUTO CLICK"
-			startBtn.BackgroundColor3 = Color3.fromRGB(235, 160, 45)
+	local turboRow = Instance.new("Frame")
+	turboRow.Size = UDim2.new(1, 0, 0, 28)
+	turboRow.BackgroundColor3 = Color3.fromRGB(60, 28, 16)
+	turboRow.BorderSizePixel = 0
+	turboRow.LayoutOrder = 4
+	turboRow.Parent = Content
+	Instance.new("UICorner", turboRow).CornerRadius = UDim.new(0, 6)
+
+	local fireGrad = Instance.new("UIGradient")
+	fireGrad.Rotation = 45
+	fireGrad.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(85, 35, 15)),
+		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(130, 55, 20)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(65, 25, 12))
+	})
+	fireGrad.Parent = turboRow
+
+	local fireStroke = Instance.new("UIStroke")
+	fireStroke.Color = Color3.fromRGB(255, 135, 45)
+	fireStroke.Thickness = 1
+	fireStroke.Parent = turboRow
+
+	local turboLabel = Instance.new("TextLabel")
+	turboLabel.Size = UDim2.new(1, -55, 1, 0)
+	turboLabel.Position = UDim2.new(0, 8, 0, 0)
+	turboLabel.BackgroundTransparency = 1
+	turboLabel.Text = "🔥 Turbo Mode"
+	turboLabel.TextColor3 = Color3.fromRGB(255, 220, 185)
+	turboLabel.Font = Enum.Font.GothamBold
+	turboLabel.TextSize = 11
+	turboLabel.TextXAlignment = Enum.TextXAlignment.Left
+	turboLabel.Parent = turboRow
+
+	local turboToggleBtn = Instance.new("TextButton")
+	turboToggleBtn.Size = UDim2.new(0, 42, 0, 20)
+	turboToggleBtn.Position = UDim2.new(1, -48, 0.5, -10)
+	turboToggleBtn.BorderSizePixel = 0
+	turboToggleBtn.Font = Enum.Font.GothamBold
+	turboToggleBtn.TextSize = 10
+	turboToggleBtn.Text = "OFF"
+	turboToggleBtn.BackgroundColor3 = Color3.fromRGB(38, 25, 20)
+	turboToggleBtn.TextColor3 = Color3.fromRGB(180, 150, 140)
+	turboToggleBtn.Parent = turboRow
+	Instance.new("UICorner", turboToggleBtn).CornerRadius = UDim.new(0, 5)
+
+	turboToggleBtn.MouseButton1Click:Connect(function()
+		turboMode = not turboMode
+		turboToggleBtn.Text = turboMode and "ON" or "OFF"
+		turboToggleBtn.BackgroundColor3 = turboMode and Color3.fromRGB(215, 60, 0) or Color3.fromRGB(38, 25, 20)
+		turboToggleBtn.TextColor3 = turboMode and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(180, 150, 140)
+	end)
+
+	local toggleClickBtn = Instance.new("TextButton")
+	toggleClickBtn.Size = UDim2.new(1, 0, 0, 28)
+	toggleClickBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 125)
+	toggleClickBtn.BorderSizePixel = 0
+	toggleClickBtn.Text = "START AUTO CLICK"
+	toggleClickBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	toggleClickBtn.Font = Enum.Font.GothamBold
+	toggleClickBtn.TextSize = 11
+	toggleClickBtn.LayoutOrder = 5
+	toggleClickBtn.Parent = Content
+	Instance.new("UICorner", toggleClickBtn).CornerRadius = UDim.new(0, 6)
+
+	local function stopClicking()
+		isClicking = false
+		releaseMouse()
+		toggleClickBtn.Text = "START AUTO CLICK"
+		toggleClickBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 125)
+	end
+
+	toggleClickBtn.MouseButton1Click:Connect(function()
+		if not isClicking then
+			isClicking = true
+			toggleClickBtn.Text = "STOP AUTO CLICK"
+			toggleClickBtn.BackgroundColor3 = Color3.fromRGB(220, 50, 65)
+
 			task.spawn(function()
-				while isClicking and acGui and acGui.Parent do
-					local clickX, clickY = 0, 0
-					if isCustomPos and targetDot and targetDot.Visible then
-						clickX = targetDot.AbsolutePosition.X + (targetDot.AbsoluteSize.X / 2)
-						clickY = targetDot.AbsolutePosition.Y + (targetDot.AbsoluteSize.Y / 2)
-					else
-						local m = UserInputService:GetMouseLocation()
-						clickX = m.X
-						clickY = m.Y
-					end
-
-					pcall(function()
-						VirtualInputManager:SendMouseButtonEvent(clickX, clickY, 0, true, game, 0)
-						task.wait(0.005)
-						VirtualInputManager:SendMouseButtonEvent(clickX, clickY, 0, false, game, 0)
-					end)
-
-					if isTurbo then
+				while isClicking do
+					triggerClick(clickPosition)
+					if turboMode then
 						RunService.RenderStepped:Wait()
 					else
-						local cps = tonumber(cpsBox.Text) or 10
-						task.wait(1 / math.clamp(cps, 1, 100))
+						local delayTime = 1 / math.clamp(cpsValue, 0.001, 1000)
+						task.wait(delayTime)
 					end
 				end
+				releaseMouse()
 			end)
 		else
 			stopClicking()
 		end
 	end)
 
-	stopBtn.MouseButton1Click:Connect(function()
+	local forceStopBtn = Instance.new("TextButton")
+	forceStopBtn.Size = UDim2.new(1, 0, 0, 26)
+	forceStopBtn.BackgroundColor3 = Color3.fromRGB(200, 35, 45)
+	forceStopBtn.BorderSizePixel = 0
+	forceStopBtn.Text = "FORCE STOP (EMERGENCY)"
+	forceStopBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	forceStopBtn.Font = Enum.Font.GothamBold
+	forceStopBtn.TextSize = 10
+	forceStopBtn.LayoutOrder = 6
+	forceStopBtn.Parent = Content
+	Instance.new("UICorner", forceStopBtn).CornerRadius = UDim.new(0, 6)
+
+	forceStopBtn.MouseButton1Click:Connect(function()
 		stopClicking()
 	end)
 
-	local minimized = false
-	miniBtn.MouseButton1Click:Connect(function()
-		minimized = not minimized
-		contentBox.Visible = not minimized
-		acFrame.Size = minimized and UDim2.new(0, 290, 0, 42) or UDim2.new(0, 290, 0, 310)
+	do
+		local dragging, dragStart, startPos = false, nil, nil
+		TopBar.InputBegan:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+				dragging = true
+				dragStart = input.Position
+				startPos = MainFrame.Position
+				input.Changed:Connect(function()
+					if input.UserInputState == Enum.UserInputState.End then dragging = false end
+				end)
+			end
+		end)
+		TopBar.InputChanged:Connect(function(input)
+			if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+				local delta = input.Position - dragStart
+				MainFrame.Position = UDim2.new(
+					startPos.X.Scale, startPos.X.Offset + delta.X,
+					startPos.Y.Scale, startPos.Y.Offset + delta.Y
+				)
+			end
+		end)
+	end
+
+	CloseButton.MouseButton1Click:Connect(function()
+		stopClicking()
+		if settingPosConn then settingPosConn:Disconnect() end
+		ScreenGui:Destroy()
 	end)
 
-	closeBtn.MouseButton1Click:Connect(function()
+	ScreenGui.Destroying:Connect(function()
 		stopClicking()
-		acGui:Destroy()
+		if settingPosConn then settingPosConn:Disconnect() end
 	end)
 end
 
--- 2. ORIGINAL STALKER TOOLBOX (Exact Match to Picture 2)
+-- 2. ORIGINAL STALKER TOOLBOX[span_0](start_span)[span_0](end_span)
 local function launchStalkerScript()
 	local existing = (targetContainer and targetContainer:FindFirstChild("StalkerUI"))
 		or playerGui:FindFirstChild("StalkerUI")
@@ -2675,7 +2819,6 @@ local function launchStalkerScript()
 
 	makeDraggable(topBar, sFrame)
 
-	-- Target status banner
 	local targetBanner = Instance.new("Frame")
 	targetBanner.Size = UDim2.new(1, -32, 0, 34)
 	targetBanner.Position = UDim2.new(0, 16, 0, 46)
@@ -2693,7 +2836,6 @@ local function launchStalkerScript()
 	targetText.TextSize = 13.5
 	targetText.Parent = targetBanner
 
-	-- Player List (Scroll)
 	local scroll = Instance.new("ScrollingFrame")
 	scroll.Size = UDim2.new(1, -32, 0, 120)
 	scroll.Position = UDim2.new(0, 16, 0, 88)
@@ -2745,7 +2887,6 @@ local function launchStalkerScript()
 
 	populateList()
 
-	-- Refresh Players Button
 	local refreshBtn = Instance.new("TextButton")
 	refreshBtn.Size = UDim2.new(1, -32, 0, 36)
 	refreshBtn.Position = UDim2.new(0, 16, 0, 222)
@@ -2762,7 +2903,6 @@ local function launchStalkerScript()
 		populateList()
 	end)
 
-	-- START and STOP Buttons
 	local startBtn = Instance.new("TextButton")
 	startBtn.Size = UDim2.new(0.5, -20, 0, 40)
 	startBtn.Position = UDim2.new(0, 16, 0, 268)
@@ -2827,7 +2967,7 @@ local function launchStalkerScript()
 	end)
 end
 
--- 3. ORIGINAL PLAYER TELEPORT (Exact Match to Picture 3)
+-- 3. ORIGINAL PLAYER TELEPORT[span_1](start_span)[span_1](end_span)
 local function launchPlayerTeleportScript()
 	local existing = (targetContainer and targetContainer:FindFirstChild("TeleportUI"))
 		or playerGui:FindFirstChild("TeleportUI")
@@ -2950,7 +3090,6 @@ local function launchPlayerTeleportScript()
 	Players.PlayerAdded:Connect(refreshTeleportList)
 	Players.PlayerRemoving:Connect(refreshTeleportList)
 
-	-- Teleport Action Button
 	local tpActionBtn = Instance.new("TextButton")
 	tpActionBtn.Size = UDim2.new(1, -32, 0, 42)
 	tpActionBtn.Position = UDim2.new(0, 16, 1, -52)
@@ -3076,6 +3215,10 @@ state.baseMaxHealth = humanoid and humanoid.MaxHealth or 100
 
 -- ================== COMPLETE GLOBAL CLEANUP FUNCTION ==================
 local function fullCleanup()
+	pcall(function()
+		UserInputService.MouseIconEnabled = true
+	end)
+
 	if state.godMode then applyGodMode(false) end
 	if state.noclip then applyNoclip(false) end
 	if state.tpWalkEnabled then applyTPWalk(false) end
