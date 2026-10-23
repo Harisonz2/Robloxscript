@@ -14,6 +14,7 @@ local CoreGui = game:GetService("CoreGui")
 local MarketplaceService = game:GetService("MarketplaceService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 local TeleportService = game:GetService("TeleportService")
+local Stats = game:GetService("Stats")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -83,18 +84,31 @@ local state = {
 	tpWalkEnabled = false,
 	tpWalkSpeed = 1,
 
+	jumpEnabled = false,
+	jumpValue = 50,
+	baseJumpPower = 50,
+	baseJumpHeight = 7.2,
+
 	-- Utilities & Visual
 	instantInteract = false,
 	infiniteJump = false,
 	godMode = false,
 	noclip = false,
 	antiRagdoll = false,
+	spinBotEnabled = false,
+	spinSpeed = 20,
+
 	fullBright = false,
+	fovEnabled = false,
+	fovValue = 70,
+	baseFov = 70,
+
 	esp = false,
 	espTeamMode = true,
 	botEsp = false,
 	fpsBooster = false,
 	screenTime = false,
+	fpsHudEnabled = false,
 
 	baseMaxHealth = 100,
 
@@ -107,12 +121,15 @@ local state = {
 	_botDescConn = nil,
 	_tpWalkConn = nil,
 	_fpsConn = nil,
+	_spinConn = nil,
 
 	-- Backups & ESP Storage
 	fbBackup = nil,
 	potatoBackup = nil,
 	savedPosition1 = nil,
 	savedPosition2 = nil,
+	savedPosition3 = nil,
+	savedPosition4 = nil,
 	espFolder = nil,
 	espCache = {},
 	botEspFolder = nil,
@@ -525,7 +542,50 @@ local function applyScreenTime(on)
 	end)
 end
 
--- ================== CORE LOGIC ==================
+-- ================== CORE LOGIC & FUNCTIONS ==================
+local function applyJumpPower(on)
+	if not humanoid then return end
+	if on then
+		if humanoid.UseJumpPower then
+			humanoid.JumpPower = tonumber(state.jumpValue) or 50
+		else
+			humanoid.JumpHeight = tonumber(state.jumpValue) or 7.2
+		end
+	else
+		if humanoid.UseJumpPower then
+			humanoid.JumpPower = state.baseJumpPower
+		else
+			humanoid.JumpHeight = state.baseJumpHeight
+		end
+	end
+end
+
+local function applySpinBot(on)
+	if state._spinConn then
+		state._spinConn:Disconnect()
+		state._spinConn = nil
+	end
+
+	if on then
+		state._spinConn = RunService.RenderStepped:Connect(function()
+			if state.spinBotEnabled and hrp then
+				local speed = tonumber(state.spinSpeed) or 20
+				hrp.CFrame = hrp.CFrame * CFrame.Angles(0, math.rad(speed), 0)
+			end
+		end)
+	end
+end
+
+local function applyFOV(on)
+	local cam = Workspace.CurrentCamera
+	if not cam then return end
+	if on then
+		cam.FieldOfView = tonumber(state.fovValue) or 70
+	else
+		cam.FieldOfView = state.baseFov
+	end
+end
+
 local function applyGodMode(on)
 	if not humanoid then return end
 	if on then
@@ -1148,6 +1208,71 @@ local function applyBotESP(on)
 	end)
 end
 
+-- ================== FPS / PING MONITOR WIDGET ==================
+local fpsHudGui = nil
+
+local function toggleFpsHud(on)
+	state.fpsHudEnabled = on
+	if fpsHudGui then
+		fpsHudGui:Destroy()
+		fpsHudGui = nil
+	end
+	if not on then return end
+
+	local sgHud = Instance.new("ScreenGui")
+	sgHud.Name = "Phumipad_FPS_Ping_Monitor"
+	sgHud.ResetOnSpawn = false
+	safeParentGui(sgHud)
+	fpsHudGui = sgHud
+
+	local frame = Instance.new("Frame")
+	frame.Size = UDim2.new(0, 150, 0, 36)
+	frame.Position = UDim2.new(0.5, -75, 0, 10)
+	frame.BackgroundColor3 = Color3.fromRGB(15, 18, 26)
+	frame.BorderSizePixel = 0
+	frame.Active = true
+	frame.Parent = sgHud
+	Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
+
+	local fStroke = Instance.new("UIStroke")
+	fStroke.Color = Color3.fromRGB(0, 200, 255)
+	fStroke.Thickness = 1.2
+	fStroke.Parent = frame
+
+	makeDraggable(frame, frame)
+
+	local hudText = Instance.new("TextLabel")
+	hudText.Size = UDim2.new(1, 0, 1, 0)
+	hudText.BackgroundTransparency = 1
+	hudText.Text = "FPS: -- | Ping: --ms"
+	hudText.TextColor3 = Color3.fromRGB(240, 245, 255)
+	hudText.Font = Enum.Font.GothamBold
+	hudText.TextSize = 11
+	hudText.Parent = frame
+
+	task.spawn(function()
+		local lastTime = os.clock()
+		local frameCount = 0
+		while state.fpsHudEnabled and fpsHudGui == sgHud do
+			frameCount = frameCount + 1
+			local currentTime = os.clock()
+			if currentTime - lastTime >= 1 then
+				local fps = frameCount
+				frameCount = 0
+				lastTime = currentTime
+
+				local ping = 0
+				pcall(function()
+					ping = math.floor(Stats.Network.ServerStatsItem["Data Ping"]:GetValue())
+				end)
+
+				hudText.Text = string.format("FPS: %d | Ping: %d ms", fps, ping)
+			end
+			RunService.RenderStepped:Wait()
+		end
+	end)
+end
+
 table.insert(globalConns, player.CharacterAdded:Connect(function(char)
 	character = char
 	humanoid  = char:WaitForChild("Humanoid")
@@ -1155,13 +1280,17 @@ table.insert(globalConns, player.CharacterAdded:Connect(function(char)
 
 	state.baseWalkSpeed = humanoid.WalkSpeed
 	state.baseMaxHealth = humanoid.MaxHealth
+	state.baseJumpPower = humanoid.JumpPower
+	state.baseJumpHeight = humanoid.JumpHeight
 
 	if state.speedEnabled  then humanoid.WalkSpeed = tonumber(state.speedValue) or 16 end
+	if state.jumpEnabled   then applyJumpPower(true) end
 	if state.tpWalkEnabled then applyTPWalk(true) end
 	if state.godMode       then applyGodMode(true) end
 	if state.noclip        then applyNoclip(true) end
 	if state.antiRagdoll   then applyAntiRagdoll(true) end
 	if state.fullBright    then applyFullBright(true) end
+	if state.fovEnabled    then applyFOV(true) end
 end))
 
 -- ================== MAIN GUI & CONTAINER CREATION ==================
@@ -2052,6 +2181,19 @@ addPresetChips(movePage, {1, 2, 3, 4, 5}, function(val)
 	tpControl.setVal(val)
 end)
 
+local jumpControl = addInputToggleRow(movePage, "Jump Power", state.jumpValue, state.jumpEnabled, function(_, render)
+	state.jumpEnabled = not state.jumpEnabled
+	render(state.jumpEnabled)
+	applyJumpPower(state.jumpEnabled)
+end, function(val)
+	state.jumpValue = val
+	if state.jumpEnabled then applyJumpPower(true) end
+end)
+
+addPresetChips(movePage, {50, 80, 100, 150, 200}, function(val)
+	jumpControl.setVal(val)
+end)
+
 -- [TAB 2] UTILITIES ⚙️
 local utilPage = registerTab("util", "Util", "⚙️", false)
 
@@ -2081,6 +2223,14 @@ addToggleRow(utilPage, "Anti Ragdoll", state.antiRagdoll, function(_, render)
 	state.antiRagdoll = not state.antiRagdoll
 	render(state.antiRagdoll)
 	applyAntiRagdoll(state.antiRagdoll)
+end)
+
+local spinControl = addInputToggleRow(utilPage, "SpinBot", state.spinSpeed, state.spinBotEnabled, function(_, render)
+	state.spinBotEnabled = not state.spinBotEnabled
+	render(state.spinBotEnabled)
+	applySpinBot(state.spinBotEnabled)
+end, function(val)
+	state.spinSpeed = val
 end)
 
 -- [TAB 3] VISUAL 👁️
@@ -2113,6 +2263,19 @@ addToggleRow(visualPage, "Full Bright", state.fullBright, function(_, render)
 	state.fullBright = not state.fullBright
 	render(state.fullBright)
 	applyFullBright(state.fullBright)
+end)
+
+local fovControl = addInputToggleRow(visualPage, "Camera FOV", state.fovValue, state.fovEnabled, function(_, render)
+	state.fovEnabled = not state.fovEnabled
+	render(state.fovEnabled)
+	applyFOV(state.fovEnabled)
+end, function(val)
+	state.fovValue = val
+	if state.fovEnabled then applyFOV(true) end
+end)
+
+addPresetChips(visualPage, {70, 80, 90, 100, 120}, function(val)
+	fovControl.setVal(val)
 end)
 
 -- Glossy Blue Battery Saver Button with Lightning
@@ -2241,17 +2404,29 @@ end)
 -- [TAB 4] WAYPOINTS 📍
 local waypointsPage = registerTab("points", "Point", "📍", false)
 
-local spotGrid = Instance.new("Frame")
-spotGrid.Size = UDim2.new(1, 0, 0, 28)
-spotGrid.BackgroundTransparency = 1
-spotGrid.LayoutOrder = getOrder()
-spotGrid.Parent = waypointsPage
+local spotGrid1 = Instance.new("Frame")
+spotGrid1.Size = UDim2.new(1, 0, 0, 28)
+spotGrid1.BackgroundTransparency = 1
+spotGrid1.LayoutOrder = getOrder()
+spotGrid1.Parent = waypointsPage
 
-local clearGrid = Instance.new("Frame")
-clearGrid.Size = UDim2.new(1, 0, 0, 26)
-clearGrid.BackgroundTransparency = 1
-clearGrid.LayoutOrder = getOrder()
-clearGrid.Parent = waypointsPage
+local clearGrid1 = Instance.new("Frame")
+clearGrid1.Size = UDim2.new(1, 0, 0, 26)
+clearGrid1.BackgroundTransparency = 1
+clearGrid1.LayoutOrder = getOrder()
+clearGrid1.Parent = waypointsPage
+
+local spotGrid2 = Instance.new("Frame")
+spotGrid2.Size = UDim2.new(1, 0, 0, 28)
+spotGrid2.BackgroundTransparency = 1
+spotGrid2.LayoutOrder = getOrder()
+spotGrid2.Parent = waypointsPage
+
+local clearGrid2 = Instance.new("Frame")
+clearGrid2.Size = UDim2.new(1, 0, 0, 26)
+clearGrid2.BackgroundTransparency = 1
+clearGrid2.LayoutOrder = getOrder()
+clearGrid2.Parent = waypointsPage
 
 local spotButtons = {}
 
@@ -2263,7 +2438,7 @@ local function resetSpotUI(slot)
 	end
 end
 
-local function makeGridSpotBtn(slot, posX, sizeX)
+local function makeGridSpotBtn(parentGrid, slot, posX, sizeX)
 	local btn = Instance.new("TextButton")
 	btn.Size = UDim2.new(sizeX, -4, 1, 0)
 	btn.Position = UDim2.new(posX, 0, 0, 0)
@@ -2273,7 +2448,7 @@ local function makeGridSpotBtn(slot, posX, sizeX)
 	btn.TextColor3 = Color3.fromRGB(225, 235, 255)
 	btn.Font = Enum.Font.GothamBold
 	btn.TextSize = 11
-	btn.Parent = spotGrid
+	btn.Parent = parentGrid
 
 	local bCorner = Instance.new("UICorner")
 	bCorner.CornerRadius = UDim.new(0, 6)
@@ -2300,7 +2475,7 @@ local function makeGridSpotBtn(slot, posX, sizeX)
 	end)
 end
 
-local function makeGridClearBtn(slot, posX, sizeX)
+local function makeGridClearBtn(parentGrid, slot, posX, sizeX)
 	local btn = Instance.new("TextButton")
 	btn.Size = UDim2.new(sizeX, -4, 1, 0)
 	btn.Position = UDim2.new(posX, 0, 0, 0)
@@ -2310,7 +2485,7 @@ local function makeGridClearBtn(slot, posX, sizeX)
 	btn.TextColor3 = Color3.fromRGB(255, 255, 255)
 	btn.Font = Enum.Font.GothamBold
 	btn.TextSize = 10
-	btn.Parent = clearGrid
+	btn.Parent = parentGrid
 
 	local bCorner = Instance.new("UICorner")
 	bCorner.CornerRadius = UDim.new(0, 6)
@@ -2321,17 +2496,285 @@ local function makeGridClearBtn(slot, posX, sizeX)
 	end)
 end
 
-makeGridSpotBtn(1, 0, 0.5)
-makeGridSpotBtn(2, 0.5, 0.5)
+makeGridSpotBtn(spotGrid1, 1, 0, 0.5)
+makeGridSpotBtn(spotGrid1, 2, 0.5, 0.5)
+makeGridClearBtn(clearGrid1, 1, 0, 0.5)
+makeGridClearBtn(clearGrid1, 2, 0.5, 0.5)
 
-makeGridClearBtn(1, 0, 0.5)
-makeGridClearBtn(2, 0.5, 0.5)
+makeGridSpotBtn(spotGrid2, 3, 0, 0.5)
+makeGridSpotBtn(spotGrid2, 4, 0.5, 0.5)
+makeGridClearBtn(clearGrid2, 3, 0, 0.5)
+makeGridClearBtn(clearGrid2, 4, 0.5, 0.5)
 
 -- =========================================================================
 -- ============ TOOL SUB-PANELS (MORE TOOLS) ===============================
 -- =========================================================================
 
--- 1. AUTO CLICKER (อัปเดตเป็นสคริปต์ใหม่ที่กำหนด)
+-- 1. VEHICLE SPEED ADJUST SCRIPT LAUNCHER
+local function launchVehicleSpeedAdjustScript()
+	local parentContainer = targetContainer or (gethui and gethui()) or game:GetService("CoreGui") or player:WaitForChild("PlayerGui")
+
+	if parentContainer:FindFirstChild("UniversalSpeedAdjustGui") then
+		parentContainer:FindFirstChild("UniversalSpeedAdjustGui"):Destroy()
+		return
+	end
+
+	local screenGui = Instance.new("ScreenGui")
+	screenGui.Name = "UniversalSpeedAdjustGui"
+	screenGui.ResetOnSpawn = false
+	screenGui.Parent = parentContainer
+
+	local mainFrame = Instance.new("Frame")
+	mainFrame.Name = "MainFrame"
+	mainFrame.Size = UDim2.new(0, 190, 0, 150)
+	mainFrame.Position = UDim2.new(0.5, -95, 0.4, -75)
+	mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+	mainFrame.BorderSizePixel = 0
+	mainFrame.ClipsDescendants = true
+	mainFrame.Parent = screenGui
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 8)
+	corner.Parent = mainFrame
+
+	local titleBar = Instance.new("Frame")
+	titleBar.Name = "TitleBar"
+	titleBar.Size = UDim2.new(1, 0, 0, 30)
+	titleBar.BackgroundColor3 = Color3.fromRGB(38, 38, 45)
+	titleBar.BorderSizePixel = 0
+	titleBar.Parent = mainFrame
+
+	local titleText = Instance.new("TextLabel")
+	titleText.Size = UDim2.new(1, -50, 1, 0)
+	titleText.Position = UDim2.new(0, 8, 0, 0)
+	titleText.BackgroundTransparency = 1
+	titleText.Text = "Speed Adjust"
+	titleText.TextColor3 = Color3.fromRGB(240, 240, 240)
+	titleText.TextSize = 12
+	titleText.Font = Enum.Font.SourceSansBold
+	titleText.TextXAlignment = Enum.TextXAlignment.Left
+	titleText.Parent = titleBar
+
+	local minBtn = Instance.new("TextButton")
+	minBtn.Size = UDim2.new(0, 20, 0, 20)
+	minBtn.Position = UDim2.new(1, -44, 0, 5)
+	minBtn.BackgroundColor3 = Color3.fromRGB(55, 55, 65)
+	minBtn.Text = "-"
+	minBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	minBtn.TextSize = 14
+	minBtn.Font = Enum.Font.SourceSansBold
+	minBtn.Parent = titleBar
+
+	local minCorner = Instance.new("UICorner")
+	minCorner.CornerRadius = UDim.new(0, 4)
+	minCorner.Parent = minBtn
+
+	local closeBtn = Instance.new("TextButton")
+	closeBtn.Size = UDim2.new(0, 20, 0, 20)
+	closeBtn.Position = UDim2.new(1, -22, 0, 5)
+	closeBtn.BackgroundColor3 = Color3.fromRGB(210, 60, 60)
+	closeBtn.Text = "X"
+	closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	closeBtn.TextSize = 12
+	closeBtn.Font = Enum.Font.SourceSansBold
+	closeBtn.Parent = titleBar
+
+	local closeCorner = Instance.new("UICorner")
+	closeCorner.CornerRadius = UDim.new(0, 4)
+	closeCorner.Parent = closeBtn
+
+	local contentFrame = Instance.new("Frame")
+	contentFrame.Name = "ContentFrame"
+	contentFrame.Size = UDim2.new(1, 0, 1, -30)
+	contentFrame.Position = UDim2.new(0, 0, 0, 30)
+	contentFrame.BackgroundTransparency = 1
+	contentFrame.Parent = mainFrame
+
+	local speedLabel = Instance.new("TextLabel")
+	speedLabel.Size = UDim2.new(1, -16, 0, 18)
+	speedLabel.Position = UDim2.new(0, 8, 0, 6)
+	speedLabel.BackgroundTransparency = 1
+	speedLabel.Text = "Speed:"
+	speedLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+	speedLabel.TextSize = 13
+	speedLabel.Font = Enum.Font.SourceSans
+	speedLabel.TextXAlignment = Enum.TextXAlignment.Left
+	speedLabel.Parent = contentFrame
+
+	local intensBox = Instance.new("TextBox")
+	intensBox.Size = UDim2.new(1, -16, 0, 26)
+	intensBox.Position = UDim2.new(0, 8, 0, 26)
+	intensBox.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
+	intensBox.Text = "1"
+	intensBox.TextColor3 = Color3.fromRGB(0, 230, 140)
+	intensBox.TextSize = 14
+	intensBox.Font = Enum.Font.SourceSansBold
+	intensBox.Parent = contentFrame
+
+	local boxCorner = Instance.new("UICorner")
+	boxCorner.CornerRadius = UDim.new(0, 4)
+	boxCorner.Parent = intensBox
+
+	local toggleBtn = Instance.new("TextButton")
+	toggleBtn.Size = UDim2.new(1, -16, 0, 35)
+	toggleBtn.Position = UDim2.new(0, 8, 0, 60)
+	toggleBtn.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
+	toggleBtn.Text = "OFF"
+	toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	toggleBtn.TextSize = 16
+	toggleBtn.Font = Enum.Font.SourceSansBold
+	toggleBtn.Parent = contentFrame
+
+	local toggleCorner = Instance.new("UICorner")
+	toggleCorner.CornerRadius = UDim.new(0, 6)
+	toggleCorner.Parent = toggleBtn
+
+	local resizeHandle = Instance.new("TextButton")
+	resizeHandle.Name = "ResizeHandle"
+	resizeHandle.Size = UDim2.new(0, 14, 0, 14)
+	resizeHandle.Position = UDim2.new(1, -14, 1, -14)
+	resizeHandle.BackgroundTransparency = 1
+	resizeHandle.Text = "◢"
+	resizeHandle.TextColor3 = Color3.fromRGB(120, 120, 130)
+	resizeHandle.TextSize = 10
+	resizeHandle.Font = Enum.Font.SourceSansBold
+	resizeHandle.Parent = mainFrame
+
+	local intens = 350
+	local isEnabled = false
+
+	intensBox:GetPropertyChangedSignal("Text"):Connect(function()
+		local val = tonumber(intensBox.Text)
+		if val then
+			intens = val
+		end
+	end)
+
+	local function toggleState()
+		isEnabled = not isEnabled
+		if isEnabled then
+			toggleBtn.Text = "ON"
+			toggleBtn.BackgroundColor3 = Color3.fromRGB(40, 180, 80)
+		else
+			toggleBtn.Text = "OFF"
+			toggleBtn.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
+		end
+	end
+
+	toggleBtn.MouseButton1Click:Connect(toggleState)
+
+	local keyConn = UserInputService.InputBegan:Connect(function(input, gpe)
+		if not gpe and input.KeyCode == Enum.KeyCode.F then
+			toggleState()
+		end
+	end)
+
+	local dragging, dragInput, dragStart, startPos
+
+	titleBar.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			dragging = true
+			dragStart = input.Position
+			startPos = mainFrame.Position
+			
+			input.Changed:Connect(function()
+				if input.UserInputState == Enum.UserInputState.End then
+					dragging = false
+				end
+			end)
+		end
+	end)
+
+	titleBar.InputChanged:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+			dragInput = input
+		end
+	end)
+
+	local dragConn = UserInputService.InputChanged:Connect(function(input)
+		if input == dragInput and dragging then
+			local delta = input.Position - dragStart
+			mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+		end
+	end)
+
+	local resizing = false
+	local resizeStart, startSize
+
+	resizeHandle.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			resizing = true
+			resizeStart = input.Position
+			startSize = mainFrame.Size
+			
+			input.Changed:Connect(function()
+				if input.UserInputState == Enum.UserInputState.End then
+					resizing = false
+				end
+			end)
+		end
+	end)
+
+	local resizeConn = UserInputService.InputChanged:Connect(function(input)
+		if resizing and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+			local delta = input.Position - resizeStart
+			local newX = math.max(150, startSize.X.Offset + delta.X)
+			local newY = math.max(120, startSize.Y.Offset + delta.Y)
+			mainFrame.Size = UDim2.new(0, newX, 0, newY)
+		end
+	end)
+
+	local minimized = false
+	local lastSize = mainFrame.Size
+
+	minBtn.MouseButton1Click:Connect(function()
+		minimized = not minimized
+		if minimized then
+			lastSize = mainFrame.Size
+			contentFrame.Visible = false
+			resizeHandle.Visible = false
+			mainFrame:TweenSize(UDim2.new(lastSize.X.Scale, lastSize.X.Offset, 0, 30), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.15, true)
+			minBtn.Text = "+"
+		else
+			mainFrame:TweenSize(lastSize, Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.15, true, function()
+				contentFrame.Visible = true
+				resizeHandle.Visible = true
+			end)
+			minBtn.Text = "-"
+		end
+	end)
+
+	local stepConnection
+	stepConnection = RunService.Stepped:Connect(function()
+		if isEnabled then
+			local Humanoid = workspace.CurrentCamera.CameraSubject
+			if Humanoid and Humanoid:IsA("Humanoid") then
+				if Humanoid.SeatPart then
+					Humanoid.SeatPart:ApplyImpulse(Humanoid.SeatPart.CFrame.LookVector * Vector3.new(intens, intens, intens))
+				end
+			elseif Humanoid and Humanoid:IsA("BasePart") then
+				Humanoid:ApplyImpulse(Humanoid.CFrame.LookVector * Vector3.new(intens, intens, intens))
+			end
+		end
+	end)
+
+	closeBtn.MouseButton1Click:Connect(function()
+		if stepConnection then stepConnection:Disconnect() end
+		if keyConn then keyConn:Disconnect() end
+		if dragConn then dragConn:Disconnect() end
+		if resizeConn then resizeConn:Disconnect() end
+		screenGui:Destroy()
+	end)
+
+	screenGui.Destroying:Connect(function()
+		if stepConnection then stepConnection:Disconnect() end
+		if keyConn then keyConn:Disconnect() end
+		if dragConn then dragConn:Disconnect() end
+		if resizeConn then resizeConn:Disconnect() end
+	end)
+end
+
+-- 2. AUTO CLICKER
 local function launchAutoClickerScript()
 	local existing = (targetContainer and targetContainer:FindFirstChild("Phumipad_AutoClicker_UI")) 
 		or playerGui:FindFirstChild("Phumipad_AutoClicker_UI") 
@@ -2766,7 +3209,7 @@ local function launchAutoClickerScript()
 	end)
 end
 
--- 2. ORIGINAL STALKER TOOLBOX[span_0](start_span)[span_0](end_span)
+-- 3. STALKER TOOLBOX
 local function launchStalkerScript()
 	local existing = (targetContainer and targetContainer:FindFirstChild("StalkerUI"))
 		or playerGui:FindFirstChild("StalkerUI")
@@ -2967,7 +3410,7 @@ local function launchStalkerScript()
 	end)
 end
 
--- 3. ORIGINAL PLAYER TELEPORT[span_1](start_span)[span_1](end_span)
+-- 4. PLAYER TELEPORT
 local function launchPlayerTeleportScript()
 	local existing = (targetContainer and targetContainer:FindFirstChild("TeleportUI"))
 		or playerGui:FindFirstChild("TeleportUI")
@@ -3128,43 +3571,56 @@ end
 -- ================== [TAB 5] MORE TOOLS 🧰 ==================
 local toolsPage = registerTab("tools", "Tools", "🧰", false)
 
--- 1. Auto Clicker
+-- 1. FPS / Ping Monitor
+addToggleRow(toolsPage, "FPS / Ping Monitor", state.fpsHudEnabled, function(_, render)
+	state.fpsHudEnabled = not state.fpsHudEnabled
+	render(state.fpsHudEnabled)
+	toggleFpsHud(state.fpsHudEnabled)
+end)
+
+-- 2. Vehicle Speed Adjust
+addRefinedToolButton(toolsPage, "Vehicle Speed Adjust", "🏎️", Color3.fromRGB(0, 230, 140), function()
+	launchVehicleSpeedAdjustScript()
+end)
+
+-- 3. Auto Clicker
 addRefinedToolButton(toolsPage, "Auto Clicker", "⚡", Color3.fromRGB(255, 150, 0), function()
 	launchAutoClickerScript()
 end)
 
--- 2. Stalker
+-- 4. Stalker
 addRefinedToolButton(toolsPage, "Stalker", "🎯", Color3.fromRGB(255, 65, 80), function()
 	launchStalkerScript()
 end)
 
--- 3. Aiming (Aimbot)
+-- 5. Aiming (Aimbot)
 addRefinedToolButton(toolsPage, "Aiming (Aimbot)", "👁", Color3.fromRGB(170, 85, 255), function()
 	pcall(function()
-		loadstring(game:HttpGet("https://raw.githubusercontent.com/DanielHubll/DanielHubll/refs/heads/main/Aimbot%20Mobile"))()
+		getgenv().SCRIPT_KEY = "KEYLESS"
+		loadstring(game:HttpGet("https://api.jnkie.com/api/v1/luascripts/public/82b850540226f85fb5fa2ed6406f8649dabbffd0907865e1c8c62d203faa7959/download"))()
 	end)
 end)
 
--- 4. Fly GUI (V3)
+-- 6. Fly GUI (V3)
 addRefinedToolButton(toolsPage, "Fly GUI (V3)", "🚀", Color3.fromRGB(0, 195, 255), function()
 	pcall(function()
 		loadstring(game:HttpGet("https://raw.githubusercontent.com/XNEOFF/FlyGuiV3/main/FlyGuiV3.txt"))()
 	end)
 end)
 
--- 5. Anti AFK
+-- 7. Anti AFK
 addRefinedToolButton(toolsPage, "Anti AFK", "🛡", Color3.fromRGB(0, 215, 125), function()
 	pcall(function()
 		loadstring(game:HttpGet("https://raw.githubusercontent.com/hassanxzayn-lua/Anti-afk/main/antiafkbyhassanxzyn"))()
 	end)
 end)
 
--- 6. Player Teleport
+-- 8. Player Teleport
 addRefinedToolButton(toolsPage, "Player Teleport", "📍", Color3.fromRGB(100, 140, 255), function()
 	launchPlayerTeleportScript()
 end)
 
--- 7. Rejoin Place
+-- 9. Rejoin Place
 addRefinedToolButton(toolsPage, "Rejoin Place", "🔄", Color3.fromRGB(0, 210, 220), function()
 	pcall(function()
 		if #Players:GetPlayers() <= 1 then
@@ -3175,7 +3631,7 @@ addRefinedToolButton(toolsPage, "Rejoin Place", "🔄", Color3.fromRGB(0, 210, 2
 	end)
 end)
 
--- 8. Server Hop
+-- 10. Server Hop
 addRefinedToolButton(toolsPage, "Server Hop", "🌐", Color3.fromRGB(60, 130, 255), function()
 	pcall(function()
 		local module = loadstring(game:HttpGet("https://raw.githubusercontent.com/LeoKholYt/roblox/main/lk_serverhop.lua"))()
@@ -3212,6 +3668,8 @@ end))
 
 state.baseWalkSpeed = humanoid and humanoid.WalkSpeed or 16
 state.baseMaxHealth = humanoid and humanoid.MaxHealth or 100
+state.baseJumpPower = humanoid and humanoid.JumpPower or 50
+state.baseJumpHeight = humanoid and humanoid.JumpHeight or 7.2
 
 -- ================== COMPLETE GLOBAL CLEANUP FUNCTION ==================
 local function fullCleanup()
@@ -3228,6 +3686,10 @@ local function fullCleanup()
 	if state.esp then applyESP(false) end
 	if state.botEsp then applyBotESP(false) end
 	if state.screenTime then applyScreenTime(false) end
+	if state.jumpEnabled then applyJumpPower(false) end
+	if state.spinBotEnabled then applySpinBot(false) end
+	if state.fovEnabled then applyFOV(false) end
+	if state.fpsHudEnabled then toggleFpsHud(false) end
 
 	if humanoid and state.baseWalkSpeed then
 		humanoid.WalkSpeed = state.baseWalkSpeed
@@ -3246,10 +3708,12 @@ local function fullCleanup()
 		"Phumipad_BatterySaver_Overlay",
 		"StalkerUI",
 		"Phumipad_AutoClicker_UI",
+		"UniversalSpeedAdjustGui",
 		"TeleportUI",
 		"PhumipadToolboxMinimalGui",
 		"Phumipad_ESP_Storage",
-		"Phumipad_BotESP_Storage"
+		"Phumipad_BotESP_Storage",
+		"Phumipad_FPS_Ping_Monitor"
 	}
 	for _, uiName in ipairs(subUIs) do
 		pcall(function()
