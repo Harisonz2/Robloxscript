@@ -130,6 +130,7 @@ local state = {
 	savedPosition2 = nil,
 	savedPosition3 = nil,
 	savedPosition4 = nil,
+	savedNames = {"Spot 1", "Spot 2", "Spot 3", "Spot 4"},
 	espFolder = nil,
 	espCache = {},
 	botEspFolder = nil,
@@ -2190,7 +2191,7 @@ end, function(val)
 	if state.jumpEnabled then applyJumpPower(true) end
 end)
 
-addPresetChips(movePage, {50, 80, 100, 150, 200}, function(val)
+addPresetChips(movePage, {20, 40, 60, 80, 100}, function(val)
 	jumpControl.setVal(val)
 end)
 
@@ -2404,107 +2405,101 @@ end)
 -- [TAB 4] WAYPOINTS 📍
 local waypointsPage = registerTab("points", "Point", "📍", false)
 
-local spotGrid1 = Instance.new("Frame")
-spotGrid1.Size = UDim2.new(1, 0, 0, 28)
-spotGrid1.BackgroundTransparency = 1
-spotGrid1.LayoutOrder = getOrder()
-spotGrid1.Parent = waypointsPage
+for i = 1, 4 do
+	local row = Instance.new("Frame")
+	row.Size = UDim2.new(1, 0, 0, 28)
+	row.BackgroundColor3 = Color3.fromRGB(20, 24, 34)
+	row.BorderSizePixel = 0
+	row.LayoutOrder = getOrder()
+	row.Parent = waypointsPage
+	Instance.new("UICorner", row).CornerRadius = UDim.new(0, 6)
 
-local clearGrid1 = Instance.new("Frame")
-clearGrid1.Size = UDim2.new(1, 0, 0, 26)
-clearGrid1.BackgroundTransparency = 1
-clearGrid1.LayoutOrder = getOrder()
-clearGrid1.Parent = waypointsPage
+	local rStroke = Instance.new("UIStroke")
+	rStroke.Color = Color3.fromRGB(38, 46, 64)
+	rStroke.Thickness = 1
+	rStroke.Parent = row
 
-local spotGrid2 = Instance.new("Frame")
-spotGrid2.Size = UDim2.new(1, 0, 0, 28)
-spotGrid2.BackgroundTransparency = 1
-spotGrid2.LayoutOrder = getOrder()
-spotGrid2.Parent = waypointsPage
+	-- ช่องสำหรับกรอกและแก้ไขชื่อจุดเซฟ
+	local nameBox = Instance.new("TextBox")
+	nameBox.Size = UDim2.new(0.42, -6, 1, -6)
+	nameBox.Position = UDim2.new(0, 4, 0, 3)
+	nameBox.BackgroundColor3 = Color3.fromRGB(28, 33, 48)
+	nameBox.BorderSizePixel = 0
+	nameBox.Text = state.savedNames[i] or ("Spot " .. i)
+	nameBox.TextColor3 = Color3.fromRGB(230, 240, 255)
+	nameBox.Font = Enum.Font.GothamMedium
+	nameBox.TextSize = 10.5
+	nameBox.ClearTextOnFocus = false
+	nameBox.Parent = row
+	Instance.new("UICorner", nameBox).CornerRadius = UDim.new(0, 5)
 
-local clearGrid2 = Instance.new("Frame")
-clearGrid2.Size = UDim2.new(1, 0, 0, 26)
-clearGrid2.BackgroundTransparency = 1
-clearGrid2.LayoutOrder = getOrder()
-clearGrid2.Parent = waypointsPage
+	nameBox.FocusLost:Connect(function()
+		if nameBox.Text == "" or string.gsub(nameBox.Text, "%s+", "") == "" then
+			nameBox.Text = "Spot " .. i
+		end
+		state.savedNames[i] = nameBox.Text
+	end)
 
-local spotButtons = {}
+	-- ปุ่มสำหรับบันทึกจุด / วาร์ปไปยังจุดเซฟ
+	local actionBtn = Instance.new("TextButton")
+	actionBtn.Size = UDim2.new(0.38, -4, 1, -6)
+	actionBtn.Position = UDim2.new(0.42, 2, 0, 3)
+	actionBtn.BackgroundColor3 = Color3.fromRGB(28, 33, 48)
+	actionBtn.BorderSizePixel = 0
+	actionBtn.Text = "Set " .. i
+	actionBtn.TextColor3 = Color3.fromRGB(225, 235, 255)
+	actionBtn.Font = Enum.Font.GothamBold
+	actionBtn.TextSize = 10.5
+	actionBtn.Parent = row
+	Instance.new("UICorner", actionBtn).CornerRadius = UDim.new(0, 5)
 
-local function resetSpotUI(slot)
-	state["savedPosition" .. slot] = nil
-	if spotButtons[slot] then
-		spotButtons[slot].Text = "Spot " .. slot
-		spotButtons[slot].BackgroundColor3 = Color3.fromRGB(28, 33, 48)
+	-- ปุ่มสำหรับล้างจุดเซฟ
+	local clearBtn = Instance.new("TextButton")
+	clearBtn.Size = UDim2.new(0.2, -4, 1, -6)
+	clearBtn.Position = UDim2.new(0.8, 0, 0, 3)
+	clearBtn.BackgroundColor3 = Color3.fromRGB(185, 45, 55)
+	clearBtn.BorderSizePixel = 0
+	clearBtn.Text = "Clear"
+	clearBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	clearBtn.Font = Enum.Font.GothamBold
+	clearBtn.TextSize = 10
+	clearBtn.Parent = row
+	Instance.new("UICorner", clearBtn).CornerRadius = UDim.new(0, 5)
+
+	local function updateVisual()
+		local key = "savedPosition" .. i
+		if state[key] then
+			actionBtn.Text = "Go " .. i
+			actionBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 125)
+		else
+			actionBtn.Text = "Set " .. i
+			actionBtn.BackgroundColor3 = Color3.fromRGB(28, 33, 48)
+		end
 	end
-end
 
-local function makeGridSpotBtn(parentGrid, slot, posX, sizeX)
-	local btn = Instance.new("TextButton")
-	btn.Size = UDim2.new(sizeX, -4, 1, 0)
-	btn.Position = UDim2.new(posX, 0, 0, 0)
-	btn.BackgroundColor3 = Color3.fromRGB(28, 33, 48)
-	btn.BorderSizePixel = 0
-	btn.Text = "Spot " .. slot
-	btn.TextColor3 = Color3.fromRGB(225, 235, 255)
-	btn.Font = Enum.Font.GothamBold
-	btn.TextSize = 11
-	btn.Parent = parentGrid
+	updateVisual()
 
-	local bCorner = Instance.new("UICorner")
-	bCorner.CornerRadius = UDim.new(0, 6)
-	bCorner.Parent = btn
-
-	spotButtons[slot] = btn
-
-	btn.MouseButton1Click:Connect(function()
-		local key = "savedPosition" .. slot
+	actionBtn.MouseButton1Click:Connect(function()
+		local key = "savedPosition" .. i
 		if state[key] then
 			local char = player.Character or player.CharacterAdded:Wait()
 			local root = char:FindFirstChild("HumanoidRootPart")
 			if root then root.CFrame = CFrame.new(state[key]) end
-			resetSpotUI(slot)
 		else
 			local char = player.Character or player.CharacterAdded:Wait()
 			local root = char:FindFirstChild("HumanoidRootPart")
 			if root then
 				state[key] = root.Position
-				btn.Text = "Go " .. slot
-				btn.BackgroundColor3 = Color3.fromRGB(0, 200, 125)
+				updateVisual()
 			end
 		end
 	end)
-end
 
-local function makeGridClearBtn(parentGrid, slot, posX, sizeX)
-	local btn = Instance.new("TextButton")
-	btn.Size = UDim2.new(sizeX, -4, 1, 0)
-	btn.Position = UDim2.new(posX, 0, 0, 0)
-	btn.BackgroundColor3 = Color3.fromRGB(185, 45, 55)
-	btn.BorderSizePixel = 0
-	btn.Text = "Clear " .. slot
-	btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-	btn.Font = Enum.Font.GothamBold
-	btn.TextSize = 10
-	btn.Parent = parentGrid
-
-	local bCorner = Instance.new("UICorner")
-	bCorner.CornerRadius = UDim.new(0, 6)
-	bCorner.Parent = btn
-
-	btn.MouseButton1Click:Connect(function()
-		resetSpotUI(slot)
+	clearBtn.MouseButton1Click:Connect(function()
+		state["savedPosition" .. i] = nil
+		updateVisual()
 	end)
 end
-
-makeGridSpotBtn(spotGrid1, 1, 0, 0.5)
-makeGridSpotBtn(spotGrid1, 2, 0.5, 0.5)
-makeGridClearBtn(clearGrid1, 1, 0, 0.5)
-makeGridClearBtn(clearGrid1, 2, 0.5, 0.5)
-
-makeGridSpotBtn(spotGrid2, 3, 0, 0.5)
-makeGridSpotBtn(spotGrid2, 4, 0.5, 0.5)
-makeGridClearBtn(clearGrid2, 3, 0, 0.5)
-makeGridClearBtn(clearGrid2, 4, 0.5, 0.5)
 
 -- =========================================================================
 -- ============ TOOL SUB-PANELS (MORE TOOLS) ===============================
@@ -2605,7 +2600,7 @@ local function launchVehicleSpeedAdjustScript()
 	intensBox.Size = UDim2.new(1, -16, 0, 26)
 	intensBox.Position = UDim2.new(0, 8, 0, 26)
 	intensBox.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
-	intensBox.Text = "1"
+	intensBox.Text = "10"
 	intensBox.TextColor3 = Color3.fromRGB(0, 230, 140)
 	intensBox.TextSize = 14
 	intensBox.Font = Enum.Font.SourceSansBold
@@ -3568,32 +3563,10 @@ local function launchPlayerTeleportScript()
 	end)
 end
 
--- ================== [TAB 5] MORE TOOLS 🧰 ==================
+-- ================== [TAB 5] MORE TOOLS 🧰 (SORTED A - Z) ==================
 local toolsPage = registerTab("tools", "Tools", "🧰", false)
 
--- 1. FPS / Ping Monitor
-addToggleRow(toolsPage, "FPS / Ping Monitor", state.fpsHudEnabled, function(_, render)
-	state.fpsHudEnabled = not state.fpsHudEnabled
-	render(state.fpsHudEnabled)
-	toggleFpsHud(state.fpsHudEnabled)
-end)
-
--- 2. Vehicle Speed Adjust
-addRefinedToolButton(toolsPage, "Vehicle Speed Adjust", "🏎️", Color3.fromRGB(0, 230, 140), function()
-	launchVehicleSpeedAdjustScript()
-end)
-
--- 3. Auto Clicker
-addRefinedToolButton(toolsPage, "Auto Clicker", "⚡", Color3.fromRGB(255, 150, 0), function()
-	launchAutoClickerScript()
-end)
-
--- 4. Stalker
-addRefinedToolButton(toolsPage, "Stalker", "🎯", Color3.fromRGB(255, 65, 80), function()
-	launchStalkerScript()
-end)
-
--- 5. Aiming (Aimbot)
+-- 1. Aiming (Aimbot)
 addRefinedToolButton(toolsPage, "Aiming (Aimbot)", "👁", Color3.fromRGB(170, 85, 255), function()
 	pcall(function()
 		getgenv().SCRIPT_KEY = "KEYLESS"
@@ -3601,26 +3574,38 @@ addRefinedToolButton(toolsPage, "Aiming (Aimbot)", "👁", Color3.fromRGB(170, 8
 	end)
 end)
 
--- 6. Fly GUI (V3)
-addRefinedToolButton(toolsPage, "Fly GUI (V3)", "🚀", Color3.fromRGB(0, 195, 255), function()
-	pcall(function()
-		loadstring(game:HttpGet("https://raw.githubusercontent.com/XNEOFF/FlyGuiV3/main/FlyGuiV3.txt"))()
-	end)
-end)
-
--- 7. Anti AFK
+-- 2. Anti AFK
 addRefinedToolButton(toolsPage, "Anti AFK", "🛡", Color3.fromRGB(0, 215, 125), function()
 	pcall(function()
 		loadstring(game:HttpGet("https://raw.githubusercontent.com/hassanxzayn-lua/Anti-afk/main/antiafkbyhassanxzyn"))()
 	end)
 end)
 
--- 8. Player Teleport
+-- 3. Auto Clicker
+addRefinedToolButton(toolsPage, "Auto Clicker", "⚡", Color3.fromRGB(255, 150, 0), function()
+	launchAutoClickerScript()
+end)
+
+-- 4. Fly GUI (V3)
+addRefinedToolButton(toolsPage, "Fly GUI (V3)", "🚀", Color3.fromRGB(0, 195, 255), function()
+	pcall(function()
+		loadstring(game:HttpGet("https://raw.githubusercontent.com/XNEOFF/FlyGuiV3/main/FlyGuiV3.txt"))()
+	end)
+end)
+
+-- 5. FPS / Ping Monitor
+addToggleRow(toolsPage, "FPS / Ping Monitor", state.fpsHudEnabled, function(_, render)
+	state.fpsHudEnabled = not state.fpsHudEnabled
+	render(state.fpsHudEnabled)
+	toggleFpsHud(state.fpsHudEnabled)
+end)
+
+-- 6. Player Teleport
 addRefinedToolButton(toolsPage, "Player Teleport", "📍", Color3.fromRGB(100, 140, 255), function()
 	launchPlayerTeleportScript()
 end)
 
--- 9. Rejoin Place
+-- 7. Rejoin Place
 addRefinedToolButton(toolsPage, "Rejoin Place", "🔄", Color3.fromRGB(0, 210, 220), function()
 	pcall(function()
 		if #Players:GetPlayers() <= 1 then
@@ -3631,12 +3616,22 @@ addRefinedToolButton(toolsPage, "Rejoin Place", "🔄", Color3.fromRGB(0, 210, 2
 	end)
 end)
 
--- 10. Server Hop
+-- 8. Server Hop
 addRefinedToolButton(toolsPage, "Server Hop", "🌐", Color3.fromRGB(60, 130, 255), function()
 	pcall(function()
 		local module = loadstring(game:HttpGet("https://raw.githubusercontent.com/LeoKholYt/roblox/main/lk_serverhop.lua"))()
 		module:Teleport(game.PlaceId)
 	end)
+end)
+
+-- 9. Stalker
+addRefinedToolButton(toolsPage, "Stalker", "🎯", Color3.fromRGB(255, 65, 80), function()
+	launchStalkerScript()
+end)
+
+-- 10. Vehicle Speed Adjust
+addRefinedToolButton(toolsPage, "Vehicle Speed Adjust", "🏎️", Color3.fromRGB(0, 230, 140), function()
+	launchVehicleSpeedAdjustScript()
 end)
 
 -- สลับไปยังแท็บแรกเริ่ม
