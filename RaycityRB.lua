@@ -1,6 +1,6 @@
 -- =======================================================
--- 🏎️ RAYCITY RB - ULTIMATE HUB v7.3 (MOBILE OPTIMIZED 📱)
--- Features: UI Scaling, Purple Default, Fixed Drag Engine
+-- 🏎️ RAYCITY RB - ULTIMATE HUB v7.4 (ENGLISH & MOBILE 📱)
+-- Features: UI Scaling, English Panel, Status OFF Default
 -- =======================================================
 
 local parentGui = (gethui and gethui()) or game:GetService("CoreGui") or game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
@@ -14,14 +14,14 @@ local VirtualUser = game:GetService("VirtualUser")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
--- 🧊 DYNAMIC THEME CONFIG (เปลี่ยนค่าเริ่มต้นตามที่ขอ)
+-- 🧊 DYNAMIC THEME CONFIG
 local THEME_CONFIG = {
-    showHud = true,
-    uiColor = Color3.fromRGB(180, 100, 255), -- สีม่วง (Purple)
-    pillColor = Color3.fromRGB(180, 100, 255), -- สีม่วง (Purple)
-    opacity = 30,  -- ความทึบเริ่มต้น 30%
-    darkness = 20, -- ความมืดเริ่มต้น 20%
-    uiScale = 85   -- ขนาดหน้าต่างเริ่มต้น 85% ให้พอดีกับจอมือถือ
+    showHud = false, -- เปลี่ยนเป็น false เพื่อให้แถบ Status ปิดเสมอเมื่อเริ่มสคริปต์
+    uiColor = Color3.fromRGB(180, 100, 255), 
+    pillColor = Color3.fromRGB(180, 100, 255), 
+    opacity = 30,  
+    darkness = 20, 
+    uiScale = 85   
 }
 
 local THEME = {
@@ -39,7 +39,6 @@ local THEME = {
 
 local THEME_UPDATES = {}
 
--- ปิด ไนโตร (infiniteSP) เป็นค่าเริ่มต้น
 local config = { speedEnabled = true, ghostNpc = true, infiniteJump = true, antiAfk = true, vmaxKmh = 300, accelRate = 1.0, infiniteSP = false }
 local stockValues = { vmax = 100, torqueBonus = 0, btPower = 2.6, btDuration = 3.5, btNeedSP = 50 }
 
@@ -200,9 +199,9 @@ local PillScale = Instance.new("UIScale", FloatingPill)
 applyGlassStyle(FloatingPill, 21, 0, true)
 addTextStroke(FloatingPill, 0.5)
 
--- 3. MAIN FRAME (ย่อขนาดเริ่มต้นให้เหมาะกับมือถือ)
+-- 3. MAIN FRAME 
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 360, 0, 360) -- เล็กลง เพื่อไม่ให้ล้นจอมือถือแนวนอน
+MainFrame.Size = UDim2.new(0, 360, 0, 360) 
 MainFrame.Position = UDim2.new(0.5, -180, 0.5, -180)
 MainFrame.Active = true; MainFrame.Parent = ScreenGui
 MainFrame.ClipsDescendants = true
@@ -331,7 +330,7 @@ local function createInputSection(parent, order, icon, title, confKey, presets, 
 
     local inputBox = Instance.new("TextBox")
     inputBox.Size = UDim2.new(1, -112, 0, 26); inputBox.Position = UDim2.new(0, 50, 0, bottomY)
-    inputBox.PlaceholderText = "ระบุค่า..."; inputBox.TextColor3 = THEME.TEXT_MAIN; inputBox.Font = Enum.Font.GothamMedium
+    inputBox.PlaceholderText = "Set Value..."; inputBox.TextColor3 = THEME.TEXT_MAIN; inputBox.Font = Enum.Font.GothamMedium
     inputBox.TextSize = 11; inputBox.Parent = sec
     applyGlassStyle(inputBox, 6, 0.8); addTextStroke(inputBox, 0.7)
 
@@ -458,7 +457,6 @@ local function createSettingsStepper(order, icon, title, confKey, step, min, max
     pBtn.MouseButton1Click:Connect(function() apply(step) end)
 end
 
--- เพิ่ม Preset ปุ่มสำหรับปรับขนาด UI Scale (25%, 50%, 75%, 100%)
 local function createSettingsScalePresets(order, icon, title, confKey, presets)
     local card = Instance.new("Frame")
     card.LayoutOrder = order; card.Size = UDim2.new(1, 0, 0, 72); card.Parent = SettingsFrame
@@ -492,21 +490,21 @@ local function createSettingsScalePresets(order, icon, title, confKey, presets)
     end)
 end
 
--- 📌 POPULATE MAIN MENU
-createToggleRow(Container, 1, "⚡", "สปีดแฮก (Speed Boost)", config.speedEnabled, function(check) if not check then config.speedEnabled = not config.speedEnabled end; return config.speedEnabled end)
-createToggleRow(Container, 2, "👻", "ทะลุรถ (Ghost Mode)", config.ghostNpc, function(check) if not check then config.ghostNpc = not config.ghostNpc; applyGhostMode(config.ghostNpc) end; return config.ghostNpc end)
-createToggleRow(Container, 3, "🦘", "กระโดด (Infinite Jump)", config.infiniteJump, function(check) if not check then config.infiniteJump = not config.infiniteJump end; return config.infiniteJump end)
-createToggleRow(Container, 4, "✨", "ไนโตร (Infinite SP)", config.infiniteSP, function(check) if not check then config.infiniteSP = not config.infiniteSP end; return config.infiniteSP end)
-createInputSection(Container, 5, "🏁", "ความเร็ว (VMAX)", "vmaxKmh", {{"300", 300}, {"450", 450}, {"600", 600}, {"1200", 1200}}, 50, 102, "%d km/h")
-createInputSection(Container, 6, "🚀", "อัตราเร่ง (Accel)", "accelRate", {{"x0.5", 0.5}, {"x1.0", 1.0}, {"x2.5", 2.5}, {"x4.0", 4.0}, {"x8.0", 8.0}, {"x12.0", 12.0}}, 0.1, 130, "x%.1f")
+-- 📌 POPULATE MAIN MENU (ENGLISH)
+createToggleRow(Container, 1, "⚡", "Speed Boost", config.speedEnabled, function(check) if not check then config.speedEnabled = not config.speedEnabled end; return config.speedEnabled end)
+createToggleRow(Container, 2, "👻", "Ghost Mode (NPC)", config.ghostNpc, function(check) if not check then config.ghostNpc = not config.ghostNpc; applyGhostMode(config.ghostNpc) end; return config.ghostNpc end)
+createToggleRow(Container, 3, "🦘", "Infinite Jump", config.infiniteJump, function(check) if not check then config.infiniteJump = not config.infiniteJump end; return config.infiniteJump end)
+createToggleRow(Container, 4, "✨", "Infinite Nitro (SP)", config.infiniteSP, function(check) if not check then config.infiniteSP = not config.infiniteSP end; return config.infiniteSP end)
+createInputSection(Container, 5, "🏁", "Max Speed (VMAX)", "vmaxKmh", {{"300", 300}, {"450", 450}, {"600", 600}, {"1200", 1200}}, 50, 102, "%d km/h")
+createInputSection(Container, 6, "🚀", "Acceleration", "accelRate", {{"x0.5", 0.5}, {"x1.0", 1.0}, {"x2.5", 2.5}, {"x4.0", 4.0}, {"x8.0", 8.0}, {"x12.0", 12.0}}, 0.1, 130, "x%.1f")
 
--- 📌 POPULATE SETTINGS MENU
-createToggleRow(SettingsFrame, 1, "👁️", "แสดงสถานะ HUD ด้านบน", THEME_CONFIG.showHud, function(check) if not check then THEME_CONFIG.showHud = not THEME_CONFIG.showHud end; return THEME_CONFIG.showHud end)
-createSettingsScalePresets(2, "🔍", "ขนาด UI (Panel Size)", "uiScale", {{"25%", 25}, {"50%", 50}, {"75%", 75}, {"100%", 100}})
-createSettingsColorPalette(3, "🎨", "สีธีมหลัก (Theme)", "uiColor") 
-createSettingsColorPalette(4, "💊", "สีปุ่ม (RayTools)", "pillColor") 
-createSettingsStepper(5, "🪟", "ความทึบพาเนล (Opacity)", "opacity", 10, 10, 100, "%d%%")
-createSettingsStepper(6, "🌙", "ความมืดพาเนล (Darkness)", "darkness", 10, 0, 100, "%d%%")
+-- 📌 POPULATE SETTINGS MENU (ENGLISH)
+createToggleRow(SettingsFrame, 1, "👁️", "Show Status HUD", THEME_CONFIG.showHud, function(check) if not check then THEME_CONFIG.showHud = not THEME_CONFIG.showHud end; return THEME_CONFIG.showHud end)
+createSettingsScalePresets(2, "🔍", "Panel Scale", "uiScale", {{"25%", 25}, {"50%", 50}, {"75%", 75}, {"100%", 100}})
+createSettingsColorPalette(3, "🎨", "Primary Theme Color", "uiColor") 
+createSettingsColorPalette(4, "💊", "Pill Button Color", "pillColor") 
+createSettingsStepper(5, "🪟", "Panel Opacity", "opacity", 10, 10, 100, "%d%%")
+createSettingsStepper(6, "🌙", "Panel Darkness", "darkness", 10, 0, 100, "%d%%")
 
 -- 6. STATUS DASHBOARD
 local StatusBox = Instance.new("Frame")
@@ -514,14 +512,14 @@ StatusBox.Size = UDim2.new(1, -30, 0, 36); StatusBox.Position = UDim2.new(0, 15,
 StatusBox.Parent = MainFrame
 applyGlassStyle(StatusBox, 10, 0.1)
 local StatusLabel = Instance.new("TextLabel")
-StatusLabel.Size = UDim2.new(1, -16, 1, 0); StatusLabel.Position = UDim2.new(0, 8, 0, 0)
-StatusLabel.BackgroundTransparency = 1; StatusLabel.Text = "ความเร็ว: 0 km/h | กด Spacebar เพื่อกระโดด"
+StatusLabel.Size = UDim2.new(1, -30, 1, 0); StatusLabel.Position = UDim2.new(0, 12, 0, 0)
+StatusLabel.BackgroundTransparency = 1; StatusLabel.Text = "Speed: 0 km/h | Press Space to Jump"
 StatusLabel.TextColor3 = THEME.TEXT_MAIN; StatusLabel.Font = Enum.Font.GothamBlack
-StatusLabel.TextSize = 11; StatusLabel.Parent = StatusBox
+StatusLabel.TextSize = 11; StatusLabel.TextXAlignment = Enum.TextXAlignment.Left; StatusLabel.Parent = StatusBox
 addTextStroke(StatusLabel, 0.5)
 
 -- =======================================================
--- 🖱️ INTERACTION & PHYSICS LOOP (Fixed for UIScale Dragging)
+-- 🖱️ INTERACTION & PHYSICS LOOP 
 -- =======================================================
 local function makeDraggable(handle, target, scaleObj)
     local dragging, dragInput, dragStart, startPos
@@ -538,7 +536,6 @@ local function makeDraggable(handle, target, scaleObj)
         if input == dragInput and dragging then
             local currentScale = scaleObj and scaleObj.Scale or 1
             local delta = input.Position - dragStart
-            -- แก้บัคเวลา Scale ลดลง แล้วเมาส์ลากไม่ตรงกับจอ (คำนวณผ่าน Scale factor)
             target.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + (delta.X / currentScale), startPos.Y.Scale, startPos.Y.Offset + (delta.Y / currentScale))
         end
     end)
@@ -548,7 +545,6 @@ makeDraggable(TopBar, MainFrame, MainScale)
 makeDraggable(HudBanner, HudBanner, HudScale)
 makeDraggable(FloatingPill, FloatingPill, PillScale)
 
--- แก้บัคลากย่อขยายคู่กับ UIScale
 local resDrag, resStart, frameStart = false, nil, nil
 ResizeGrip.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then 
@@ -589,7 +585,7 @@ heartbeatConn = RunService.Heartbeat:Connect(function(dt)
     local root = car and (car:FindFirstChild("Root") or car:FindFirstChild("Hull"))
     
     if not phys or not phys.p or not root then
-        StatusLabel.Text = "กำลังรอข้อมูลรถ... (กรุณาขึ้นขับรถ)"
+        StatusLabel.Text = "Waiting for vehicle data..."
         return
     end
 
@@ -613,7 +609,7 @@ heartbeatConn = RunService.Heartbeat:Connect(function(dt)
             phys.p.btNeedSP = stockValues.btNeedSP
         end
     end
-    StatusLabel.Text = string.format("🧊 ความเร็ว: %d km/h | เกียร์: %s | RPM: %d", math.floor(currentKmh), tostring(phys.gear or 0), math.floor(phys.rpm or 0))
+    StatusLabel.Text = string.format("🧊 Speed: %d km/h | Gear: %s | RPM: %d", math.floor(currentKmh), tostring(phys.gear or 0), math.floor(phys.rpm or 0))
 end)
 
 _G.RCSpeedDisconnect = function()
@@ -624,8 +620,7 @@ _G.RCSpeedDisconnect = function()
     afkLoopActive = false; applyGhostMode(false)
 end
 
--- อัปเดตสีและขนาดครั้งแรกเมื่อรัน
 SyncTheme()
 
-print("[Raycity Hub v7.3] 📱 Mobile Scalable Edition Loaded!")
+print("[Raycity Hub v7.4] 📱 English & Mobile Scalable Edition Loaded!")
 return true
