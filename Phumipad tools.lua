@@ -1,6 +1,6 @@
 -- =========================================================================
---   PHUMIPAD TOOLBOX [v2.5 PRO EDITION] - MODERN CYBER-GLASS UI
---   Retains 100% Original Features + Upgraded UX/UI, New Utilities & Patch Log
+--   PHUMIPAD TOOLBOX [v2.6 PRO EDITION] - MODERN CYBER-GLASS UI
+--   Retains 100% Original Features + Dynamic Waypoints, Spectate & Visual FPS
 -- =========================================================================
 
 -- ================== AUTO CLEANUP PREVIOUS INSTANCE ==================
@@ -83,19 +83,24 @@ local state = {
 	frame = nil,
 	isFolded = false,
 	savedExpandedHeight = 360,
+
 	-- Movement (Original + Upgraded)
 	speedEnabled = false,
 	speedValue = 16,
 	baseWalkSpeed = 16,
+
 	tpWalkEnabled = false,
 	tpWalkSpeed = 1,
+
 	jumpEnabled = false,
 	jumpValue = 50,
 	baseJumpPower = 50,
 	baseJumpHeight = 7.2,
+
 	gravityEnabled = false,
 	gravityValue = 196.2,
 	baseGravity = Workspace.Gravity,
+
 	-- Utilities & Visual (Original + Upgraded)
 	instantInteract = false,
 	infiniteJump = false,
@@ -120,6 +125,7 @@ local state = {
 	screenTime = false,
 	fpsHudEnabled = false,
 	baseMaxHealth = 100,
+
 	-- Runtime connections
 	_noclipConn = nil,
 	_antiRDConns = {},
@@ -131,13 +137,13 @@ local state = {
 	_tpWalkConn = nil,
 	_fpsConn = nil,
 	_spinConn = nil,
-	-- Backups & ESP Storage
+	_spectateConn = nil,
+
+	-- Backups & Dynamic Waypoints Storage
 	fbBackup = nil,
 	potatoBackup = nil,
-	savedPosition1 = nil,
-	savedPosition2 = nil,
-	savedPosition3 = nil,
-	savedPosition4 = nil,
+	waypointCount = 0,
+	savedPositions = {},
 	savedNames = {"Spot 1", "Spot 2", "Spot 3", "Spot 4"},
 	espFolder = nil,
 	espCache = {},
@@ -150,7 +156,7 @@ local character = player.Character or player.CharacterAdded:Wait()
 local humanoid  = character:WaitForChild("Humanoid")
 local hrp       = character:WaitForChild("HumanoidRootPart")
 
--- ================== MODERN TOAST NOTIFICATION SYSTEM (NEW) ==================
+-- ================== MODERN TOAST NOTIFICATION SYSTEM ==================
 local notifGui = Instance.new("ScreenGui")
 notifGui.Name = "Phumipad_Toast_Notifications"
 notifGui.ResetOnSpawn = false
@@ -253,6 +259,7 @@ local function copyGameName()
 	else
 		gameName = "Place " .. tostring(game.PlaceId)
 	end
+
 	local copied = false
 	if setclipboard then
 		setclipboard(gameName)
@@ -269,6 +276,7 @@ end
 
 -- ================== STATS PARSER & TRACKER ==================
 local initialLeaderstats = {}
+
 local function parseStatNumber(val)
 	if type(val) == "number" then return val end
 	if type(val) ~= "string" then return nil end
@@ -362,6 +370,7 @@ end
 
 -- ================== BATTERY SAVER OVERLAY ==================
 local screenTimeGui = nil
+
 local function applyScreenTime(on)
 	state.screenTime = on
 	if screenTimeGui then
@@ -369,6 +378,7 @@ local function applyScreenTime(on)
 		screenTimeGui = nil
 	end
 	if not on then return end
+
 	recordInitialStats()
 
 	local sgST = Instance.new("ScreenGui")
@@ -769,7 +779,6 @@ local function applyFPSBooster(on)
 				end
 			end
 		end)
-
 		local function potatoify(part)
 			pcall(function()
 				if part.Name == "DracoESPHighlight" or part.Name == "DracoESPName" 
@@ -808,7 +817,6 @@ local function applyFPSBooster(on)
 				end
 			end)
 		end
-
 		for _, item in ipairs(Workspace:GetDescendants()) do
 			potatoify(item)
 		end
@@ -938,7 +946,7 @@ local function applyFullBright(on)
 	end
 end
 
--- ================== ULTRA-RELIABLE ESP ENGINE (UPGRADED WITH HP%) ==================
+-- ================== ULTRA-RELIABLE ESP ENGINE (WITH HP%) ==================
 local espRayParams = RaycastParams.new()
 espRayParams.FilterType = Enum.RaycastFilterType.Exclude
 espRayParams.IgnoreWater = true
@@ -1268,6 +1276,7 @@ end
 
 -- ================== FPS / PING MONITOR WIDGET ==================
 local fpsHudGui = nil
+
 local function toggleFpsHud(on)
 	state.fpsHudEnabled = on
 	if fpsHudGui then
@@ -1295,6 +1304,7 @@ local function toggleFpsHud(on)
 	fStroke.Color = Color3.fromRGB(0, 210, 255)
 	fStroke.Thickness = 1.2
 	fStroke.Parent = frame
+
 	makeDraggable(frame, frame)
 
 	local hudText = Instance.new("TextLabel")
@@ -1351,7 +1361,6 @@ end))
 -- =========================================================================
 -- ============ SLEEK MODERN CYBER-GLASS MAIN GUI PANEL ====================
 -- =========================================================================
-
 local sg = Instance.new("ScreenGui")
 sg.Name = "PhumipadToolboxMinimalGui"
 sg.ResetOnSpawn = false
@@ -1518,14 +1527,14 @@ local subTitle = Instance.new("TextLabel")
 subTitle.Size = UDim2.new(1, -135, 0, 12)
 subTitle.Position = UDim2.new(0, 40, 0, 22)
 subTitle.BackgroundTransparency = 1
-subTitle.Text = "v2.5 Cyber Edition • R-Ctrl"
+subTitle.Text = "v2.6 Cyber Edition • R-Ctrl"
 subTitle.TextColor3 = Color3.fromRGB(0, 205, 255)
 subTitle.Font = Enum.Font.GothamMedium
 subTitle.TextSize = 8.5
 subTitle.TextXAlignment = Enum.TextXAlignment.Left
 subTitle.Parent = bar
 
--- ปุ่มย่อเป็น Floating Show Menu Button ('•')
+-- ปุ่มย่อเป็น Floating Show Menu Button ('⚡')
 local dockHideBtn = Instance.new("TextButton")
 dockHideBtn.Name = "DockHideButton"
 dockHideBtn.Size = UDim2.new(0, 24, 0, 24)
@@ -1826,6 +1835,7 @@ local function getOrder() currentOrder = currentOrder + 1; return currentOrder e
 -- ================== TAB NAVIGATION SYSTEM ==================
 local tabItems = {}
 local activeTabId = nil
+
 local tabColors = {
 	move   = Color3.fromRGB(0, 230, 130),
 	util   = Color3.fromRGB(0, 195, 255),
@@ -1845,7 +1855,6 @@ local function adjustPanelHeight(animate)
 		local maxAllowedHeight = cam and (cam.ViewportSize.Y * 0.85) or 600
 		local finalHeight = math.clamp(totalHeight, 200, maxAllowedHeight)
 		state.savedExpandedHeight = finalHeight
-
 		if animate then
 			TweenService:Create(f, TweenInfo.new(0.22, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
 				Size = UDim2.new(0, f.Size.X.Offset, 0, finalHeight)
@@ -1867,7 +1876,7 @@ local function switchTab(id)
 			local darkTint = accent:Lerp(Color3.fromRGB(15, 18, 26), 0.72)
 			TweenService:Create(data.button, TweenInfo.new(0.18), {BackgroundColor3 = darkTint}):Play()
 			TweenService:Create(data.stroke, TweenInfo.new(0.18), {Color = accent}):Play()
-			TweenService:Create( stroke, TweenInfo.new(0.25), {Color = accent}):Play()
+			TweenService:Create(stroke, TweenInfo.new(0.25), {Color = accent}):Play()
 			data.button.TextColor3 = Color3.fromRGB(255, 255, 255)
 		else
 			TweenService:Create(data.button, TweenInfo.new(0.18), {BackgroundColor3 = Color3.fromRGB(18, 22, 32)}):Play()
@@ -2010,20 +2019,23 @@ local function addRefinedToolButton(parent, name, iconSymbol, accentColor, onCli
 		TweenService:Create(rStroke, TweenInfo.new(0.18), {Color = accentColor}):Play()
 		TweenService:Create(arrow, TweenInfo.new(0.18), {TextColor3 = accentColor, Position = UDim2.new(1, -20, 0, 0)}):Play()
 	end)
+
 	btn.MouseLeave:Connect(function()
 		TweenService:Create(row, TweenInfo.new(0.18), {BackgroundColor3 = Color3.fromRGB(18, 22, 34)}):Play()
 		TweenService:Create(rStroke, TweenInfo.new(0.18), {Color = Color3.fromRGB(36, 44, 64)}):Play()
 		TweenService:Create(arrow, TweenInfo.new(0.18), {TextColor3 = Color3.fromRGB(110, 125, 150), Position = UDim2.new(1, -24, 0, 0)}):Play()
 	end)
+
 	btn.MouseButton1Click:Connect(function()
 		sendNotification("Tool Launched", name, accentColor)
 		local ok, err = pcall(onClick)
 		if not ok then warn("[Phumipad Tool Error]: " .. tostring(err)) end
 	end)
+
 	return row
 end
 
--- UPGRADED: Animated Pill Switch Toggle Row
+-- Animated Pill Switch Toggle Row
 local function addToggleRow(parent, name, defaultOn, onClick)
 	local row = Instance.new("Frame")
 	row.Size = UDim2.new(1, 0, 0, 32)
@@ -2074,14 +2086,14 @@ local function addToggleRow(parent, name, defaultOn, onClick)
 		TweenService:Create(knob, TweenInfo.new(0.18, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Position = targetPos}):Play()
 		TweenService:Create(rStroke, TweenInfo.new(0.18), {Color = targetStroke}):Play()
 	end
-	render(defaultOn)
 
+	render(defaultOn)
 	pill.MouseButton1Click:Connect(function()
 		onClick(pill, render)
 	end)
 end
 
--- UPGRADED: Animated Input + Pill Switch Row
+-- Animated Input + Pill Switch Row
 local function addInputToggleRow(parent, name, defaultVal, defaultOn, onToggle, onValChange)
 	local row = Instance.new("Frame")
 	row.Size = UDim2.new(1, 0, 0, 34)
@@ -2145,6 +2157,7 @@ local function addInputToggleRow(parent, name, defaultVal, defaultOn, onToggle, 
 		TweenService:Create(knob, TweenInfo.new(0.18, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Position = targetPos}):Play()
 		TweenService:Create(rStroke, TweenInfo.new(0.18), {Color = targetStroke}):Play()
 	end
+
 	render(defaultOn)
 
 	box.FocusLost:Connect(function()
@@ -2208,10 +2221,12 @@ local function addPresetChips(parent, values, onSelect)
 			TweenService:Create(chip, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(32, 40, 58)}):Play()
 			TweenService:Create(cStroke, TweenInfo.new(0.15), {Color = Color3.fromRGB(0, 200, 255)}):Play()
 		end)
+
 		chip.MouseLeave:Connect(function()
 			TweenService:Create(chip, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(20, 25, 38)}):Play()
 			TweenService:Create(cStroke, TweenInfo.new(0.15), {Color = Color3.fromRGB(38, 48, 68)}):Play()
 		end)
+
 		chip.MouseButton1Click:Connect(function()
 			local flash = TweenService:Create(chip, TweenInfo.new(0.08), {BackgroundColor3 = Color3.fromRGB(0, 185, 255)})
 			local reset = TweenService:Create(chip, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(20, 25, 38)})
@@ -2220,11 +2235,11 @@ local function addPresetChips(parent, values, onSelect)
 			onSelect(val)
 		end)
 	end
+
 	return row
 end
 
 -- ================== INITIALIZE TABS & PAGES ==================
-
 -- [TAB 1] MOVEMENT 🏃 (Default)
 local movePage = registerTab("move", "Move", "🏃", true)
 
@@ -2259,7 +2274,6 @@ end, function(val)
 end)
 addPresetChips(movePage, {20, 40, 60, 80, 100}, function(val) jumpControl.setVal(val) end)
 
--- NEW: Gravity Control in Move Tab
 local gravControl = addInputToggleRow(movePage, "Gravity Control", 196, state.gravityEnabled, function(_, render)
 	state.gravityEnabled = not state.gravityEnabled
 	render(state.gravityEnabled)
@@ -2301,7 +2315,6 @@ addToggleRow(utilPage, "Anti Ragdoll", state.antiRagdoll, function(_, render)
 	applyAntiRagdoll(state.antiRagdoll)
 end)
 
--- NEW: Click Teleport (Ctrl + Click)
 addToggleRow(utilPage, "Click TP (Ctrl + Click)", state.clickTpEnabled, function(_, render)
 	state.clickTpEnabled = not state.clickTpEnabled
 	render(state.clickTpEnabled)
@@ -2310,7 +2323,6 @@ addToggleRow(utilPage, "Click TP (Ctrl + Click)", state.clickTpEnabled, function
 	end
 end)
 
--- NEW: Built-in Anti-AFK
 addToggleRow(utilPage, "Built-in Anti-AFK", state.builtInAntiAfk, function(_, render)
 	state.builtInAntiAfk = not state.builtInAntiAfk
 	render(state.builtInAntiAfk)
@@ -2344,6 +2356,13 @@ addToggleRow(visualPage, "Bot ESP (with HP%)", state.botEsp, function(_, render)
 	applyBotESP(state.botEsp)
 end)
 
+-- MOVED FROM TOOLS: FPS / Ping Monitor
+addToggleRow(visualPage, "FPS / Ping Monitor", state.fpsHudEnabled, function(_, render)
+	state.fpsHudEnabled = not state.fpsHudEnabled
+	render(state.fpsHudEnabled)
+	toggleFpsHud(state.fpsHudEnabled)
+end)
+
 addToggleRow(visualPage, "FPS Booster", state.fpsBooster, function(_, render)
 	state.fpsBooster = not state.fpsBooster
 	render(state.fpsBooster)
@@ -2356,7 +2375,6 @@ addToggleRow(visualPage, "Full Bright", state.fullBright, function(_, render)
 	applyFullBright(state.fullBright)
 end)
 
--- NEW: Time of Day Changer
 local timeControl = addInputToggleRow(visualPage, "Time of Day (0-24)", state.timeLockValue, state.timeLockEnabled, function(_, render)
 	state.timeLockEnabled = not state.timeLockEnabled
 	render(state.timeLockEnabled)
@@ -2434,16 +2452,38 @@ stBtn.MouseButton1Click:Connect(function()
 	applyScreenTime(true)
 end)
 
--- [TAB 4] WAYPOINTS 📍
+-- [TAB 4] WAYPOINTS 📍 (UPGRADED WITH DYNAMIC '+' ADD BUTTON)
 local waypointsPage = registerTab("points", "Point", "📍", false)
 
-for i = 1, 4 do
+local waypointsListContainer = Instance.new("Frame")
+waypointsListContainer.Name = "WaypointsListContainer"
+waypointsListContainer.Size = UDim2.new(1, 0, 0, 0)
+waypointsListContainer.AutomaticSize = Enum.AutomaticSize.Y
+waypointsListContainer.BackgroundTransparency = 1
+waypointsListContainer.LayoutOrder = 1
+waypointsListContainer.Parent = waypointsPage
+
+local wpListLayout = Instance.new("UIListLayout")
+wpListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+wpListLayout.Padding = UDim.new(0, 6)
+wpListLayout.Parent = waypointsListContainer
+
+wpListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+	if activeTabId == "points" then
+		adjustPanelHeight(true)
+	end
+end)
+
+local function createWaypointSlot(slotIndex, isRemovable)
+	state.savedNames[slotIndex] = state.savedNames[slotIndex] or ("Spot " .. slotIndex)
+
 	local row = Instance.new("Frame")
+	row.Name = "WaypointSlot_" .. slotIndex
 	row.Size = UDim2.new(1, 0, 0, 30)
 	row.BackgroundColor3 = Color3.fromRGB(18, 22, 34)
 	row.BorderSizePixel = 0
-	row.LayoutOrder = getOrder()
-	row.Parent = waypointsPage
+	row.LayoutOrder = slotIndex
+	row.Parent = waypointsListContainer
 	Instance.new("UICorner", row).CornerRadius = UDim.new(0, 6)
 
 	local rStroke = Instance.new("UIStroke")
@@ -2452,11 +2492,11 @@ for i = 1, 4 do
 	rStroke.Parent = row
 
 	local nameBox = Instance.new("TextBox")
-	nameBox.Size = UDim2.new(0.42, -6, 1, -6)
+	nameBox.Size = isRemovable and UDim2.new(0.38, -6, 1, -6) or UDim2.new(0.42, -6, 1, -6)
 	nameBox.Position = UDim2.new(0, 4, 0, 3)
 	nameBox.BackgroundColor3 = Color3.fromRGB(26, 32, 48)
 	nameBox.BorderSizePixel = 0
-	nameBox.Text = state.savedNames[i] or ("Spot " .. i)
+	nameBox.Text = state.savedNames[slotIndex]
 	nameBox.TextColor3 = Color3.fromRGB(230, 240, 255)
 	nameBox.Font = Enum.Font.GothamMedium
 	nameBox.TextSize = 10.5
@@ -2466,17 +2506,17 @@ for i = 1, 4 do
 
 	nameBox.FocusLost:Connect(function()
 		if nameBox.Text == "" or string.gsub(nameBox.Text, "%s+", "") == "" then
-			nameBox.Text = "Spot " .. i
+			nameBox.Text = "Spot " .. slotIndex
 		end
-		state.savedNames[i] = nameBox.Text
+		state.savedNames[slotIndex] = nameBox.Text
 	end)
 
 	local actionBtn = Instance.new("TextButton")
-	actionBtn.Size = UDim2.new(0.38, -4, 1, -6)
-	actionBtn.Position = UDim2.new(0.42, 2, 0, 3)
+	actionBtn.Size = isRemovable and UDim2.new(0.32, -4, 1, -6) or UDim2.new(0.38, -4, 1, -6)
+	actionBtn.Position = isRemovable and UDim2.new(0.38, 2, 0, 3) or UDim2.new(0.42, 2, 0, 3)
 	actionBtn.BackgroundColor3 = Color3.fromRGB(26, 32, 48)
 	actionBtn.BorderSizePixel = 0
-	actionBtn.Text = "Set " .. i
+	actionBtn.Text = "Set " .. slotIndex
 	actionBtn.TextColor3 = Color3.fromRGB(225, 235, 255)
 	actionBtn.Font = Enum.Font.GothamBold
 	actionBtn.TextSize = 10.5
@@ -2484,8 +2524,8 @@ for i = 1, 4 do
 	Instance.new("UICorner", actionBtn).CornerRadius = UDim.new(0, 5)
 
 	local clearBtn = Instance.new("TextButton")
-	clearBtn.Size = UDim2.new(0.2, -4, 1, -6)
-	clearBtn.Position = UDim2.new(0.8, 0, 0, 3)
+	clearBtn.Size = isRemovable and UDim2.new(0.18, -4, 1, -6) or UDim2.new(0.2, -4, 1, -6)
+	clearBtn.Position = isRemovable and UDim2.new(0.70, 0, 0, 3) or UDim2.new(0.8, 0, 0, 3)
 	clearBtn.BackgroundColor3 = Color3.fromRGB(185, 45, 55)
 	clearBtn.BorderSizePixel = 0
 	clearBtn.Text = "Clear"
@@ -2495,46 +2535,108 @@ for i = 1, 4 do
 	clearBtn.Parent = row
 	Instance.new("UICorner", clearBtn).CornerRadius = UDim.new(0, 5)
 
+	if isRemovable then
+		local delBtn = Instance.new("TextButton")
+		delBtn.Size = UDim2.new(0.12, -4, 1, -6)
+		delBtn.Position = UDim2.new(0.88, 0, 0, 3)
+		delBtn.BackgroundColor3 = Color3.fromRGB(40, 24, 32)
+		delBtn.BorderSizePixel = 0
+		delBtn.Text = "✕"
+		delBtn.TextColor3 = Color3.fromRGB(255, 90, 105)
+		delBtn.Font = Enum.Font.GothamBold
+		delBtn.TextSize = 10
+		delBtn.Parent = row
+		Instance.new("UICorner", delBtn).CornerRadius = UDim.new(0, 5)
+
+		delBtn.MouseButton1Click:Connect(function()
+			state.savedPositions[slotIndex] = nil
+			row:Destroy()
+			adjustPanelHeight(true)
+		end)
+	end
+
 	local function updateVisual()
-		local key = "savedPosition" .. i
-		if state[key] then
-			actionBtn.Text = "Go " .. i
+		if state.savedPositions[slotIndex] then
+			actionBtn.Text = "Go " .. slotIndex
 			actionBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 125)
 		else
-			actionBtn.Text = "Set " .. i
+			actionBtn.Text = "Set " .. slotIndex
 			actionBtn.BackgroundColor3 = Color3.fromRGB(26, 32, 48)
 		end
 	end
 	updateVisual()
 
 	actionBtn.MouseButton1Click:Connect(function()
-		local key = "savedPosition" .. i
-		if state[key] then
+		if state.savedPositions[slotIndex] then
 			local char = player.Character or player.CharacterAdded:Wait()
 			local root = char:FindFirstChild("HumanoidRootPart")
 			if root then
-				root.CFrame = CFrame.new(state[key])
-				sendNotification("Teleported", "Warped to " .. (state.savedNames[i] or ("Spot " .. i)), Color3.fromRGB(255, 175, 25))
+				root.CFrame = CFrame.new(state.savedPositions[slotIndex])
+				sendNotification("Teleported", "Warped to " .. (state.savedNames[slotIndex] or ("Spot " .. slotIndex)), Color3.fromRGB(255, 175, 25))
 			end
 		else
 			local char = player.Character or player.CharacterAdded:Wait()
 			local root = char:FindFirstChild("HumanoidRootPart")
 			if root then
-				state[key] = root.Position
+				state.savedPositions[slotIndex] = root.Position
 				updateVisual()
-				sendNotification("Waypoint Saved", "Saved " .. (state.savedNames[i] or ("Spot " .. i)), Color3.fromRGB(0, 210, 130))
+				sendNotification("Waypoint Saved", "Saved " .. (state.savedNames[slotIndex] or ("Spot " .. slotIndex)), Color3.fromRGB(0, 210, 130))
 			end
 		end
 	end)
 
 	clearBtn.MouseButton1Click:Connect(function()
-		state["savedPosition" .. i] = nil
+		state.savedPositions[slotIndex] = nil
 		updateVisual()
 	end)
 end
 
+-- สร้าง 4 จุดเริ่มต้น
+for i = 1, 4 do
+	state.waypointCount = i
+	createWaypointSlot(i, false)
+end
+
+-- ปุ่ม '+' สำหรับเพิ่มจุด Waypoint ใหม่ได้ไม่จำกัด
+local addWaypointBtn = Instance.new("TextButton")
+addWaypointBtn.Name = "AddWaypointButton"
+addWaypointBtn.Size = UDim2.new(1, 0, 0, 32)
+addWaypointBtn.BackgroundColor3 = Color3.fromRGB(22, 28, 44)
+addWaypointBtn.BorderSizePixel = 0
+addWaypointBtn.Text = "+  Add New Waypoint"
+addWaypointBtn.TextColor3 = Color3.fromRGB(255, 190, 45)
+addWaypointBtn.Font = Enum.Font.GothamBold
+addWaypointBtn.TextSize = 11
+addWaypointBtn.AutoButtonColor = false
+addWaypointBtn.LayoutOrder = 9999
+addWaypointBtn.Parent = waypointsPage
+Instance.new("UICorner", addWaypointBtn).CornerRadius = UDim.new(0, 7)
+
+local addWpStroke = Instance.new("UIStroke")
+addWpStroke.Color = Color3.fromRGB(255, 175, 25)
+addWpStroke.Thickness = 1.2
+addWpStroke.Transparency = 0.35
+addWpStroke.Parent = addWaypointBtn
+
+addWaypointBtn.MouseEnter:Connect(function()
+	TweenService:Create(addWaypointBtn, TweenInfo.new(0.18), {BackgroundColor3 = Color3.fromRGB(32, 40, 62)}):Play()
+	TweenService:Create(addWpStroke, TweenInfo.new(0.18), {Transparency = 0}):Play()
+end)
+
+addWaypointBtn.MouseLeave:Connect(function()
+	TweenService:Create(addWaypointBtn, TweenInfo.new(0.18), {BackgroundColor3 = Color3.fromRGB(22, 28, 44)}):Play()
+	TweenService:Create(addWpStroke, TweenInfo.new(0.18), {Transparency = 0.35}):Play()
+end)
+
+addWaypointBtn.MouseButton1Click:Connect(function()
+	state.waypointCount = state.waypointCount + 1
+	createWaypointSlot(state.waypointCount, true)
+	sendNotification("Waypoint Added", "Created Spot " .. tostring(state.waypointCount), Color3.fromRGB(255, 175, 25))
+	adjustPanelHeight(true)
+end)
+
 -- =========================================================================
--- ============ ORIGINAL TOOL SUB-PANELS (100% RETAINED) ===================
+-- ============ TOOL SUB-PANELS (ORIGINAL + NEW SPECTATE) ==================
 -- =========================================================================
 
 -- 1. VEHICLE SPEED ADJUST SCRIPT LAUNCHER
@@ -2544,6 +2646,7 @@ local function launchVehicleSpeedAdjustScript()
 		parentContainer:FindFirstChild("UniversalSpeedAdjustGui"):Destroy()
 		return
 	end
+
 	local screenGui = Instance.new("ScreenGui")
 	screenGui.Name = "UniversalSpeedAdjustGui"
 	screenGui.ResetOnSpawn = false
@@ -2643,6 +2746,7 @@ local function launchVehicleSpeedAdjustScript()
 
 	local intens = 350
 	local isEnabled = false
+
 	intensBox:GetPropertyChangedSignal("Text"):Connect(function()
 		local val = tonumber(intensBox.Text)
 		if val then intens = val end
@@ -2653,8 +2757,8 @@ local function launchVehicleSpeedAdjustScript()
 		toggleBtn.Text = isEnabled and "ON" or "OFF"
 		toggleBtn.BackgroundColor3 = isEnabled and Color3.fromRGB(0, 200, 125) or Color3.fromRGB(180, 50, 50)
 	end
-	toggleBtn.MouseButton1Click:Connect(toggleState)
 
+	toggleBtn.MouseButton1Click:Connect(toggleState)
 	local keyConn = UserInputService.InputBegan:Connect(function(input, gpe)
 		if not gpe and input.KeyCode == Enum.KeyCode.F then toggleState() end
 	end)
@@ -3068,6 +3172,7 @@ local function launchStalkerScript()
 	sLayout.Parent = listScroll
 
 	local selectedUser, selectedBtn = nil, nil
+
 	local function populateList()
 		for _, child in ipairs(listScroll:GetChildren()) do
 			if child:IsA("TextButton") then child:Destroy() end
@@ -3248,6 +3353,7 @@ local function launchPlayerTeleportScript()
 	tpListLayout.Parent = listScroll
 
 	local targetPlr, currentSelectedBtn = nil, nil
+
 	local function refreshTeleportList()
 		for _, v in ipairs(listScroll:GetChildren()) do
 			if v:IsA("TextButton") then v:Destroy() end
@@ -3276,6 +3382,7 @@ local function launchPlayerTeleportScript()
 			end
 		end
 	end
+
 	refreshTeleportList()
 	Players.PlayerAdded:Connect(refreshTeleportList)
 	Players.PlayerRemoving:Connect(refreshTeleportList)
@@ -3309,7 +3416,315 @@ local function launchPlayerTeleportScript()
 		contentBox.Visible = not minimized
 		tpFrame.Size = minimized and UDim2.new(0, 280, 0, 44) or UDim2.new(0, 280, 0, 330)
 	end)
+
 	subCloseBtn.MouseButton1Click:Connect(function() tpGui:Destroy() end)
+end
+
+-- 5. NEW: SPECTATE PLAYER PANEL (WITH SEARCH BAR & SCROLLING LIST)
+local function resetCameraToSelf()
+	if state._spectateConn then
+		state._spectateConn:Disconnect()
+		state._spectateConn = nil
+	end
+	local cam = Workspace.CurrentCamera
+	local myChar = player.Character
+	local myHum = myChar and myChar:FindFirstChildOfClass("Humanoid")
+	if cam and myHum then
+		cam.CameraSubject = myHum
+		cam.CameraType = Enum.CameraType.Custom
+	end
+end
+
+local function launchSpectateScript()
+	local existing = (targetContainer and targetContainer:FindFirstChild("SpectateUI")) or playerGui:FindFirstChild("SpectateUI")
+	if existing then
+		existing.Enabled = not existing.Enabled
+		return
+	end
+
+	local specGui = Instance.new("ScreenGui")
+	specGui.Name = "SpectateUI"
+	specGui.ResetOnSpawn = false
+	safeParentGui(specGui)
+
+	local spFrame = Instance.new("Frame")
+	spFrame.Name = "Main"
+	spFrame.Size = UDim2.new(0, 290, 0, 365)
+	spFrame.Position = UDim2.new(0.5, -145, 0.3, 0)
+	spFrame.BackgroundColor3 = Color3.fromRGB(14, 18, 28)
+	spFrame.BorderSizePixel = 0
+	spFrame.ClipsDescendants = true
+	spFrame.Parent = specGui
+	Instance.new("UICorner", spFrame).CornerRadius = UDim.new(0, 14)
+
+	local spStroke = Instance.new("UIStroke")
+	spStroke.Color = Color3.fromRGB(0, 210, 255)
+	spStroke.Thickness = 1.4
+	spStroke.Transparency = 0.25
+	spStroke.Parent = spFrame
+
+	local topBar = Instance.new("Frame")
+	topBar.Size = UDim2.new(1, 0, 0, 42)
+	topBar.BackgroundColor3 = Color3.fromRGB(20, 25, 38)
+	topBar.BorderSizePixel = 0
+	topBar.Parent = spFrame
+	Instance.new("UICorner", topBar).CornerRadius = UDim.new(0, 14)
+	makeDraggable(topBar, spFrame)
+
+	local titleLbl = Instance.new("TextLabel")
+	titleLbl.Size = UDim2.new(1, -90, 1, 0)
+	titleLbl.Position = UDim2.new(0, 14, 0, 0)
+	titleLbl.BackgroundTransparency = 1
+	titleLbl.Text = "🎥 Spectate Player"
+	titleLbl.TextColor3 = Color3.fromRGB(245, 250, 255)
+	titleLbl.Font = Enum.Font.GothamBold
+	titleLbl.TextSize = 14
+	titleLbl.TextXAlignment = Enum.TextXAlignment.Left
+	titleLbl.Parent = topBar
+
+	local subMiniBtn = Instance.new("TextButton")
+	subMiniBtn.Size = UDim2.new(0, 26, 0, 24)
+	subMiniBtn.Position = UDim2.new(1, -66, 0.5, -12)
+	subMiniBtn.BackgroundColor3 = Color3.fromRGB(34, 42, 60)
+	subMiniBtn.BorderSizePixel = 0
+	subMiniBtn.Text = "-"
+	subMiniBtn.TextColor3 = Color3.fromRGB(220, 230, 250)
+	subMiniBtn.Font = Enum.Font.GothamBold
+	subMiniBtn.TextSize = 15
+	subMiniBtn.Parent = topBar
+	Instance.new("UICorner", subMiniBtn).CornerRadius = UDim.new(0, 6)
+
+	local subCloseBtn = Instance.new("TextButton")
+	subCloseBtn.Size = UDim2.new(0, 26, 0, 24)
+	subCloseBtn.Position = UDim2.new(1, -34, 0.5, -12)
+	subCloseBtn.BackgroundColor3 = Color3.fromRGB(225, 55, 70)
+	subCloseBtn.BorderSizePixel = 0
+	subCloseBtn.Text = "X"
+	subCloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	subCloseBtn.Font = Enum.Font.GothamBold
+	subCloseBtn.TextSize = 11
+	subCloseBtn.Parent = topBar
+	Instance.new("UICorner", subCloseBtn).CornerRadius = UDim.new(0, 6)
+
+	local contentBox = Instance.new("Frame")
+	contentBox.Size = UDim2.new(1, 0, 1, -42)
+	contentBox.Position = UDim2.new(0, 0, 0, 42)
+	contentBox.BackgroundTransparency = 1
+	contentBox.Parent = spFrame
+
+	-- Status Banner
+	local statusBanner = Instance.new("Frame")
+	statusBanner.Size = UDim2.new(1, -24, 0, 30)
+	statusBanner.Position = UDim2.new(0, 12, 0, 8)
+	statusBanner.BackgroundColor3 = Color3.fromRGB(20, 26, 40)
+	statusBanner.BorderSizePixel = 0
+	statusBanner.Parent = contentBox
+	Instance.new("UICorner", statusBanner).CornerRadius = UDim.new(0, 7)
+
+	local statusText = Instance.new("TextLabel")
+	statusText.Size = UDim2.new(1, -12, 1, 0)
+	statusText.Position = UDim2.new(0, 6, 0, 0)
+	statusText.BackgroundTransparency = 1
+	statusText.Text = "Viewing: Yourself (Default)"
+	statusText.TextColor3 = Color3.fromRGB(0, 225, 255)
+	statusText.Font = Enum.Font.GothamBold
+	statusText.TextSize = 11.5
+	statusText.TextTruncate = Enum.TextTruncate.AtEnd
+	statusText.Parent = statusBanner
+
+	-- Search Bar Input
+	local searchContainer = Instance.new("Frame")
+	searchContainer.Size = UDim2.new(1, -24, 0, 32)
+	searchContainer.Position = UDim2.new(0, 12, 0, 44)
+	searchContainer.BackgroundColor3 = Color3.fromRGB(22, 28, 44)
+	searchContainer.BorderSizePixel = 0
+	searchContainer.Parent = contentBox
+	Instance.new("UICorner", searchContainer).CornerRadius = UDim.new(0, 7)
+
+	local searchStroke = Instance.new("UIStroke")
+	searchStroke.Color = Color3.fromRGB(42, 54, 80)
+	searchStroke.Thickness = 1
+	searchStroke.Parent = searchContainer
+
+	local searchBox = Instance.new("TextBox")
+	searchBox.Size = UDim2.new(1, -20, 1, 0)
+	searchBox.Position = UDim2.new(0, 10, 0, 0)
+	searchBox.BackgroundTransparency = 1
+	searchBox.PlaceholderText = "🔍 Search player name or @username..."
+	searchBox.PlaceholderColor3 = Color3.fromRGB(120, 135, 165)
+	searchBox.Text = ""
+	searchBox.TextColor3 = Color3.fromRGB(240, 248, 255)
+	searchBox.Font = Enum.Font.GothamMedium
+	searchBox.TextSize = 11
+	searchBox.TextXAlignment = Enum.TextXAlignment.Left
+	searchBox.ClearTextOnFocus = false
+	searchBox.Parent = searchContainer
+
+	-- Scrolling Player List
+	local listScroll = Instance.new("ScrollingFrame")
+	listScroll.Size = UDim2.new(1, -24, 0, 182)
+	listScroll.Position = UDim2.new(0, 12, 0, 82)
+	listScroll.BackgroundTransparency = 1
+	listScroll.BorderSizePixel = 0
+	listScroll.ScrollBarThickness = 3
+	listScroll.ScrollBarImageColor3 = Color3.fromRGB(0, 210, 255)
+	listScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+	listScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	listScroll.Parent = contentBox
+
+	local spListLayout = Instance.new("UIListLayout")
+	spListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	spListLayout.Padding = UDim.new(0, 6)
+	spListLayout.Parent = listScroll
+
+	local selectedTargetPlr = nil
+	local isSpectating = false
+	local playerButtons = {}
+
+	local function startSpectatingTarget(targetPlr)
+		if not targetPlr then return end
+		selectedTargetPlr = targetPlr
+		isSpectating = true
+
+		if state._spectateConn then
+			state._spectateConn:Disconnect()
+			state._spectateConn = nil
+		end
+
+		statusText.Text = "👁️ Spectating: " .. (targetPlr.DisplayName or targetPlr.Name)
+		statusText.TextColor3 = Color3.fromRGB(0, 245, 150)
+
+		state._spectateConn = RunService.RenderStepped:Connect(function()
+			if not isSpectating or not selectedTargetPlr or not selectedTargetPlr.Parent then
+				isSpectating = false
+				resetCameraToSelf()
+				statusText.Text = "Viewing: Yourself (Target Left)"
+				statusText.TextColor3 = Color3.fromRGB(255, 180, 50)
+				return
+			end
+			local tChar = selectedTargetPlr.Character
+			local tHum = tChar and tChar:FindFirstChildOfClass("Humanoid")
+			local cam = Workspace.CurrentCamera
+			if cam and tHum then
+				cam.CameraSubject = tHum
+			end
+		end)
+	end
+
+	local function populateSpectateList()
+		for _, item in ipairs(playerButtons) do
+			if item.btn and item.btn.Parent then item.btn:Destroy() end
+		end
+		playerButtons = {}
+
+		local query = string.lower(searchBox.Text or "")
+
+		for _, p in ipairs(Players:GetPlayers()) do
+			if p ~= player then
+				local disp = p.DisplayName or p.Name
+				local uname = p.Name
+				local combined = string.lower(disp .. " " .. uname)
+
+				if query == "" or string.find(combined, query, 1, true) then
+					local btn = Instance.new("TextButton")
+					btn.Size = UDim2.new(1, -4, 0, 34)
+					btn.BackgroundColor3 = (selectedTargetPlr == p) and Color3.fromRGB(0, 115, 185) or Color3.fromRGB(24, 30, 46)
+					btn.BorderSizePixel = 0
+					btn.Text = string.format("  %s (@%s)", disp, uname)
+					btn.TextColor3 = Color3.fromRGB(240, 245, 255)
+					btn.Font = Enum.Font.GothamMedium
+					btn.TextSize = 11.5
+					btn.TextXAlignment = Enum.TextXAlignment.Left
+					btn.TextTruncate = Enum.TextTruncate.AtEnd
+					btn.Parent = listScroll
+					Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 7)
+
+					table.insert(playerButtons, {plr = p, btn = btn})
+
+					btn.MouseButton1Click:Connect(function()
+						selectedTargetPlr = p
+						for _, bData in ipairs(playerButtons) do
+							if bData.btn and bData.btn.Parent then
+								bData.btn.BackgroundColor3 = (bData.plr == p) and Color3.fromRGB(0, 115, 185) or Color3.fromRGB(24, 30, 46)
+							end
+						end
+						startSpectatingTarget(p)
+					end)
+				end
+			end
+		end
+	end
+
+	searchBox:GetPropertyChangedSignal("Text"):Connect(populateSpectateList)
+	populateSpectateList()
+
+	local pAddConn = Players.PlayerAdded:Connect(populateSpectateList)
+	local pRemConn = Players.PlayerRemoving:Connect(function(leavingPlr)
+		if selectedTargetPlr == leavingPlr then
+			selectedTargetPlr = nil
+			isSpectating = false
+			resetCameraToSelf()
+			statusText.Text = "Viewing: Yourself (Default)"
+			statusText.TextColor3 = Color3.fromRGB(0, 225, 255)
+		end
+		task.defer(populateSpectateList)
+	end)
+
+	-- Action Buttons Row (SPECTATE / STOP VIEWING)
+	local watchBtn = Instance.new("TextButton")
+	watchBtn.Size = UDim2.new(0.5, -16, 0, 38)
+	watchBtn.Position = UDim2.new(0, 12, 1, -48)
+	watchBtn.BackgroundColor3 = Color3.fromRGB(0, 185, 125)
+	watchBtn.BorderSizePixel = 0
+	watchBtn.Text = "👁️ SPECTATE"
+	watchBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	watchBtn.Font = Enum.Font.GothamBold
+	watchBtn.TextSize = 11.5
+	watchBtn.Parent = contentBox
+	Instance.new("UICorner", watchBtn).CornerRadius = UDim.new(0, 8)
+
+	local stopWatchBtn = Instance.new("TextButton")
+	stopWatchBtn.Size = UDim2.new(0.5, -16, 0, 38)
+	stopWatchBtn.Position = UDim2.new(0.5, 4, 1, -48)
+	stopWatchBtn.BackgroundColor3 = Color3.fromRGB(225, 55, 70)
+	stopWatchBtn.BorderSizePixel = 0
+	stopWatchBtn.Text = "🔄 STOP / ME"
+	stopWatchBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	stopWatchBtn.Font = Enum.Font.GothamBold
+	stopWatchBtn.TextSize = 11.5
+	stopWatchBtn.Parent = contentBox
+	Instance.new("UICorner", stopWatchBtn).CornerRadius = UDim.new(0, 8)
+
+	watchBtn.MouseButton1Click:Connect(function()
+		if selectedTargetPlr then
+			startSpectatingTarget(selectedTargetPlr)
+		else
+			sendNotification("Spectate", "Please select a player from the list first", Color3.fromRGB(255, 175, 25))
+		end
+	end)
+
+	stopWatchBtn.MouseButton1Click:Connect(function()
+		isSpectating = false
+		resetCameraToSelf()
+		statusText.Text = "Viewing: Yourself (Default)"
+		statusText.TextColor3 = Color3.fromRGB(0, 225, 255)
+	end)
+
+	local minimized = false
+	subMiniBtn.MouseButton1Click:Connect(function()
+		minimized = not minimized
+		contentBox.Visible = not minimized
+		spFrame.Size = minimized and UDim2.new(0, 290, 0, 42) or UDim2.new(0, 290, 0, 365)
+		subMiniBtn.Text = minimized and "+" or "-"
+	end)
+
+	subCloseBtn.MouseButton1Click:Connect(function()
+		isSpectating = false
+		resetCameraToSelf()
+		if pAddConn then pAddConn:Disconnect() end
+		if pRemConn then pRemConn:Disconnect() end
+		specGui:Destroy()
+	end)
 end
 
 -- ================== [TAB 5] MORE TOOLS 🧰 (SORTED A - Z) ==================
@@ -3342,19 +3757,12 @@ addRefinedToolButton(toolsPage, "Fly GUI (V3)", "🚀", Color3.fromRGB(0, 195, 2
 	end)
 end)
 
--- 5. FPS / Ping Monitor
-addToggleRow(toolsPage, "FPS / Ping Monitor", state.fpsHudEnabled, function(_, render)
-	state.fpsHudEnabled = not state.fpsHudEnabled
-	render(state.fpsHudEnabled)
-	toggleFpsHud(state.fpsHudEnabled)
-end)
-
--- 6. Player Teleport
+-- 5. Player Teleport
 addRefinedToolButton(toolsPage, "Player Teleport", "📍", Color3.fromRGB(100, 140, 255), function()
 	launchPlayerTeleportScript()
 end)
 
--- 7. Rejoin Place
+-- 6. Rejoin Place
 addRefinedToolButton(toolsPage, "Rejoin Place", "🔄", Color3.fromRGB(0, 210, 220), function()
 	pcall(function()
 		if #Players:GetPlayers() <= 1 then
@@ -3365,12 +3773,17 @@ addRefinedToolButton(toolsPage, "Rejoin Place", "🔄", Color3.fromRGB(0, 210, 2
 	end)
 end)
 
--- 8. Server Hop
+-- 7. Server Hop
 addRefinedToolButton(toolsPage, "Server Hop", "🌐", Color3.fromRGB(60, 130, 255), function()
 	pcall(function()
 		local module = loadstring(game:HttpGet("https://raw.githubusercontent.com/LeoKholYt/roblox/main/lk_serverhop.lua"))()
 		module:Teleport(game.PlaceId)
 	end)
+end)
+
+-- 8. NEW: Spectate Player (With Search & Scroll List)
+addRefinedToolButton(toolsPage, "Spectate Player", "🎥", Color3.fromRGB(0, 225, 255), function()
+	launchSpectateScript()
 end)
 
 -- 9. Stalker
@@ -3384,7 +3797,7 @@ addRefinedToolButton(toolsPage, "Vehicle Speed Adjust", "🏎️", Color3.fromRG
 end)
 
 -- =========================================================================
--- ================== [TAB 6] PATCH UPDATE LOG 📜 (NEW) ====================
+-- ================== [TAB 6] PATCH UPDATE LOG 📜 ==========================
 -- =========================================================================
 local logPage = registerTab("logs", "Log", "📜", false)
 
@@ -3408,7 +3821,7 @@ local function addPatchLogCard(versionStr, dateStr, badgeType, badgeColor, bulle
 	pad.PaddingTop = UDim.new(0, 8)
 	pad.PaddingBottom = UDim.new(0, 8)
 	pad.PaddingLeft = UDim.new(0, 10)
-	pad.PaddingRight = UDim2.new(0, 10).X
+	pad.PaddingRight = UDim.new(0, 10)
 	pad.Parent = card
 
 	local list = Instance.new("UIListLayout")
@@ -3466,24 +3879,24 @@ local function addPatchLogCard(versionStr, dateStr, badgeType, badgeColor, bulle
 	end
 end
 
-addPatchLogCard("v2.5 PRO", "Latest Update", "MAJOR", Color3.fromRGB(0, 240, 200), {
+addPatchLogCard("v2.6 PRO", "Latest Update", "NEW", Color3.fromRGB(0, 240, 200), {
+	"[NEW] เพิ่มปุ่ม '+ Add New Waypoint' ในหมวด Point สำหรับเพิ่มจุดวาร์ปได้ไม่จำกัดพร้อมปุ่มลบแยกแต่ละจุด",
+	"[NEW] เพิ่มเครื่องมือ 🎥 Spectate Player ในหมวด Tools พร้อมช่อง Search ค้นหาชื่อผู้เล่นและรายการเลื่อนดู",
+	"[UI] ย้ายสวิตช์ FPS / Ping Monitor จากหมวด Tools ไปยังหมวด Visual เพื่อความสะดวกในการใช้งาน"
+})
+
+addPatchLogCard("v2.5 PRO", "Previous Update", "MAJOR", Color3.fromRGB(0, 195, 255), {
 	"[UI] อัปเกรดดีไซน์ใหม่เป็น Cyber-Glassmorphism พร้อมกรอบสีเปลี่ยนตามหมวดหมู่แท็บ",
 	"[UI] เปลี่ยนปุ่ม ON/OFF แบบเดิมเป็น Animated Pill Switches เลื่อนซ้าย-ขวาอย่างนุ่มนวล",
 	"[UI] เพิ่มปุ่มลอย '⚡ Show Menu' ดีไซน์แคปซูลเรืองแสง และแยกปุ่มพับหน้าต่าง '-' ออกจากปุ่มซ่อนเมนู",
 	"[NEW] เพิ่มระบบ Toast Notification มุมขวาล่าง แจ้งเตือนสถานะการทำงานแบบเรียลไทม์",
-	"[NEW] เพิ่มหมวดหมู่ 📜 Log สำหรับตรวจสอบรายละเอียด Patch Update ย้อนหลัง",
 	"[NEW] เพิ่มระบบ Gravity Control (ปรับแรงโน้มถ่วง), Click TP (Ctrl+Click) และ Time of Day Changer",
 	"[OPT] อัปเกรดระบบ Player ESP และ Bot ESP ให้แสดงเปอร์เซ็นต์เลือด [HP%] บนหัวเป้าหมาย"
 })
 
-addPatchLogCard("v2.0", "Previous Build", "CORE", Color3.fromRGB(0, 195, 255), {
+addPatchLogCard("v2.0", "Core Build", "CORE", Color3.fromRGB(160, 175, 200), {
 	"[NEW] ระบบ Battery Saver Overlay พร้อมตัวจับเวลาและคำนวณส่วนต่าง Leaderstats อัตโนมัติ",
-	"[NEW] เพิ่มระบบ Bot ESP แยกสีอัตโนมัติ และ Raycast Occlusion เช็ควัตถุบังสายตา",
-	"[NEW] รวม Sub-Tools ครบชุด: Auto Clicker (Turbo), Stalker, Player TP และ Vehicle Speed"
-})
-
-addPatchLogCard("v1.0", "Initial Release", "BASE", Color3.fromRGB(160, 175, 200), {
-	"[INIT] เปิดตัวระบบหลัก: Movement (WalkSpeed, TP Walk, JumpPower), God Mode, Noclip, Anti-Ragdoll, FullBright และ 4 Waypoints"
+	"[NEW] เพิ่มระบบ Bot ESP แยกสีอัตโนมัติ และ Raycast Occlusion เช็ควัตถุบังสายตา"
 })
 
 -- สลับไปยังแท็บแรกเริ่ม
@@ -3491,7 +3904,7 @@ switchTab("move")
 task.spawn(function()
 	task.wait(0.08)
 	adjustPanelHeight(false)
-	sendNotification("Phumipad Pro v2.5", "Loaded successfully! Press R-Ctrl to toggle.", Color3.fromRGB(0, 225, 255))
+	sendNotification("Phumipad Pro v2.6", "Loaded! Dynamic Waypoints & Spectate Ready.", Color3.fromRGB(0, 225, 255))
 end)
 
 -- ================== HOOKS & SYSTEM CONNECTIONS ==================
@@ -3513,7 +3926,7 @@ table.insert(globalConns, RunService.Heartbeat:Connect(function()
 	end
 end))
 
--- NEW: Built-in Anti-AFK Connection
+-- Built-in Anti-AFK Connection
 table.insert(globalConns, player.Idled:Connect(function()
 	if state.builtInAntiAfk then
 		pcall(function()
@@ -3523,7 +3936,7 @@ table.insert(globalConns, player.Idled:Connect(function()
 	end
 end))
 
--- NEW: Click Teleport (Ctrl + Left Click) & Hotkey (RightControl)
+-- Click Teleport (Ctrl + Left Click) & Hotkey (RightControl)
 table.insert(globalConns, UserInputService.InputBegan:Connect(function(input, gpe)
 	if not gpe and input.KeyCode == Enum.KeyCode.RightControl then
 		if f.Visible then
@@ -3534,7 +3947,6 @@ table.insert(globalConns, UserInputService.InputBegan:Connect(function(input, gp
 			f.Visible = true
 		end
 	end
-
 	if not gpe and state.clickTpEnabled and input.UserInputType == Enum.UserInputType.MouseButton1 then
 		if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) or UserInputService:IsKeyDown(Enum.KeyCode.RightControl) then
 			local mouse = player:GetMouse()
@@ -3555,6 +3967,8 @@ local function fullCleanup()
 	pcall(function()
 		UserInputService.MouseIconEnabled = true
 	end)
+
+	resetCameraToSelf()
 
 	if state.godMode        then applyGodMode(false) end
 	if state.noclip         then applyNoclip(false) end
@@ -3588,6 +4002,7 @@ local function fullCleanup()
 		"Phumipad_ScreenTime_Overlay",
 		"Phumipad_BatterySaver_Overlay",
 		"StalkerUI",
+		"SpectateUI",
 		"Phumipad_AutoClicker_UI",
 		"UniversalSpeedAdjustGui",
 		"TeleportUI",
@@ -3597,7 +4012,6 @@ local function fullCleanup()
 		"Phumipad_FPS_Ping_Monitor",
 		"Phumipad_Toast_Notifications"
 	}
-
 	for _, uiName in ipairs(subUIs) do
 		pcall(function()
 			local u = (targetContainer and targetContainer:FindFirstChild(uiName))
