@@ -1,36 +1,33 @@
 -- =======================================================
--- 🏎️ RAYCITY RB - ULTIMATE HUB v7.4 (ENGLISH & MOBILE 📱)
--- Features: UI Scaling, English Panel, Status OFF Default
+-- 🏎️ RAYCITY RB - ULTIMATE HUB v7.9 (REALTIME SAFETY)
 -- =======================================================
 
 local parentGui = (gethui and gethui()) or game:GetService("CoreGui") or game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
 if parentGui:FindFirstChild("RaycitySpeedGui") then parentGui.RaycitySpeedGui:Destroy() end
 if _G.RCSpeedDisconnect then pcall(_G.RCSpeedDisconnect) end
 
-local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local VirtualUser = game:GetService("VirtualUser")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
--- 🧊 DYNAMIC THEME CONFIG
 local THEME_CONFIG = {
-    showHud = false, -- เปลี่ยนเป็น false เพื่อให้แถบ Status ปิดเสมอเมื่อเริ่มสคริปต์
-    uiColor = Color3.fromRGB(180, 100, 255), 
-    pillColor = Color3.fromRGB(180, 100, 255), 
-    opacity = 30,  
-    darkness = 20, 
-    uiScale = 85   
+    showHud = false,
+    uiColor = Color3.fromRGB(180, 100, 255),
+    pillColor = Color3.fromRGB(180, 100, 255),
+    opacity = 30,
+    darkness = 20,
+    uiScale = 85
 }
 
 local THEME = {
     GLASS_BG = Color3.fromRGB(255, 255, 255),
-    GLASS_TRANS = 1 - (THEME_CONFIG.opacity / 100), 
-    GLASS_CARD = (1 - (THEME_CONFIG.opacity / 100)) + 0.1,  
+    GLASS_TRANS = 1 - (THEME_CONFIG.opacity / 100),
+    GLASS_CARD = (1 - (THEME_CONFIG.opacity / 100)) + 0.1,
     STROKE_LIGHT = Color3.fromRGB(255, 255, 255),
     STROKE_DARK = Color3.fromRGB(150, 200, 255),
-    TEXT_MAIN = Color3.fromRGB(255, 255, 255), 
+    TEXT_MAIN = Color3.fromRGB(255, 255, 255),
     TEXT_SUB = Color3.fromRGB(200, 215, 230),
     ON_BG = THEME_CONFIG.uiColor,
     OFF_BG = Color3.fromRGB(255, 80, 100),
@@ -39,13 +36,22 @@ local THEME = {
 
 local THEME_UPDATES = {}
 
-local config = { speedEnabled = true, ghostNpc = true, infiniteJump = true, antiAfk = true, vmaxKmh = 300, accelRate = 1.0, infiniteSP = false }
-local stockValues = { vmax = 100, torqueBonus = 0, btPower = 2.6, btDuration = 3.5, btNeedSP = 50 }
+local config = {
+    speedEnabled = true,
+    ghostNpc = true,
+    safetyEnabled = true,
+    safetyRadius = 300,
+    infiniteJump = true,
+    antiAfk = true,
+    vmaxKmh = 300,
+    accelRate = 1.0,
+    infiniteSP = false
+}
 
--- =======================================================
--- 🎮 GAME LOGIC 
--- =======================================================
-local renv = getrenv()
+local stockValues = { vmax = 100, torqueBonus = 0, btPower = 2.6, btDuration = 3.5, btNeedSP = 50 }
+local origCollide = setmetatable({}, { __mode = "k" })
+
+local renv = getrenv and getrenv()
 local rShared = renv and renv.shared
 local rHooks = rShared and rShared.RCDrivePairHooks
 if rHooks then
@@ -54,9 +60,11 @@ if rHooks then
 end
 
 local function applyGhostMode(enable)
-    LocalPlayer:SetAttribute("RaycityGM", true)
-    LocalPlayer:SetAttribute("GmCheatOn", true)
-    LocalPlayer:SetAttribute("GmCheatGhost", enable)
+    pcall(function()
+        LocalPlayer:SetAttribute("RaycityGM", enable)
+        LocalPlayer:SetAttribute("GmCheatOn", enable)
+        LocalPlayer:SetAttribute("GmCheatGhost", enable)
+    end)
     if rHooks then
         if enable then
             rHooks.traffic = function() return nil end
@@ -70,12 +78,112 @@ local function applyGhostMode(enable)
     if trafficCars then
         for _, car in ipairs(trafficCars:GetChildren()) do
             for _, part in ipairs(car:GetDescendants()) do
-                if part:IsA("BasePart") then part.CanCollide = false end
+                if part:IsA("BasePart") then
+                    if origCollide[part] == nil then
+                        origCollide[part] = part.CanCollide
+                    end
+                    part.CanCollide = enable and false or origCollide[part]
+                end
             end
         end
     end
 end
 applyGhostMode(config.ghostNpc)
+
+-- Real-time target cache
+local trackedTargets = {}
+local otherPlayerNames = {}
+
+local function rebuildPlayerNames()
+    table.clear(otherPlayerNames)
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer then
+            otherPlayerNames[string.lower(plr.Name)] = plr.Name
+        end
+    end
+end
+rebuildPlayerNames()
+
+local function tryTrackObject(obj)
+    if not obj or not obj.Parent then return end
+    if obj == LocalPlayer.Character or obj.Name == "MyCar" or obj.Name == "RBRCTrafficCars" then return end
+    if obj:IsA("Model") then
+        local lower = string.lower(obj.Name)
+        if string.find(lower, "remotecar_", 1, true) or otherPlayerNames[lower] then
+            trackedTargets[obj] = true
+        end
+    end
+end
+
+for _, desc in ipairs(workspace:GetDescendants()) do
+    tryTrackObject(desc)
+end
+
+local descAddedConn = workspace.DescendantAdded:Connect(tryTrackObject)
+local descRemovingConn = workspace.DescendantRemoving:Connect(function(obj)
+    trackedTargets[obj] = nil
+end)
+local plrAddedConn = Players.PlayerAdded:Connect(function(plr)
+    rebuildPlayerNames()
+    for _, desc in ipairs(workspace:GetDescendants()) do
+        tryTrackObject(desc)
+    end
+end)
+local plrRemovingConn = Players.PlayerRemoving:Connect(rebuildPlayerNames)
+
+local function getTargetPos(obj)
+    if not obj or not obj.Parent then return nil end
+    if obj:IsA("BasePart") then return obj.Position end
+    if obj:IsA("Model") then
+        local root = obj:FindFirstChild("Root") or obj:FindFirstChild("Hull") or obj:FindFirstChild("HumanoidRootPart") or obj.PrimaryPart
+        if root and root:IsA("BasePart") then return root.Position end
+        local ok, cf = pcall(obj.GetPivot, obj)
+        if ok and cf and cf.Position.Magnitude > 1 then return cf.Position end
+    end
+    return nil
+end
+
+local function checkOtherPlayersRealtime(myPos, radiusMeters, currentSpeedMps)
+    local lookaheadMeters = math.min((currentSpeedMps or 0) * 0.45, 150)
+    local radiusStuds = (radiusMeters + lookaheadMeters) / 0.28
+    local radiusSq = radiusStuds * radiusStuds
+    local mx, my, mz = myPos.X, myPos.Y, myPos.Z
+
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer then
+            local char = plr.Character
+            if char then
+                local hum = char:FindFirstChildOfClass("Humanoid")
+                local pos = (hum and hum.SeatPart and hum.SeatPart.Position) or getTargetPos(char)
+                if pos then
+                    local dx, dy, dz = pos.X - mx, pos.Y - my, pos.Z - mz
+                    local dSq = dx * dx + dy * dy + dz * dz
+                    if dSq <= radiusSq then
+                        return true, plr.Name, math.floor(math.sqrt(dSq) * 0.28)
+                    end
+                end
+            end
+        end
+    end
+
+    for obj in pairs(trackedTargets) do
+        if not obj or not obj.Parent then
+            trackedTargets[obj] = nil
+        else
+            local pos = getTargetPos(obj)
+            if pos then
+                local dx, dy, dz = pos.X - mx, pos.Y - my, pos.Z - mz
+                local dSq = dx * dx + dy * dy + dz * dz
+                if dSq <= radiusSq then
+                    local label = otherPlayerNames[string.lower(obj.Name)] or obj.Name
+                    return true, label, math.floor(math.sqrt(dSq) * 0.28)
+                end
+            end
+        end
+    end
+
+    return false, nil, nil
+end
 
 local afkConn, afkLoopActive = nil, true
 if LocalPlayer.Idled then
@@ -93,12 +201,15 @@ end)
 local activePhys = nil
 local function getPhysics()
     if activePhys and activePhys.p and activePhys.wheels then return activePhys end
+    if not getgc then return nil end
     for _, v in pairs(getgc(true)) do
         if type(v) == "table" and rawget(v, "wheels") and rawget(v, "p") and rawget(v, "rpm") then
             activePhys = v
             if v.p then
-                stockValues.vmax = v.p.vmax or 100; stockValues.btPower = v.p.btPower or 2.6
-                stockValues.btDuration = v.p.btDuration or 3.5; stockValues.btNeedSP = v.p.btNeedSP or 50
+                stockValues.vmax = v.p.vmax or 100
+                stockValues.btPower = v.p.btPower or 2.6
+                stockValues.btDuration = v.p.btDuration or 3.5
+                stockValues.btNeedSP = v.p.btNeedSP or 50
             end
             return activePhys
         end
@@ -113,6 +224,7 @@ local jumpReqConn = UserInputService.JumpRequest:Connect(function()
         if hum and not hum.Sit then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
     end
 end)
+
 local jumpKeyConn = UserInputService.InputBegan:Connect(function(input, gpe)
     if not gpe and input.KeyCode == Enum.KeyCode.Space and config.infiniteJump then
         local car = workspace:FindFirstChild("MyCar")
@@ -126,9 +238,6 @@ local jumpKeyConn = UserInputService.InputBegan:Connect(function(input, gpe)
     end
 end)
 
--- =======================================================
--- 🧊 UI UTILITIES & THEME ENGINE
--- =======================================================
 local function addTextStroke(label, transparency)
     local tStroke = Instance.new("UIStroke", label)
     tStroke.Color = Color3.fromRGB(0, 0, 0)
@@ -160,15 +269,11 @@ local function applyGlassStyle(guiObject, radius, transOffset, isPill)
     return stroke
 end
 
--- =======================================================
--- 🪟 MAIN UI CONSTRUCTION & SCALING
--- =======================================================
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "RaycitySpeedGui"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = parentGui
 
--- 1. HUD BANNER
 local HudBanner = Instance.new("Frame")
 HudBanner.AutomaticSize = Enum.AutomaticSize.X
 HudBanner.Size = UDim2.new(0, 0, 0, 34); HudBanner.Position = UDim2.new(0.5, -150, 0, 16)
@@ -188,7 +293,41 @@ addTextStroke(BannerLabel, 0.4)
 
 table.insert(THEME_UPDATES, function() HudBanner.Visible = THEME_CONFIG.showHud end)
 
--- 2. FLOATING PILL (RayTools)
+local SafetyAlert = Instance.new("Frame")
+SafetyAlert.Name = "SafetyAlert"
+SafetyAlert.AnchorPoint = Vector2.new(1, 1)
+SafetyAlert.AutomaticSize = Enum.AutomaticSize.X
+SafetyAlert.Size = UDim2.new(0, 0, 0, 36)
+SafetyAlert.Position = UDim2.new(1, -16, 1, -16)
+SafetyAlert.BackgroundColor3 = Color3.fromRGB(30, 10, 18)
+SafetyAlert.BackgroundTransparency = 0.2
+SafetyAlert.Visible = false
+SafetyAlert.ZIndex = 20
+SafetyAlert.Parent = ScreenGui
+local AlertScale = Instance.new("UIScale", SafetyAlert)
+
+Instance.new("UICorner", SafetyAlert).CornerRadius = UDim.new(0, 12)
+local AlertStroke = Instance.new("UIStroke", SafetyAlert)
+AlertStroke.Color = Color3.fromRGB(255, 75, 95)
+AlertStroke.Thickness = 1.6
+AlertStroke.Transparency = 0.15
+
+local AlertPad = Instance.new("UIPadding", SafetyAlert)
+AlertPad.PaddingLeft = UDim.new(0, 14)
+AlertPad.PaddingRight = UDim.new(0, 14)
+
+local AlertLabel = Instance.new("TextLabel")
+AlertLabel.AutomaticSize = Enum.AutomaticSize.X
+AlertLabel.Size = UDim2.new(0, 0, 1, 0)
+AlertLabel.BackgroundTransparency = 1
+AlertLabel.Text = "🛡️ SAFETY ACTIVE"
+AlertLabel.TextColor3 = Color3.fromRGB(255, 110, 125)
+AlertLabel.Font = Enum.Font.GothamBlack
+AlertLabel.TextSize = 12
+AlertLabel.ZIndex = 21
+AlertLabel.Parent = SafetyAlert
+addTextStroke(AlertLabel, 0.3)
+
 local FloatingPill = Instance.new("TextButton")
 FloatingPill.Size = UDim2.new(0, 140, 0, 42); FloatingPill.Position = UDim2.new(0.02, 0, 0.25, 0)
 FloatingPill.Text = "🧊 RayTools"
@@ -199,9 +338,8 @@ local PillScale = Instance.new("UIScale", FloatingPill)
 applyGlassStyle(FloatingPill, 21, 0, true)
 addTextStroke(FloatingPill, 0.5)
 
--- 3. MAIN FRAME 
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 360, 0, 360) 
+MainFrame.Size = UDim2.new(0, 360, 0, 360)
 MainFrame.Position = UDim2.new(0.5, -180, 0.5, -180)
 MainFrame.Active = true; MainFrame.Parent = ScreenGui
 MainFrame.ClipsDescendants = true
@@ -214,12 +352,11 @@ ResizeGrip.Text = "◢"; ResizeGrip.ZIndex = 10
 ResizeGrip.BackgroundTransparency = 1; ResizeGrip.TextColor3 = Color3.fromRGB(200, 200, 200)
 ResizeGrip.Font = Enum.Font.GothamBlack; ResizeGrip.TextSize = 16; ResizeGrip.Parent = MainFrame
 
--- 4. TOPBAR & TITLE
 local TopBar = Instance.new("Frame")
 TopBar.Size = UDim2.new(1, 0, 0, 50); TopBar.BackgroundTransparency = 1; TopBar.Parent = MainFrame
 local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Size = UDim2.new(1, -120, 1, 0); TitleLabel.Position = UDim2.new(0, 20, 0, 0)
-TitleLabel.BackgroundTransparency = 1; TitleLabel.Text = "🧊 RayTools By Phumipad"
+TitleLabel.BackgroundTransparency = 1; TitleLabel.Text = "🧊 RayTools "
 TitleLabel.TextColor3 = THEME.TEXT_MAIN
 TitleLabel.Font = Enum.Font.GothamBlack; TitleLabel.TextSize = 14
 TitleLabel.TextXAlignment = Enum.TextXAlignment.Left; TitleLabel.Parent = TopBar
@@ -232,7 +369,7 @@ local function createWinBtn(xOffset, text, isCloseBtn)
     btn.ClipsDescendants = true
     Instance.new("UICorner", btn).CornerRadius = UDim.new(1, 0)
     local stroke = Instance.new("UIStroke", btn); stroke.Thickness = 1; stroke.Transparency = 0.4
-    
+
     table.insert(THEME_UPDATES, function()
         btn.BackgroundColor3 = isCloseBtn and THEME.OFF_BG or THEME.GLASS_BG
         btn.BackgroundTransparency = isCloseBtn and 0.4 or THEME.GLASS_TRANS + 0.1
@@ -244,7 +381,6 @@ local SetBtn = createWinBtn(-112, "⚙️", false)
 local MinBtn = createWinBtn(-76, "—", false)
 local CloseBtn = createWinBtn(-40, "✕", true)
 
--- 5. SCROLLING CONTAINERS
 local function createScrollContainer(name, isVisible)
     local scroll = Instance.new("ScrollingFrame")
     scroll.Name = name; scroll.Size = UDim2.new(1, -20, 1, -112); scroll.Position = UDim2.new(0, 10, 0, 55)
@@ -259,9 +395,6 @@ end
 local Container = createScrollContainer("Container", true)
 local SettingsFrame = createScrollContainer("SettingsFrame", false)
 
--- =======================================================
--- 🪟 COMPONENTS BUILDER
--- =======================================================
 local function createToggleRow(parent, order, icon, title, initialVal, onClick)
     local card = Instance.new("Frame")
     card.LayoutOrder = order; card.Size = UDim2.new(1, 0, 0, 44); card.Parent = parent
@@ -291,6 +424,8 @@ local function createToggleRow(parent, order, icon, title, initialVal, onClick)
         toggleBtn.Text = state and "ON" or "OFF"
         for _, func in ipairs(THEME_UPDATES) do pcall(func) end
     end)
+
+    return toggleBtn
 end
 
 local function createInputSection(parent, order, icon, title, confKey, presets, stepVal, secHeight, formatStr)
@@ -339,7 +474,7 @@ local function createInputSection(parent, order, icon, title, confKey, presets, 
         inputBox.Text = tostring(config[confKey])
         for _, item in ipairs(btnTable) do
             local active = (item.val == config[confKey])
-            item.btn.BackgroundColor3 = THEME.ACCENT 
+            item.btn.BackgroundColor3 = THEME.ACCENT
             item.btn.BackgroundTransparency = active and 0.3 or 0.8
             item.btn.TextColor3 = active and Color3.fromRGB(255,255,255) or THEME.TEXT_SUB
         end
@@ -355,25 +490,22 @@ local function createInputSection(parent, order, icon, title, confKey, presets, 
     minusBtn.MouseButton1Click:Connect(function() updateValue(config[confKey] - stepVal) end)
     plusBtn.MouseButton1Click:Connect(function() updateValue(config[confKey] + stepVal) end)
     for _, item in ipairs(btnTable) do item.btn.MouseButton1Click:Connect(function() updateValue(item.val) end) end
-    
+
     inputBox.FocusLost:Connect(function()
         local val = tonumber(string.match(inputBox.Text, "%-?%d+%.?%d*"))
-        if val and val > 0 then updateValue(val) else for _, func in ipairs(THEME_UPDATES) do pcall(func) end end
+        if val and val >= 0 then updateValue(val) else for _, func in ipairs(THEME_UPDATES) do pcall(func) end end
     end)
 end
 
--- =======================================================
--- ⚙️ SETTINGS UI BUILDER 
--- =======================================================
 local PRESET_COLORS = {
-    Color3.fromRGB(0, 220, 255),   -- Cyan
-    Color3.fromRGB(255, 100, 150), -- Pink
-    Color3.fromRGB(0, 255, 120),   -- Mint
-    Color3.fromRGB(180, 100, 255), -- Purple
-    Color3.fromRGB(255, 200, 50),  -- Yellow
-    Color3.fromRGB(255, 80, 80),   -- Red
-    Color3.fromRGB(255, 255, 255), -- White
-    Color3.fromRGB(40, 40, 40)     -- Dark
+    Color3.fromRGB(0, 220, 255),
+    Color3.fromRGB(255, 100, 150),
+    Color3.fromRGB(0, 255, 120),
+    Color3.fromRGB(180, 100, 255),
+    Color3.fromRGB(255, 200, 50),
+    Color3.fromRGB(255, 80, 80),
+    Color3.fromRGB(255, 255, 255),
+    Color3.fromRGB(40, 40, 40)
 }
 
 local function SyncTheme()
@@ -385,6 +517,7 @@ local function SyncTheme()
     MainScale.Scale = THEME_CONFIG.uiScale / 100
     PillScale.Scale = THEME_CONFIG.uiScale / 100
     HudScale.Scale = THEME_CONFIG.uiScale / 100
+    AlertScale.Scale = THEME_CONFIG.uiScale / 100
     for _, func in ipairs(THEME_UPDATES) do pcall(func) end
 end
 
@@ -490,23 +623,22 @@ local function createSettingsScalePresets(order, icon, title, confKey, presets)
     end)
 end
 
--- 📌 POPULATE MAIN MENU (ENGLISH)
-createToggleRow(Container, 1, "⚡", "Speed Boost", config.speedEnabled, function(check) if not check then config.speedEnabled = not config.speedEnabled end; return config.speedEnabled end)
-createToggleRow(Container, 2, "👻", "Ghost Mode (NPC)", config.ghostNpc, function(check) if not check then config.ghostNpc = not config.ghostNpc; applyGhostMode(config.ghostNpc) end; return config.ghostNpc end)
-createToggleRow(Container, 3, "🦘", "Infinite Jump", config.infiniteJump, function(check) if not check then config.infiniteJump = not config.infiniteJump end; return config.infiniteJump end)
-createToggleRow(Container, 4, "✨", "Infinite Nitro (SP)", config.infiniteSP, function(check) if not check then config.infiniteSP = not config.infiniteSP end; return config.infiniteSP end)
-createInputSection(Container, 5, "🏁", "Max Speed (VMAX)", "vmaxKmh", {{"300", 300}, {"450", 450}, {"600", 600}, {"1200", 1200}}, 50, 102, "%d km/h")
-createInputSection(Container, 6, "🚀", "Acceleration", "accelRate", {{"x0.5", 0.5}, {"x1.0", 1.0}, {"x2.5", 2.5}, {"x4.0", 4.0}, {"x8.0", 8.0}, {"x12.0", 12.0}}, 0.1, 130, "x%.1f")
+local speedToggleBtn = createToggleRow(Container, 1, "⚡", "Speed Boost", config.speedEnabled, function(check) if not check then config.speedEnabled = not config.speedEnabled end; return config.speedEnabled end)
+local ghostToggleBtn = createToggleRow(Container, 2, "👻", "Ghost Mode (NPC)", config.ghostNpc, function(check) if not check then config.ghostNpc = not config.ghostNpc; applyGhostMode(config.ghostNpc) end; return config.ghostNpc end)
+createToggleRow(Container, 3, "🛡️", "Safety (Player Nearby)", config.safetyEnabled, function(check) if not check then config.safetyEnabled = not config.safetyEnabled end; return config.safetyEnabled end)
+createInputSection(Container, 4, "👀", "Detection Radius", "safetyRadius", {{"100m", 100}, {"200m", 200}, {"300m", 300}, {"500m", 500}}, 50, 102, "%d m")
+createToggleRow(Container, 5, "🦘", "Infinite Jump", config.infiniteJump, function(check) if not check then config.infiniteJump = not config.infiniteJump end; return config.infiniteJump end)
+createToggleRow(Container, 6, "✨", "Infinite Nitro (SP)", config.infiniteSP, function(check) if not check then config.infiniteSP = not config.infiniteSP end; return config.infiniteSP end)
+createInputSection(Container, 7, "🏁", "Max Speed (VMAX)", "vmaxKmh", {{"300", 300}, {"450", 450}, {"600", 600}, {"1200", 1200}}, 50, 102, "%d km/h")
+createInputSection(Container, 8, "🚀", "Acceleration", "accelRate", {{"x0.5", 0.5}, {"x1.0", 1.0}, {"x2.5", 2.5}, {"x4.0", 4.0}, {"x8.0", 8.0}, {"x12.0", 12.0}}, 0.1, 130, "x%.1f")
 
--- 📌 POPULATE SETTINGS MENU (ENGLISH)
 createToggleRow(SettingsFrame, 1, "👁️", "Show Status HUD", THEME_CONFIG.showHud, function(check) if not check then THEME_CONFIG.showHud = not THEME_CONFIG.showHud end; return THEME_CONFIG.showHud end)
 createSettingsScalePresets(2, "🔍", "Panel Scale", "uiScale", {{"25%", 25}, {"50%", 50}, {"75%", 75}, {"100%", 100}})
-createSettingsColorPalette(3, "🎨", "Primary Theme Color", "uiColor") 
-createSettingsColorPalette(4, "💊", "Pill Button Color", "pillColor") 
+createSettingsColorPalette(3, "🎨", "Primary Theme Color", "uiColor")
+createSettingsColorPalette(4, "💊", "Pill Button Color", "pillColor")
 createSettingsStepper(5, "🪟", "Panel Opacity", "opacity", 10, 10, 100, "%d%%")
 createSettingsStepper(6, "🌙", "Panel Darkness", "darkness", 10, 0, 100, "%d%%")
 
--- 6. STATUS DASHBOARD
 local StatusBox = Instance.new("Frame")
 StatusBox.Size = UDim2.new(1, -30, 0, 36); StatusBox.Position = UDim2.new(0, 15, 1, -46)
 StatusBox.Parent = MainFrame
@@ -518,9 +650,6 @@ StatusLabel.TextColor3 = THEME.TEXT_MAIN; StatusLabel.Font = Enum.Font.GothamBla
 StatusLabel.TextSize = 11; StatusLabel.TextXAlignment = Enum.TextXAlignment.Left; StatusLabel.Parent = StatusBox
 addTextStroke(StatusLabel, 0.5)
 
--- =======================================================
--- 🖱️ INTERACTION & PHYSICS LOOP 
--- =======================================================
 local function makeDraggable(handle, target, scaleObj)
     local dragging, dragInput, dragStart, startPos
     handle.InputBegan:Connect(function(input)
@@ -547,8 +676,8 @@ makeDraggable(FloatingPill, FloatingPill, PillScale)
 
 local resDrag, resStart, frameStart = false, nil, nil
 ResizeGrip.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then 
-        resDrag = true; resStart = input.Position; frameStart = MainFrame.Size 
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        resDrag = true; resStart = input.Position; frameStart = MainFrame.Size
     end
 end)
 UserInputService.InputChanged:Connect(function(input)
@@ -566,38 +695,71 @@ local isVisible = true
 MinBtn.MouseButton1Click:Connect(function() isVisible = false; MainFrame.Visible = false end)
 CloseBtn.MouseButton1Click:Connect(function() isVisible = false; MainFrame.Visible = false end)
 FloatingPill.MouseButton1Click:Connect(function() isVisible = not isVisible; MainFrame.Visible = isVisible end)
-SetBtn.MouseButton1Click:Connect(function() 
+SetBtn.MouseButton1Click:Connect(function()
     SettingsFrame.Visible = not SettingsFrame.Visible
     Container.Visible = not SettingsFrame.Visible
     SetBtn.BackgroundColor3 = SettingsFrame.Visible and THEME.ACCENT or THEME.GLASS_BG
 end)
 
+local lastGhostState = config.ghostNpc
 local heartbeatConn
+
 heartbeatConn = RunService.Heartbeat:Connect(function(dt)
     if not ScreenGui or not ScreenGui.Parent then if heartbeatConn then heartbeatConn:Disconnect() end; return end
-    
-    local sTag = config.speedEnabled and string.format("%dkm/h", config.vmaxKmh) or "OFF"
-    BannerLabel.Text = string.format("🏎️ SPEED: %s (x%.1f) | 👻 GHOST: %s | 🦘 JUMP: %s", sTag, config.accelRate, config.ghostNpc and "ON" or "OFF", config.infiniteJump and "ON" or "OFF")
 
-    if config.ghostNpc then applyGhostMode(true) end
-    local phys = getPhysics()
     local car = workspace:FindFirstChild("MyCar")
     local root = car and (car:FindFirstChild("Root") or car:FindFirstChild("Hull"))
-    
+    local checkPos = (root and root.Position) or getTargetPos(LocalPlayer.Character)
+
+    local phys = getPhysics()
+    local currentMps = (phys and phys.v and phys.v.Magnitude) or (root and root.AssemblyLinearVelocity.Magnitude * 0.5) or 0
+
+    local safetyTriggered, detectedObj, detectedDist = false, nil, nil
+    if config.safetyEnabled and checkPos then
+        safetyTriggered, detectedObj, detectedDist = checkOtherPlayersRealtime(checkPos, config.safetyRadius, currentMps)
+    end
+
+    if safetyTriggered then
+        SafetyAlert.Visible = true
+        AlertLabel.Text = string.format("🛡️ SAFETY ACTIVE: %s (%dm)", tostring(detectedObj or "Player"), detectedDist or 0)
+    else
+        SafetyAlert.Visible = false
+    end
+
+    local effectiveSpeed = config.speedEnabled and not safetyTriggered
+    local effectiveGhost = config.ghostNpc and not safetyTriggered
+
+    speedToggleBtn.Text = safetyTriggered and "SAFE" or (config.speedEnabled and "ON" or "OFF")
+    speedToggleBtn.BackgroundColor3 = effectiveSpeed and THEME.ON_BG or THEME.OFF_BG
+
+    ghostToggleBtn.Text = safetyTriggered and "SAFE" or (config.ghostNpc and "ON" or "OFF")
+    ghostToggleBtn.BackgroundColor3 = effectiveGhost and THEME.ON_BG or THEME.OFF_BG
+
+    if effectiveGhost ~= lastGhostState then
+        applyGhostMode(effectiveGhost)
+        lastGhostState = effectiveGhost
+    elseif effectiveGhost then
+        applyGhostMode(true)
+    end
+
+    local sTag = safetyTriggered and "SAFE" or (effectiveSpeed and string.format("%dkm/h", config.vmaxKmh) or "OFF")
+    local gTag = safetyTriggered and "SAFE" or (effectiveGhost and "ON" or "OFF")
+    BannerLabel.Text = string.format("🏎️ SPEED: %s (x%.1f) | 👻 GHOST: %s | 🦘 JUMP: %s", sTag, config.accelRate, gTag, config.infiniteJump and "ON" or "OFF")
+
     if not phys or not phys.p or not root then
-        StatusLabel.Text = "Waiting for vehicle data..."
+        StatusLabel.Text = safetyTriggered and ("⚠️ SAFE (" .. tostring(detectedObj or "Player") .. ")") or "Waiting for vehicle data..."
         return
     end
 
-    local currentKmh = phys.v and (phys.v.Magnitude * 3.6) or 0
-    if config.speedEnabled then
+    local currentKmh = currentMps * 3.6
+    if effectiveSpeed then
         phys.p.vmax = config.vmaxKmh / 3.6
         phys.torqueBonus = 500; phys.p.btPower = 8.0
         if config.infiniteSP then phys.p.btNeedSP = 1; phys.p.btDuration = 10 end
 
         local isAccelerating = (phys.throttle and phys.throttle > 0) or UserInputService:IsKeyDown(Enum.KeyCode.W) or UserInputService:IsKeyDown(Enum.KeyCode.Up)
         local isBraking = (phys.brake and phys.brake > 0) or UserInputService:IsKeyDown(Enum.KeyCode.S)
-        
+
         if isAccelerating and not isBraking and currentKmh < config.vmaxKmh then
             phys.v = phys.v + root.CFrame.LookVector * (config.accelRate * 25.0 * dt)
             root.AssemblyLinearVelocity = phys.v * 2
@@ -609,7 +771,12 @@ heartbeatConn = RunService.Heartbeat:Connect(function(dt)
             phys.p.btNeedSP = stockValues.btNeedSP
         end
     end
-    StatusLabel.Text = string.format("🧊 Speed: %d km/h | Gear: %s | RPM: %d", math.floor(currentKmh), tostring(phys.gear or 0), math.floor(phys.rpm or 0))
+
+    if safetyTriggered then
+        StatusLabel.Text = string.format("⚠️ SAFE (<%dm: %s) | %d km/h", config.safetyRadius, tostring(detectedObj or "Player"), math.floor(currentKmh))
+    else
+        StatusLabel.Text = string.format("🧊 Speed: %d km/h | Gear: %s | RPM: %d", math.floor(currentKmh), tostring(phys.gear or 0), math.floor(phys.rpm or 0))
+    end
 end)
 
 _G.RCSpeedDisconnect = function()
@@ -617,10 +784,12 @@ _G.RCSpeedDisconnect = function()
     if afkConn then afkConn:Disconnect() end
     if jumpReqConn then jumpReqConn:Disconnect() end
     if jumpKeyConn then jumpKeyConn:Disconnect() end
+    if descAddedConn then descAddedConn:Disconnect() end
+    if descRemovingConn then descRemovingConn:Disconnect() end
+    if plrAddedConn then plrAddedConn:Disconnect() end
+    if plrRemovingConn then plrRemovingConn:Disconnect() end
     afkLoopActive = false; applyGhostMode(false)
 end
 
 SyncTheme()
-
-print("[Raycity Hub v7.4] 📱 English & Mobile Scalable Edition Loaded!")
 return true
