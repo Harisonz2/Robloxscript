@@ -1,6 +1,6 @@
 -- =========================================================================
---   PHUMIPAD TOOLBOX [v3.0 PRO EDITION] - NEO-GLASS UI
---   Themed Tool Windows, 20 Patterns, Bigger Text, ⓘ Info Guide
+--   PHUMIPAD TOOLBOX [v3.1 PRO EDITION] - UNIVERSAL NEO-GLASS
+--   Automation Tab, Custom Script Menus, Theme Tint, Glyph Fixes
 -- =========================================================================
 
 -- ================== AUTO CLEANUP PREVIOUS INSTANCE ==================
@@ -158,6 +158,42 @@ local state = {
 	uiPattern = "Dots",
 	themeAnimBorder = true,
 	themePerTab = false,
+	themeTint = 0.0,
+	-- v3.1: Universal / Automation
+	autoInteract = false,
+	autoInteractRange = 20,
+	autoInteractFilter = "",
+	autoInteractDelay = 0.35,
+	autoCollect = false,
+	autoCollectRange = 30,
+	autoCollectFilter = "",
+	autoCollectMagnet = false,
+	autoCollectDelay = 0.4,
+	autoEquip = false,
+	autoUseTool = false,
+	autoUseRate = 3,
+	routeRunning = false,
+	routeDelay = 2,
+	macroFrames = {},
+	macroRecording = false,
+	macroPlaying = false,
+	macroLoop = true,
+	adminDetect = false,
+	adminAutoHop = false,
+	antiKick = false,
+	objEsp = false,
+	objEspFilter = "",
+	clickDelete = false,
+	deletedParts = {},
+	chatLog = {},
+	chatLogging = true,
+	customTools = {},
+	_objEspConn = nil,
+	_objEspFolder = nil,
+	_objEspCache = {},
+	_delConn = nil,
+	themeRainbow = false,
+	themeKnobGlow = true,
 	_fpsCullRunning = false,
 	_tracerConn = nil,
 	_tracerGui = nil,
@@ -201,6 +237,7 @@ local character = player.Character or player.CharacterAdded:Wait()
 local humanoid  = character:WaitForChild("Humanoid")
 local hrp       = character:WaitForChild("HumanoidRootPart")
 local scriptAlive = true
+local UI -- v3.1: ประกาศไว้ก่อน เพื่อให้ส่วนที่อยู่ด้านบนเรียกใช้ได้
 
 -- ================== CONFIG SAVE / LOAD SYSTEM (v2.7) ==================
 -- บันทึกค่าลงไฟล์แยกตามเกม (PlaceId) ผ่าน writefile/readfile ของ executor
@@ -217,7 +254,10 @@ local SAVE_KEYS = {
 	"joinLeaveNotify", "afkWarnNotify", "wpTween", "wpTweenSpeed", "saverFpsCap", "saverStop3D",
 	"uiScale", "menuKey", "fpsBoostLevel", "tracersEnabled",
 	"uiActiveTab", "uiMenuVisible", "uiFolded", "uiPos", "uiDockPos", "uiWidth",
-	"themeAccent", "themeBase", "uiTransparency", "uiPattern", "themeAnimBorder", "themePerTab"
+	"themeAccent", "themeBase", "uiTransparency", "uiPattern", "themeAnimBorder", "themePerTab", "themeTint", "themeRainbow", "themeKnobGlow",
+	"autoInteractRange", "autoInteractFilter", "autoCollectRange", "autoCollectFilter", "autoCollectMagnet",
+	"autoUseRate", "routeDelay", "macroLoop", "adminDetect", "adminAutoHop", "objEspFilter",
+	"chatLogging", "customTools"
 }
 
 local loadedWaypoints = nil -- {{name=..., cf={12 numbers} or nil}, ...}
@@ -292,7 +332,35 @@ local function deleteConfig()
 	end)
 end
 
+-- v3.1: ธีมเริ่มต้นสำหรับทุกเกม (เก็บแยกจาก config ของแต่ละเกม)
+local DEFAULT_THEME_FILE = CONFIG_FOLDER .. "/default_theme.json"
+local THEME_KEYS = {"themeAccent", "themeBase", "uiTransparency", "uiPattern", "themeTint", "themeAnimBorder", "themePerTab", "themeRainbow", "themeKnobGlow", "uiScale", "menuKey"}
+
+local function saveDefaultThemeFile()
+	if not canFileIO then return false end
+	return pcall(function()
+		if type(isfolder) == "function" and type(makefolder) == "function" and not isfolder(CONFIG_FOLDER) then makefolder(CONFIG_FOLDER) end
+		local t = {}
+		for _, k in ipairs(THEME_KEYS) do t[k] = state[k] end
+		writefile(DEFAULT_THEME_FILE, HttpService:JSONEncode(t))
+	end)
+end
+
+local function loadDefaultThemeInto()
+	if not canFileIO then return false end
+	return pcall(function()
+		if not isfile(DEFAULT_THEME_FILE) then error("no default") end
+		local t = HttpService:JSONDecode(readfile(DEFAULT_THEME_FILE))
+		if type(t) ~= "table" then error("bad") end
+		for _, k in ipairs(THEME_KEYS) do
+			if t[k] ~= nil and type(t[k]) == type(state[k]) then state[k] = t[k] end
+		end
+	end)
+end
+
 local configLoaded = loadConfig()
+-- ถ้าเกมนี้ยังไม่มี config ให้ใช้ธีมเริ่มต้นที่ตั้งไว้ (ถ้ามี)
+if not configLoaded then loadDefaultThemeInto() end
 -- v2.8: รองรับ config เก่า (fpsBooster แบบเปิด/ปิด) -> ระดับ 1
 if state.fpsBooster and (tonumber(state.fpsBoostLevel) or 0) == 0 then state.fpsBoostLevel = 1 end
 state.fpsBoostLevel = math.clamp(math.floor(tonumber(state.fpsBoostLevel) or 0), 0, 3)
@@ -541,6 +609,9 @@ local function applyScreenTime(on)
 		pcall(setfpscap, tonumber(state.saverFpsCap))
 	end
 
+	local accent = (UI and UI.accent and UI.accent()) or Color3.fromRGB(0, 210, 255)
+	local accent2 = (UI and UI.accent2 and UI.accent2()) or Color3.fromRGB(120, 90, 255)
+
 	local sgST = Instance.new("ScreenGui")
 	sgST.Name = "Phumipad_BatterySaver_Overlay"
 	sgST.ResetOnSpawn = false
@@ -555,23 +626,42 @@ local function applyScreenTime(on)
 	bg.BorderSizePixel = 0
 	bg.Active = true
 	bg.Parent = sgST
+	-- ไล่เฉดมืดบางๆ ให้ดูมีมิติ (ไม่กินแบตเพราะเป็น static)
+	local bgGrad = Instance.new("UIGradient")
+	bgGrad.Rotation = 115
+	bgGrad.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, accent:Lerp(Color3.fromRGB(0, 0, 0), 0.9)),
+		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 0, 0)),
+		ColorSequenceKeypoint.new(1, accent2:Lerp(Color3.fromRGB(0, 0, 0), 0.92))
+	})
+	bgGrad.Parent = bg
 
+	-- แถบบน: โลโก้ + แบตเตอรี่
 	local topBar = Instance.new("Frame")
-	topBar.Size = UDim2.new(1, -50, 0, 50)
-	topBar.Position = UDim2.new(0, 25, 0, 25)
+	topBar.Size = UDim2.new(1, -60, 0, 44)
+	topBar.Position = UDim2.new(0, 30, 0, 28)
 	topBar.BackgroundTransparency = 1
 	topBar.Parent = bg
 
+	local brand = Instance.new("TextLabel")
+	brand.Size = UDim2.new(0, 220, 1, 0)
+	brand.BackgroundTransparency = 1
+	brand.Text = "PHUMIPAD  •  Battery Saver"
+	brand.TextColor3 = Color3.fromRGB(150, 160, 185)
+	brand.Font = Enum.Font.GothamBold
+	brand.TextSize = 13
+	brand.TextXAlignment = Enum.TextXAlignment.Left
+	brand.Parent = topBar
+
 	local batContainer = Instance.new("Frame")
-	batContainer.Size = UDim2.new(0, 130, 0, 32)
+	batContainer.Size = UDim2.new(0, 150, 1, 0)
 	batContainer.AnchorPoint = Vector2.new(1, 0)
 	batContainer.Position = UDim2.new(1, 0, 0, 0)
 	batContainer.BackgroundTransparency = 1
 	batContainer.Parent = topBar
 
 	local batLabel = Instance.new("TextLabel")
-	batLabel.Size = UDim2.new(1, -50, 1, 0)
-	batLabel.Position = UDim2.new(0, 0, 0, 0)
+	batLabel.Size = UDim2.new(1, -52, 1, 0)
 	batLabel.BackgroundTransparency = 1
 	batLabel.Text = "100%"
 	batLabel.TextColor3 = Color3.fromRGB(240, 245, 255)
@@ -581,18 +671,22 @@ local function applyScreenTime(on)
 	batLabel.Parent = batContainer
 
 	local batOutline = Instance.new("Frame")
-	batOutline.Size = UDim2.new(0, 36, 0, 18)
-	batOutline.Position = UDim2.new(1, -40, 0.5, -9)
+	batOutline.Size = UDim2.new(0, 38, 0, 18)
+	batOutline.AnchorPoint = Vector2.new(1, 0.5)
+	batOutline.Position = UDim2.new(1, -8, 0.5, 0)
 	batOutline.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-	batOutline.BorderColor3 = Color3.fromRGB(180, 190, 210)
-	batOutline.BorderSizePixel = 1.5
+	batOutline.BackgroundTransparency = 1
 	batOutline.Parent = batContainer
+	local boStroke = Instance.new("UIStroke")
+	boStroke.Color = Color3.fromRGB(150, 160, 185)
+	boStroke.Thickness = 1.5
+	boStroke.Parent = batOutline
 	Instance.new("UICorner", batOutline).CornerRadius = UDim.new(0, 4)
 
 	local batNub = Instance.new("Frame")
 	batNub.Size = UDim2.new(0, 3, 0, 8)
-	batNub.Position = UDim2.new(1, 1.5, 0.5, -4)
-	batNub.BackgroundColor3 = Color3.fromRGB(180, 190, 210)
+	batNub.Position = UDim2.new(1, 0, 0.5, -4)
+	batNub.BackgroundColor3 = Color3.fromRGB(150, 160, 185)
 	batNub.BorderSizePixel = 0
 	batNub.Parent = batOutline
 
@@ -604,111 +698,138 @@ local function applyScreenTime(on)
 	batFill.Parent = batOutline
 	Instance.new("UICorner", batFill).CornerRadius = UDim.new(0, 2)
 
+	-- กล่องกลางจอ
 	local centerBox = Instance.new("Frame")
-	centerBox.Size = UDim2.new(0, 560, 0, 360)
-	centerBox.Position = UDim2.new(0.5, -280, 0.5, -180)
+	centerBox.Size = UDim2.new(0, 560, 0, 400)
+	centerBox.AnchorPoint = Vector2.new(0.5, 0.5)
+	centerBox.Position = UDim2.new(0.5, 0, 0.46, 0)
 	centerBox.BackgroundTransparency = 1
 	centerBox.Parent = bg
 
 	local clockLabel = Instance.new("TextLabel")
-	clockLabel.Size = UDim2.new(1, 0, 0, 90)
+	clockLabel.Size = UDim2.new(1, 0, 0, 96)
 	clockLabel.Position = UDim2.new(0, 0, 0, 0)
 	clockLabel.BackgroundTransparency = 1
 	clockLabel.Text = os.date("%H:%M:%S")
 	clockLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-	clockLabel.Font = Enum.Font.Gotham
-	clockLabel.TextSize = 82
+	clockLabel.Font = Enum.Font.GothamBlack
+	clockLabel.TextSize = 86
 	clockLabel.Parent = centerBox
+	local clockGrad = Instance.new("UIGradient")
+	clockGrad.Rotation = 25
+	clockGrad.Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), accent:Lerp(Color3.fromRGB(255, 255, 255), 0.35))
+	clockGrad.Parent = clockLabel
 
+	local dateLabel = Instance.new("TextLabel")
+	dateLabel.Size = UDim2.new(1, 0, 0, 22)
+	dateLabel.Position = UDim2.new(0, 0, 0, 96)
+	dateLabel.BackgroundTransparency = 1
+	dateLabel.Text = os.date("%A, %d %B")
+	dateLabel.TextColor3 = Color3.fromRGB(150, 160, 185)
+	dateLabel.Font = Enum.Font.GothamMedium
+	dateLabel.TextSize = 15
+	dateLabel.Parent = centerBox
+
+	local elapsedPill = Instance.new("Frame")
+	elapsedPill.Size = UDim2.new(0, 260, 0, 36)
+	elapsedPill.AnchorPoint = Vector2.new(0.5, 0)
+	elapsedPill.Position = UDim2.new(0.5, 0, 0, 132)
+	elapsedPill.BackgroundColor3 = accent
+	elapsedPill.BackgroundTransparency = 0.85
+	elapsedPill.Parent = centerBox
+	Instance.new("UICorner", elapsedPill).CornerRadius = UDim.new(1, 0)
+	local epStroke = Instance.new("UIStroke")
+	epStroke.Color = accent
+	epStroke.Transparency = 0.4
+	epStroke.Parent = elapsedPill
 	local elapsedLabel = Instance.new("TextLabel")
-	elapsedLabel.Size = UDim2.new(1, 0, 0, 34)
-	elapsedLabel.Position = UDim2.new(0, 0, 0, 96)
+	elapsedLabel.Size = UDim2.new(1, 0, 1, 0)
 	elapsedLabel.BackgroundTransparency = 1
 	elapsedLabel.Text = "Saving Battery • 00:00"
-	elapsedLabel.TextColor3 = Color3.fromRGB(0, 220, 255)
+	elapsedLabel.TextColor3 = accent
 	elapsedLabel.Font = Enum.Font.GothamBold
-	elapsedLabel.TextSize = 22
-	elapsedLabel.Parent = centerBox
+	elapsedLabel.TextSize = 15
+	elapsedLabel.Parent = elapsedPill
 
 	local statsCard = Instance.new("Frame")
-	statsCard.Size = UDim2.new(0, 520, 0, 60)
-	statsCard.Position = UDim2.new(0.5, -260, 0, 142)
-	statsCard.BackgroundColor3 = Color3.fromRGB(15, 18, 24)
-	statsCard.BorderSizePixel = 0
+	statsCard.Size = UDim2.new(0, 480, 0, 56)
+	statsCard.AnchorPoint = Vector2.new(0.5, 0)
+	statsCard.Position = UDim2.new(0.5, 0, 0, 186)
+	statsCard.BackgroundColor3 = Color3.fromRGB(14, 16, 22)
+	statsCard.BackgroundTransparency = 0.15
 	statsCard.Parent = centerBox
-	Instance.new("UICorner", statsCard).CornerRadius = UDim.new(0, 10)
-
-	local scStroke = Instance.new("UIStroke")
-	scStroke.Color = Color3.fromRGB(45, 55, 75)
-	scStroke.Thickness = 1.2
-	scStroke.Parent = statsCard
-
+	Instance.new("UICorner", statsCard).CornerRadius = UDim.new(0, 12)
+	local scStroke2 = Instance.new("UIStroke")
+	scStroke2.Color = Color3.fromRGB(45, 52, 72)
+	scStroke2.Thickness = 1
+	scStroke2.Parent = statsCard
+	local statsIcon = Instance.new("TextLabel")
+	statsIcon.Size = UDim2.new(0, 30, 1, 0)
+	statsIcon.Position = UDim2.new(0, 10, 0, 0)
+	statsIcon.BackgroundTransparency = 1
+	statsIcon.Text = "📊"
+	statsIcon.TextSize = 18
+	statsIcon.Parent = statsCard
 	local statsLabel = Instance.new("TextLabel")
-	statsLabel.Size = UDim2.new(1, -28, 1, 0)
-	statsLabel.Position = UDim2.new(0, 14, 0, 0)
+	statsLabel.Size = UDim2.new(1, -52, 1, 0)
+	statsLabel.Position = UDim2.new(0, 44, 0, 0)
 	statsLabel.BackgroundTransparency = 1
 	statsLabel.Text = "Loading stats..."
-	statsLabel.TextColor3 = Color3.fromRGB(255, 225, 50)
+	statsLabel.TextColor3 = Color3.fromRGB(255, 225, 90)
 	statsLabel.Font = Enum.Font.GothamBold
-	statsLabel.TextSize = 22
+	statsLabel.TextSize = 15
+	statsLabel.TextXAlignment = Enum.TextXAlignment.Left
 	statsLabel.TextTruncate = Enum.TextTruncate.AtEnd
 	statsLabel.Parent = statsCard
 
+	-- Slide to unlock
 	local slideTrack = Instance.new("Frame")
-	slideTrack.Size = UDim2.new(0, 350, 0, 64)
-	slideTrack.Position = UDim2.new(0.5, -175, 0, 230)
-	slideTrack.BackgroundColor3 = Color3.fromRGB(18, 19, 23)
-	slideTrack.BorderSizePixel = 0
+	slideTrack.Size = UDim2.new(0, 360, 0, 62)
+	slideTrack.AnchorPoint = Vector2.new(0.5, 0)
+	slideTrack.Position = UDim2.new(0.5, 0, 0, 272)
+	slideTrack.BackgroundColor3 = Color3.fromRGB(16, 18, 24)
+	slideTrack.BackgroundTransparency = 0.1
 	slideTrack.Parent = centerBox
-	Instance.new("UICorner", slideTrack).CornerRadius = UDim.new(0, 16)
-
-	local sTStroke = Instance.new("UIStroke")
-	sTStroke.Color = Color3.fromRGB(48, 52, 64)
-	sTStroke.Thickness = 1.5
-	sTStroke.Parent = slideTrack
+	Instance.new("UICorner", slideTrack).CornerRadius = UDim.new(1, 0)
+	local stStroke = Instance.new("UIStroke")
+	stStroke.Color = accent
+	stStroke.Transparency = 0.5
+	stStroke.Thickness = 1.5
+	stStroke.Parent = slideTrack
 
 	local slideText = Instance.new("TextLabel")
 	slideText.Size = UDim2.new(1, -80, 1, 0)
-	slideText.Position = UDim2.new(0, 8, 0, 0)
+	slideText.Position = UDim2.new(0, 70, 0, 0)
 	slideText.BackgroundTransparency = 1
-	slideText.Text = "slide to unlock"
-	slideText.TextColor3 = Color3.fromRGB(185, 190, 205)
-	slideText.Font = Enum.Font.Gotham
-	slideText.TextSize = 20
+	slideText.Text = "เลื่อนเพื่อปลดล็อก"
+	slideText.TextColor3 = Color3.fromRGB(150, 160, 185)
+	slideText.Font = Enum.Font.GothamMedium
+	slideText.TextSize = 16
 	slideText.Parent = slideTrack
+	local shimmer = Instance.new("UIGradient")
+	shimmer.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(110, 120, 140)),
+		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(240, 245, 255)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(110, 120, 140))
+	})
+	shimmer.Parent = slideText
 
 	local slideKnob = Instance.new("TextButton")
-	slideKnob.Size = UDim2.new(0, 76, 0, 52)
-	slideKnob.Position = UDim2.new(0, 6, 0.5, 0)
+	slideKnob.Size = UDim2.new(0, 54, 0, 54)
+	slideKnob.Position = UDim2.new(0, 4, 0.5, 0)
 	slideKnob.AnchorPoint = Vector2.new(0, 0.5)
-	slideKnob.BackgroundColor3 = Color3.fromRGB(235, 238, 245)
-	slideKnob.Text = ""
+	slideKnob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	slideKnob.Text = ">"
+	slideKnob.TextColor3 = Color3.fromRGB(20, 22, 30)
+	slideKnob.Font = Enum.Font.GothamBlack
+	slideKnob.TextSize = 22
 	slideKnob.AutoButtonColor = false
 	slideKnob.Parent = slideTrack
-	Instance.new("UICorner", slideKnob).CornerRadius = UDim.new(0, 11)
-
-	local knobStroke = Instance.new("UIStroke")
-	knobStroke.Color = Color3.fromRGB(100, 104, 115)
-	knobStroke.Thickness = 1.2
-	knobStroke.Parent = slideKnob
-
+	Instance.new("UICorner", slideKnob).CornerRadius = UDim.new(1, 0)
 	local knobGrad = Instance.new("UIGradient")
 	knobGrad.Rotation = 90
-	knobGrad.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
-		ColorSequenceKeypoint.new(0.4, Color3.fromRGB(235, 238, 244)),
-		ColorSequenceKeypoint.new(1, Color3.fromRGB(165, 170, 180))
-	})
+	knobGrad.Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), accent:Lerp(Color3.fromRGB(255, 255, 255), 0.4))
 	knobGrad.Parent = slideKnob
-
-	local arrowIcon = Instance.new("ImageLabel")
-	arrowIcon.Size = UDim2.new(0, 26, 0, 26)
-	arrowIcon.Position = UDim2.new(0.5, 0, 0.5, 0)
-	arrowIcon.AnchorPoint = Vector2.new(0.5, 0.5)
-	arrowIcon.BackgroundTransparency = 1
-	arrowIcon.Image = "rbxassetid://6034818379"
-	arrowIcon.ImageColor3 = Color3.fromRGB(100, 105, 115)
-	arrowIcon.Parent = slideKnob
 
 	local dragging = false
 	slideKnob.InputBegan:Connect(function(input)
@@ -716,14 +837,13 @@ local function applyScreenTime(on)
 			dragging = true
 		end
 	end)
-
 	local dragConn = UserInputService.InputChanged:Connect(function(input)
 		if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
 			local trackStart = slideTrack.AbsolutePosition.X
 			local trackWidth = slideTrack.AbsoluteSize.X
 			local knobWidth = slideKnob.AbsoluteSize.X
 			local relativeX = input.Position.X - trackStart - (knobWidth / 2)
-			local clampedX = math.clamp(relativeX, 6, trackWidth - knobWidth - 6)
+			local clampedX = math.clamp(relativeX, 4, trackWidth - knobWidth - 4)
 			slideKnob.Position = UDim2.new(0, clampedX, 0.5, 0)
 			slideText.TextTransparency = clampedX / (trackWidth - knobWidth)
 			if clampedX >= trackWidth - knobWidth - 8 then
@@ -732,19 +852,15 @@ local function applyScreenTime(on)
 			end
 		end
 	end)
-
 	local endConn = UserInputService.InputEnded:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 			if dragging then
 				dragging = false
-				TweenService:Create(slideKnob, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-					Position = UDim2.new(0, 6, 0.5, 0)
-				}):Play()
+				TweenService:Create(slideKnob, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Position = UDim2.new(0, 4, 0.5, 0)}):Play()
 				TweenService:Create(slideText, TweenInfo.new(0.3), {TextTransparency = 0}):Play()
 			end
 		end
 	end)
-
 	sgST.Destroying:Connect(function()
 		if dragConn then dragConn:Disconnect() end
 		if endConn then endConn:Disconnect() end
@@ -1883,7 +1999,8 @@ end))
 -- ============ v2.9 NEO-GLASS UI ENGINE (THEME • PATTERN • FX) ============
 --  ทุกองค์ประกอบผูกกับ "บทบาทสี" (role) จึงเปลี่ยนสี/ความใส/ลวดลายได้แบบสด
 -- =========================================================================
-local UI = {reg = {}, onApply = {}, patternToken = 0, hideToken = 0}
+UI = {reg = {}, onApply = {}, patternToken = 0, hideToken = 0}
+UI.saveDefaultTheme = saveDefaultThemeFile
 
 UI.BASES = {
 	Dark     = {bg = {11, 14, 22}, surface = {19, 23, 35}, surface2 = {29, 35, 52}, stroke = {44, 52, 76}},
@@ -1894,8 +2011,10 @@ UI.BASES = {
 }
 UI.BASE_ORDER = {"Dark", "Midnight", "AMOLED", "Violet", "Forest"}
 UI.ACCENTS = {
-	{0, 200, 255}, {125, 95, 255}, {255, 70, 170}, {0, 225, 140},
-	{255, 150, 35}, {255, 65, 85}, {255, 210, 60}, {230, 236, 248}
+	{0, 200, 255}, {0, 150, 255}, {40, 110, 255}, {125, 95, 255}, {165, 80, 255}, {210, 70, 255},
+	{255, 70, 170}, {255, 90, 120}, {255, 65, 85}, {255, 120, 40}, {255, 150, 35}, {255, 190, 30},
+	{255, 210, 60}, {200, 230, 40}, {120, 225, 60}, {0, 225, 140}, {0, 220, 190}, {0, 210, 230},
+	{120, 200, 255}, {255, 160, 200}, {180, 170, 255}, {230, 236, 248}
 }
 
 function UI.rgb(t) return Color3.fromRGB(t[1], t[2], t[3]) end
@@ -1917,7 +2036,12 @@ function UI.color(role)
 	if role == "text" then return Color3.fromRGB(240, 244, 252) end
 	if role == "sub" then return Color3.fromRGB(150, 162, 188) end
 	local b = UI.base()
-	return UI.rgb(b[role] or b.surface)
+	local c = UI.rgb(b[role] or b.surface)
+	local tint = tonumber(state.themeTint) or 0
+	if tint > 0 and (role == "bg" or role == "surface" or role == "surface2" or role == "stroke") then
+		c = c:Lerp(UI.accent(), tint * (role == "stroke" and 0.55 or 0.3))
+	end
+	return c
 end
 function UI.trans(kind)
 	local t = math.clamp(tonumber(state.uiTransparency) or 0, 0, 0.85)
@@ -2678,6 +2802,17 @@ do
 			if f.Visible and state.themeAnimBorder then
 				UI.borderGrad.Rotation = (UI.borderGrad.Rotation + 2) % 360
 			end
+			-- v3.1: สีรุ้งวิ่ง (เปลี่ยนสีหลักเรื่อยๆ)
+			if state.themeRainbow and f.Visible then
+				UI._rainbowH = ((UI._rainbowH or 0) + 0.0025) % 1
+				UI._rainbowAcc = (UI._rainbowAcc or 0) + 1
+				if UI._rainbowAcc >= 4 then
+					UI._rainbowAcc = 0
+					local c = Color3.fromHSV(UI._rainbowH, 0.78, 1)
+					state.themeAccent = {math.floor(c.R * 255 + 0.5), math.floor(c.G * 255 + 0.5), math.floor(c.B * 255 + 0.5)}
+					pcall(UI.apply, true)
+				end
+			end
 			if UI.windowGrads and #UI.windowGrads > 0 then
 				local alive = {}
 				for _, g in ipairs(UI.windowGrads) do
@@ -2699,15 +2834,16 @@ function UI.showPanel()
 	local s = math.clamp(tonumber(state.uiScale) or 1, 0.6, 1.6)
 	openBtn.Visible = false
 	f.Visible = true
-	mainUIScale.Scale = s * 0.86
-	TweenService:Create(mainUIScale, TweenInfo.new(0.32, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Scale = s}):Play()
+	mainUIScale.Scale = s * 0.8
+	f.Position = f.Position
+	TweenService:Create(mainUIScale, TweenInfo.new(0.42, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Scale = s}):Play()
 end
 function UI.hidePanel()
 	UI.hideToken = UI.hideToken + 1
 	local token = UI.hideToken
 	local s = math.clamp(tonumber(state.uiScale) or 1, 0.6, 1.6)
-	TweenService:Create(mainUIScale, TweenInfo.new(0.14, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Scale = s * 0.86}):Play()
-	task.delay(0.14, function()
+	TweenService:Create(mainUIScale, TweenInfo.new(0.2, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {Scale = s * 0.8}):Play()
+	task.delay(0.2, function()
 		if token ~= UI.hideToken then return end
 		f.Visible = false
 		mainUIScale.Scale = s
@@ -2830,7 +2966,7 @@ do
 	subTitle.Size = UDim2.new(1, -160, 0, 12)
 	subTitle.Position = UDim2.new(0, 52, 0, 29)
 	subTitle.BackgroundTransparency = 1
-	subTitle.Text = "v3.0 Neo Glass • " .. tostring(state.menuKey)
+	subTitle.Text = "v3.1 Universal • " .. tostring(state.menuKey)
 	subTitle.Font = Enum.Font.GothamMedium
 	subTitle.TextSize = 10
 	subTitle.TextXAlignment = Enum.TextXAlignment.Left
@@ -2887,8 +3023,8 @@ local function makeHeaderButton(name, text, xOffset, isDanger)
 end
 
 local dockHideBtn = makeHeaderButton("DockHideButton", "⚡", -104, false)
-local miniBtn = makeHeaderButton("CollapseButton", "–", -70, false)
-local closeBtn = makeHeaderButton("CloseButton", "✕", -36, true)
+local miniBtn = makeHeaderButton("CollapseButton", "-", -70, false)
+local closeBtn = makeHeaderButton("CloseButton", "X", -36, true)
 
 -- ================== SEGMENTED TAB BAR ==================
 local tabBar = Instance.new("ScrollingFrame")
@@ -2971,13 +3107,15 @@ do
 	table.insert(UI.onApply, paintCard)
 
 	gameNameLabel = Instance.new("TextLabel")
-	gameNameLabel.Size = UDim2.new(1, -78, 0, 18)
-	gameNameLabel.Position = UDim2.new(0, 12, 0, 9)
+	gameNameLabel.Size = UDim2.new(1, -78, 0, 20)
+	gameNameLabel.Position = UDim2.new(0, 12, 0, 8)
 	gameNameLabel.BackgroundTransparency = 1
 	gameNameLabel.Text = "Loading Game Info..."
-	gameNameLabel.TextColor3 = Color3.fromRGB(245, 248, 255)
+	gameNameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	gameNameLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+	gameNameLabel.TextStrokeTransparency = 0.45
 	gameNameLabel.Font = Enum.Font.GothamBold
-	gameNameLabel.TextSize = 12
+	gameNameLabel.TextSize = 14
 	gameNameLabel.TextXAlignment = Enum.TextXAlignment.Left
 	gameNameLabel.TextTruncate = Enum.TextTruncate.AtEnd
 	gameNameLabel.Parent = statusCard
@@ -2989,7 +3127,7 @@ do
 	copyHeaderBtn.BorderSizePixel = 0
 	copyHeaderBtn.Font = Enum.Font.GothamBold
 	copyHeaderBtn.TextSize = 10
-	copyHeaderBtn.Text = "⧉ COPY"
+	copyHeaderBtn.Text = "COPY"
 	copyHeaderBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 	copyHeaderBtn.AutoButtonColor = false
 	copyHeaderBtn.Parent = statusCard
@@ -3030,13 +3168,13 @@ do
 		copyBusy = true
 		local success, gName = copyGameName()
 		if success then
-			copyHeaderBtn.Text = "✓ DONE"
+			copyHeaderBtn.Text = "DONE"
 			sendNotification("Copied Game Name", gName, Color3.fromRGB(0, 200, 125))
 		else
 			copyHeaderBtn.Text = "FAIL"
 		end
 		task.wait(1.5)
-		copyHeaderBtn.Text = "⧉ COPY"
+		copyHeaderBtn.Text = "COPY"
 		copyBusy = false
 	end)
 end
@@ -3168,6 +3306,7 @@ local tabColors = {
 	visual = Color3.fromRGB(210, 70, 255),
 	points = Color3.fromRGB(255, 175, 25),
 	tools  = Color3.fromRGB(255, 60, 95),
+	auto   = Color3.fromRGB(120, 230, 90),
 	server = Color3.fromRGB(60, 140, 255),
 	settings = Color3.fromRGB(190, 200, 220),
 	logs   = Color3.fromRGB(0, 240, 200)
@@ -3386,6 +3525,11 @@ function UI.makeSwitch(row, rStroke, xOffset)
 	ks.Transparency = 0.75
 	ks.Thickness = 1
 	ks.Parent = knob
+	-- v3.1: ไฟเรืองรอบหัวสวิตช์ตอนเปิด
+	local knobGlow = Instance.new("UIStroke")
+	knobGlow.Thickness = 0
+	knobGlow.Transparency = 1
+	knobGlow.Parent = knob
 
 	local bar = Instance.new("Frame")
 	bar.Size = UDim2.new(0, 0, 0.5, 0)
@@ -3406,6 +3550,9 @@ function UI.makeSwitch(row, rStroke, xOffset)
 		TweenService:Create(rStroke, ti, {Color = cur and UI.accent() or UI.color("stroke"), Transparency = cur and 0.15 or 0.35}):Play()
 		bar.BackgroundColor3 = UI.accent()
 		TweenService:Create(bar, ti, {Size = cur and UDim2.new(0, 3, 0.5, 0) or UDim2.new(0, 0, 0.5, 0)}):Play()
+		local glowOn = cur and state.themeKnobGlow
+		knobGlow.Color = UI.accent()
+		TweenService:Create(knobGlow, ti, {Thickness = glowOn and 4 or 0, Transparency = glowOn and 0.35 or 1}):Play()
 	end
 	table.insert(UI.onApply, {owner = row, fn = function() render(cur, true) end})
 	return pill, render
@@ -3424,6 +3571,20 @@ function UI.hookRowFx(row, clickBtn, onClick)
 		TweenService:Create(row, TweenInfo.new(0.15), {BackgroundColor3 = UI.color("surface")}):Play()
 	end)
 	clickBtn.MouseButton1Click:Connect(onClick)
+end
+
+local function addSectionLabel(parent, text)
+	local l = Instance.new("TextLabel")
+	l.Size = UDim2.new(1, 0, 0, 22)
+	l.BackgroundTransparency = 1
+	l.Text = text
+	l.Font = Enum.Font.GothamBold
+	l.TextSize = 11.5
+	l.TextXAlignment = Enum.TextXAlignment.Left
+	l.LayoutOrder = getOrder()
+	l.Parent = parent
+	UI.bind(l, "TextColor3", "sub")
+	return l
 end
 
 local function addRefinedToolButton(parent, name, iconSymbol, accentColor, onClick)
@@ -3469,7 +3630,7 @@ local function addRefinedToolButton(parent, name, iconSymbol, accentColor, onCli
 	arrow.Size = UDim2.new(0, 20, 1, 0)
 	arrow.Position = UDim2.new(1, -26, 0, 0)
 	arrow.BackgroundTransparency = 1
-	arrow.Text = "›"
+	arrow.Text = ">"
 	arrow.Font = Enum.Font.GothamBold
 	arrow.TextSize = 18
 	arrow.Parent = row
@@ -3752,7 +3913,7 @@ UI.INFO = {
 		note = "เป็นโค้ดภายนอก ถ้าอยากได้ตัวที่ปลอดภัยกว่าให้ใช้ Fly (Built-in) ในแท็บ Move"},
 	["Player Teleport"] = {use = "แตะเพื่อเปิดรายชื่อผู้เล่น ค้นหา/เลือกคน แล้วกด Teleport",
 		how = "ย้ายตัวเราไปด้านหลังผู้เล่นเป้าหมาย 3 studs ครั้งเดียว"},
-	["Spectate Player"] = {use = "แตะเพื่อเปิดหน้าต่างส่องผู้เล่น เลือกชื่อหรือกด ◀ ▶ เพื่อสลับคน กด STOP เพื่อกลับมาดูตัวเอง",
+	["Spectate Player"] = {use = "แตะเพื่อเปิดหน้าต่างส่องผู้เล่น เลือกชื่อหรือกดปุ่มสลับคน กด STOP เพื่อกลับมาดูตัวเอง",
 		how = "เปลี่ยน CameraSubject ของกล้องไปที่ตัวผู้เล่นเป้าหมาย ตัวเราไม่ได้ขยับไปไหน"},
 	["Stalker"] = {use = "แตะเพื่อเปิดหน้าต่าง เลือกผู้เล่นแล้วกด START เพื่อเกาะติดด้านหลัง กด STOP เพื่อหยุด",
 		how = "ย้ายตัวเราไปด้านหลังผู้เล่นเป้าหมาย 3 studs ทุกเฟรมจนกว่าจะหยุด"},
@@ -3769,7 +3930,53 @@ UI.INFO = {
 		how = "ดึงรายชื่อเซิร์ฟสาธารณะจาก API ของ Roblox (สูงสุด 300 เซิร์ฟ) เลือกเซิร์ฟที่ยังไม่เต็มแบบสุ่ม แล้ว Teleport"},
 	["Join Smallest Server"] = {use = "แตะเพื่อย้ายไปเซิร์ฟที่คนน้อยที่สุด เหมาะกับการฟาร์มเงียบๆ",
 		how = "ดึงรายชื่อเซิร์ฟแล้วเรียงตามจำนวนคน เลือกเซิร์ฟที่คนน้อยที่สุดที่ไม่ใช่เซิร์ฟปัจจุบัน"},
+	-- AUTOMATION (v3.1)
+	["Auto Interact (ระยะ studs)"] = {use = "ใส่ระยะ (studs) แล้วเปิดสวิตช์ ถ้าอยากกดเฉพาะบางปุ่มให้พิมพ์คำในช่องกรองด้านล่าง เช่น Collect, Claim",
+		how = "วนหา ProximityPrompt ทุกอันใน Workspace ที่อยู่ในระยะ แล้วสั่ง fireproximityprompt ให้ทำงานทุกๆ 0.35 วินาที",
+		note = "ต้องใช้ executor ที่รองรับ fireproximityprompt"},
+	["กรองชื่อปุ่ม (เว้นว่าง = ทุกปุ่ม)"] = {use = "พิมพ์คำที่ต้องการ คั่นด้วยจุลภาค เช่น Collect, Claim, Buy เว้นว่างไว้ = กดทุกปุ่ม",
+		how = "เทียบคำที่พิมพ์กับชื่อปุ่ม ActionText และชื่อวัตถุ แบบไม่สนตัวพิมพ์เล็กใหญ่"},
+	["Auto Collect (ระยะ studs)"] = {use = "ใส่ระยะแล้วเปิดสวิตช์ จะเก็บ Tool ที่ตกอยู่บนพื้นอัตโนมัติ ถ้าของไม่ใช่ Tool ให้พิมพ์ชื่อในช่องกรอง",
+		how = "ยิง firetouchinterest ไปที่ของทุกชิ้นในระยะ เหมือนเราเดินไปชนเอง ถ้าเปิดโหมด Magnet จะย้ายของมาที่ตัวเราก่อน",
+		note = "เกมที่ตรวจตำแหน่งของฝั่งเซิร์ฟเวอร์อาจไม่นับให้"},
+	["ดูดของมาหาตัว (Magnet) แทนการเดินไปเก็บ"] = {use = "เปิดเมื่อการแตะเฉยๆ ไม่ติด จะย้ายของมาที่ตัวเราเลย",
+		how = "ตั้ง CFrame ของชิ้นนั้นให้มาอยู่ตำแหน่งเดียวกับตัวเรา แล้วค่อยสั่งแตะ",
+		note = "เห็นชัดกว่าปกติ เสี่ยงโดนตรวจจับมากกว่าโหมดธรรมดา"},
+	["Auto Equip (หยิบเครื่องมือชิ้นแรกมาถือ)"] = {use = "เปิดไว้ ถ้ามือว่างจะหยิบเครื่องมือชิ้นแรกจากกระเป๋ามาถือให้",
+		how = "เช็คทุก 0.6 วินาทีว่าตัวละครถือ Tool อยู่หรือยัง ถ้ายังจะสั่ง Humanoid:EquipTool"},
+	["Auto Use Tool (ครั้ง/วินาที)"] = {use = "ถือเครื่องมือไว้แล้วเปิดสวิตช์ ใส่จำนวนครั้งต่อวินาทีที่ต้องการ",
+		how = "เรียก Tool:Activate() ซ้ำตามอัตราที่ตั้ง เหมือนกดคลิกใช้เครื่องมือเอง"},
+	["Run Route (พักจุดละ ? วิ)"] = {use = "บันทึกจุดในแท็บ Point ก่อน แล้วเปิดสวิตช์นี้ ตัวละครจะวนวาร์ปตามจุดเรียงตามลำดับ",
+		how = "วนลูปรายการ Waypoint ที่บันทึกไว้ ย้าย CFrame ไปทีละจุด แล้วรอตามเวลาที่ตั้งก่อนไปจุดถัดไป"},
+	["เล่นซ้ำแบบวนลูป (Loop)"] = {use = "เปิดไว้ มาโครจะเล่นซ้ำไม่หยุดจนกว่าจะกดหยุดเอง",
+		how = "เมื่อเล่นจบเฟรมสุดท้ายจะวนกลับไปเฟรมแรกใหม่"},
+	["แจ้งเตือนเมื่อมีแอดมิน/ทีมงานเข้าเซิร์ฟ"] = {use = "เปิดไว้ จะเตือนเมื่อมีคนที่น่าจะเป็นทีมงานเข้าเซิร์ฟ",
+		how = "เช็คว่าผู้เล่นอยู่ในกลุ่มเจ้าของเกม เป็นเจ้าของเกม หรือมีคำว่า admin/mod/staff ในชื่อ",
+		note = "เป็นการเดาเบื้องต้น ไม่แม่นยำ 100%"},
+	["ย้ายเซิร์ฟอัตโนมัติเมื่อเจอแอดมิน"] = {use = "เปิดคู่กับระบบด้านบน ถ้าเจอทีมงานจะ Server Hop หนีให้ทันที",
+		how = "เมื่อการตรวจพบทำงาน จะเรียก Server Hop แบบสุ่มหลังจากนั้น 1 วินาที"},
+	["Anti-Kick (กัน Kick ฝั่งเครื่องเรา)"] = {use = "เปิดไว้เพื่อพยายามบล็อกคำสั่งเตะออกจากเกม",
+		how = "ดักเมธอด Kick ผ่าน hookmetamethod ถ้าเป็นคำสั่งจากเกม (ไม่ใช่จากสคริปต์เรา) จะไม่ให้ทำงาน",
+		note = "ใช้ได้เฉพาะ executor ที่มี hookmetamethod และกันได้เฉพาะ Kick ฝั่งเครื่องเราเท่านั้น ไม่กันการปิดเซิร์ฟหรือแบน"},
+	["Object ESP (หาของตามชื่อ)"] = {use = "พิมพ์ชื่อของในช่องด้านล่าง เช่น Chest, Coin แล้วเปิดสวิตช์ จะขึ้นไฮไลต์ทะลุกำแพงพร้อมระยะทาง",
+		how = "สแกน Workspace ทุก 2 วินาทีหาวัตถุที่ชื่อตรงกับคำค้น แล้วใส่ Highlight และป้ายชื่อให้ (จำกัดไม่เกิน 120 ชิ้นเพื่อไม่ให้กระตุก)"},
+	["ชื่อของที่จะหา"] = {use = "พิมพ์คำค้น คั่นหลายคำด้วยจุลภาค เช่น Chest, Crate, Box",
+		how = "เทียบคำที่พิมพ์กับชื่อวัตถุใน Workspace แบบไม่สนตัวพิมพ์เล็กใหญ่"},
+	["Click Delete (Alt+คลิก / แตะ บนมือถือ)"] = {use = "PC: กด Alt ค้างแล้วคลิกวัตถุที่ต้องการลบ • มือถือ: แตะวัตถุได้เลย ใช้ลบกำแพงหรือสิ่งที่บังทางได้",
+		how = "ยิง Raycast จากจุดที่คลิก แล้วย้ายวัตถุนั้นออกจากเกมฝั่งเครื่องเรา (เก็บไว้กู้คืนได้)",
+		note = "ลบเฉพาะบนจอเราเท่านั้น ผู้เล่นคนอื่นยังเห็นปกติ และระบบจะไม่ลบตัวผู้เล่น"},
+	["กู้คืนวัตถุที่ลบไปทั้งหมด"] = {use = "แตะเพื่อเอาวัตถุที่ลบด้วย Click Delete กลับมาทั้งหมด",
+		how = "นำวัตถุที่เก็บไว้กลับไปใส่ที่ Parent เดิม"},
+	["Chat Logger"] = {use = "แตะเพื่อเปิดหน้าต่างดูแชตย้อนหลัง มีปุ่มคัดลอกทั้งหมด",
+		how = "ดักเหตุการณ์ Chatted ของผู้เล่นทุกคน เก็บไว้สูงสุด 400 ข้อความ จึงยังเห็นข้อความที่ถูกลบไปแล้ว"},
 	-- SETTINGS
+	["🎨 ระดับการผสมสีลงพาแนล (Tint)"] = {use = "ลากเพื่อผสมสีหลักลงไปในพื้นหลังและขอบของพาแนล ค่ามาก = พาแนลติดสีมาก",
+		how = "ผสมสีหลักเข้ากับสีพื้นของธีมตามเปอร์เซ็นต์ที่ตั้ง แล้วทาใหม่ทั้ง UI"},
+	["สีรุ้งวิ่ง (Rainbow Accent)"] = {use = "เปิดแล้วสีหลักจะไล่เปลี่ยนสีไปเรื่อยๆ เอง",
+		how = "ค่อยๆ เลื่อนค่า Hue ของสีหลักแล้วทาสี UI ใหม่ประมาณ 8 ครั้งต่อวินาที",
+		note = "กินเครื่องมากกว่าปกติเล็กน้อย ถ้าเกมกระตุกให้ปิด"},
+	["ไฟเรืองที่หัวสวิตช์ (Knob Glow)"] = {use = "เปิด/ปิดไฟเรืองรอบหัวสวิตช์เวลาเปิดเมนูนั้นๆ",
+		how = "เพิ่ม UIStroke เรืองแสงสีหลักรอบหัวสวิตช์เมื่ออยู่สถานะเปิด"},
 	["🌈 Custom Hue (ลากเลือกสีเอง)"] = {use = "ลากปุ่มกลมบนแถบสีรุ้งเพื่อเลือกสีหลักแบบอิสระ",
 		how = "แปลงตำแหน่งบนแถบเป็นค่า Hue (0-360°) แล้วเปลี่ยนสีทุกส่วนของ UI ทันที ลวดลายพื้นหลังจะอัปเดตเมื่อปล่อยนิ้ว"},
 	["💧 ความเข้มพื้นหลัง (Opacity)"] = {use = "ลากซ้าย = หน้าต่างใสมองทะลุเห็นเกม • ลากขวา = ทึบเข้ม",
@@ -4042,8 +4249,8 @@ function UI.window(guiName, titleText, icon, width)
 		b.MouseLeave:Connect(function() TweenService:Create(sc, TweenInfo.new(0.15), {Scale = 1}):Play() end)
 		return b
 	end
-	local minB = hBtn("–", -72, false)
-	local closeB = hBtn("✕", -38, true)
+	local minB = hBtn("-", -72, false)
+	local closeB = hBtn("X", -38, true)
 
 	local line = Instance.new("Frame")
 	line.Size = UDim2.new(1, -24, 0, 1)
@@ -4078,7 +4285,7 @@ function UI.window(guiName, titleText, icon, width)
 	minB.MouseButton1Click:Connect(function()
 		minimized = not minimized
 		content.Visible = not minimized
-		minB.Text = minimized and "+" or "–"
+		minB.Text = minimized and "+" or "-"
 	end)
 
 	local w = {gui = gui, win = win, content = content, header = header}
@@ -4353,7 +4560,7 @@ function UI.playerList(parent, gui, listHeight, onSelect)
 					check.Size = UDim2.new(0, 18, 0, 18)
 					check.Position = UDim2.new(0, 36, 0, 30)
 					check.BackgroundColor3 = Color3.fromRGB(0, 210, 120)
-					check.Text = "✓"
+					check.Text = ""
 					check.TextColor3 = Color3.fromRGB(255, 255, 255)
 					check.Font = Enum.Font.GothamBlack
 					check.TextSize = 11
@@ -4429,6 +4636,113 @@ function UI.playerList(parent, gui, listHeight, onSelect)
 	end)
 	api.refresh()
 	return api
+end
+
+
+-- v3.1: แถวช่องกรอกข้อความ (ใช้เป็นตัวกรองชื่อ)
+function UI.filterRow(parent, labelText, defaultText, placeholder, onChange)
+	local row = UI.card(parent, 44)
+	local l = Instance.new("TextLabel")
+	l.Size = UDim2.new(0.44, -14, 1, 0)
+	l.Position = UDim2.new(0, 14, 0, 0)
+	l.BackgroundTransparency = 1
+	l.Text = labelText
+	l.Font = Enum.Font.GothamMedium
+	l.TextSize = 12
+	l.TextXAlignment = Enum.TextXAlignment.Left
+	l.TextWrapped = true
+	l.Parent = row
+	UI.bind(l, "TextColor3", "text")
+
+	local box = Instance.new("TextBox")
+	box.Size = UDim2.new(0.56, -22, 0, 28)
+	box.Position = UDim2.new(0.44, 4, 0.5, -14)
+	box.BorderSizePixel = 0
+	box.Text = tostring(defaultText or "")
+	box.PlaceholderText = placeholder or ""
+	box.Font = Enum.Font.GothamBold
+	box.TextSize = 12
+	box.TextXAlignment = Enum.TextXAlignment.Left
+	box.ClearTextOnFocus = false
+	box.TextTruncate = Enum.TextTruncate.AtEnd
+	box.Parent = row
+	UI.bind(box, "BackgroundColor3", "bg")
+	UI.bind(box, "BackgroundTransparency", "T:soft")
+	UI.bind(box, "TextColor3", "accent")
+	UI.bind(box, "PlaceholderColor3", "sub")
+	UI.corner(box, "full")
+	local bs = UI.stroke(box, "stroke", 1, 0.3)
+	box.Focused:Connect(function()
+		TweenService:Create(bs, TweenInfo.new(0.15), {Color = UI.accent(), Transparency = 0}):Play()
+	end)
+	box.FocusLost:Connect(function()
+		TweenService:Create(bs, TweenInfo.new(0.15), {Color = UI.color("stroke"), Transparency = 0.3}):Play()
+		onChange(box.Text)
+	end)
+	local pad = Instance.new("UIPadding")
+	pad.PaddingLeft = UDim.new(0, 12)
+	pad.PaddingRight = UDim.new(0, 10)
+	pad.Parent = box
+	return box
+end
+
+-- v3.1: ตรวจแอดมิน/ทีมงานในเซิร์ฟ
+UI.adminWarned = {}
+function UI.isLikelyStaff(p)
+	local ok, inGroup = pcall(function()
+		local creator = game.CreatorType == Enum.CreatorType.Group and game.CreatorId or nil
+		if creator then return p:IsInGroup(creator) end
+		return false
+	end)
+	if ok and inGroup then return true, "อยู่ในกลุ่มเจ้าของเกม" end
+	if game.CreatorType == Enum.CreatorType.User and p.UserId == game.CreatorId then
+		return true, "เจ้าของเกม"
+	end
+	local n = string.lower(p.Name .. " " .. (p.DisplayName or ""))
+	for _, word in ipairs({"admin", "mod ", "moderator", "staff", "owner", "dev "}) do
+		if string.find(n, word, 1, true) then return true, "ชื่อมีคำว่า staff/admin" end
+	end
+	return false
+end
+function UI.scanAdmins()
+	for _, p in ipairs(Players:GetPlayers()) do
+		if p ~= player and not UI.adminWarned[p.UserId] then
+			local isStaff, why = UI.isLikelyStaff(p)
+			if isStaff then
+				UI.adminWarned[p.UserId] = true
+				sendNotification("⚠ พบแอดมิน/ทีมงาน", string.format("%s (%s)", p.DisplayName or p.Name, why), Color3.fromRGB(255, 80, 80))
+				if state.adminAutoHop and UI.serverHop then
+					task.delay(1, function() pcall(UI.serverHop, "random") end)
+				end
+			end
+		end
+	end
+end
+
+-- v3.1: Anti-Kick ฝั่งเครื่องเรา (ใช้ได้เฉพาะ executor ที่รองรับ hookmetamethod)
+UI.antiKickReady = false
+function UI.enableAntiKick()
+	if UI.antiKickReady then return true end
+	local ok = pcall(function()
+		local hook = hookmetamethod
+		local check = checkcaller
+		if type(hook) ~= "function" or type(check) ~= "function" then error("unsupported") end
+		local old
+		old = hook(game, "__namecall", function(selfObj, ...)
+			local method = getnamecallmethod and getnamecallmethod() or ""
+			if not check() and string.lower(tostring(method)) == "kick" and selfObj == player then
+				sendNotification("Anti-Kick", "บล็อกการ Kick ไว้แล้ว", Color3.fromRGB(0, 210, 130))
+				return nil
+			end
+			return old(selfObj, ...)
+		end)
+	end)
+	UI.antiKickReady = ok
+	if not ok then
+		state.antiKick = false
+		sendNotification("Anti-Kick", "executor นี้ไม่รองรับ (ต้องมี hookmetamethod)", Color3.fromRGB(255, 80, 80))
+	end
+	return ok
 end
 
 -- ================== INITIALIZE TABS & PAGES ==================
@@ -4513,6 +4827,20 @@ addToggleRow(utilPage, "Noclip", state.noclip, function(_, render)
 	applyNoclip(state.noclip)
 end)
 
+-- v3.1: Click to Delete
+addToggleRow(utilPage, "Click Delete (Alt+คลิก / แตะ บนมือถือ)", state.clickDelete, function(_, render)
+	state.clickDelete = not state.clickDelete
+	render(state.clickDelete)
+	UI.applyClickDelete(state.clickDelete)
+	if state.clickDelete then
+		sendNotification("Click Delete", UserInputService.TouchEnabled and "แตะวัตถุเพื่อลบ (ฝั่งเครื่องเราเท่านั้น)" or "กด Alt ค้างแล้วคลิกวัตถุเพื่อลบ", UI.accent())
+	end
+end)
+addRefinedToolButton(utilPage, "กู้คืนวัตถุที่ลบไปทั้งหมด", "♻", Color3.fromRGB(0, 210, 140), function()
+	local n = UI.restoreDeleted()
+	sendNotification("Restore", string.format("กู้คืนแล้ว %d ชิ้น", n), UI.accent())
+end)
+
 addToggleRow(utilPage, "Anti Ragdoll", state.antiRagdoll, function(_, render)
 	state.antiRagdoll = not state.antiRagdoll
 	render(state.antiRagdoll)
@@ -4591,6 +4919,21 @@ addToggleRow(visualPage, "Bot ESP (with HP%)", state.botEsp, function(_, render)
 end)
 
 -- MOVED FROM TOOLS: FPS / Ping Monitor
+-- v3.1: Object / Item ESP
+do
+	local objBox
+	addToggleRow(visualPage, "Object ESP (หาของตามชื่อ)", state.objEsp, function(_, render)
+		state.objEsp = not state.objEsp
+		render(state.objEsp)
+		UI.applyObjectESP(state.objEsp)
+		render(state.objEsp)
+	end)
+	objBox = UI.filterRow(visualPage, "ชื่อของที่จะหา", state.objEspFilter, "เช่น Chest, Coin, Door", function(v)
+		state.objEspFilter = v
+		if state.objEsp then UI.applyObjectESP(true) end
+	end)
+end
+
 addToggleRow(visualPage, "FPS / Ping Monitor", state.fpsHudEnabled, function(_, render)
 	state.fpsHudEnabled = not state.fpsHudEnabled
 	render(state.fpsHudEnabled)
@@ -4837,7 +5180,7 @@ local function createWaypointSlot(slotIndex, isRemovable)
 		delBtn.Position = UDim2.new(0.88, 0, 0, 3)
 		delBtn.BackgroundColor3 = Color3.fromRGB(40, 24, 32)
 		delBtn.BorderSizePixel = 0
-		delBtn.Text = "✕"
+		delBtn.Text = "X"
 		delBtn.TextColor3 = Color3.fromRGB(255, 90, 105)
 		delBtn.Font = Enum.Font.GothamBold
 		delBtn.TextSize = 10
@@ -4974,6 +5317,232 @@ end)
 end
 
 -- =========================================================================
+
+-- =========================================================================
+-- ============ v3.1: OBJECT ESP / CLICK-DELETE / CHAT LOG =================
+-- =========================================================================
+-- ---------- OBJECT ESP ----------
+local function removeObjectESP()
+	if state._objEspConn then state._objEspConn:Disconnect(); state._objEspConn = nil end
+	if state._objEspFolder then pcall(function() state._objEspFolder:Destroy() end); state._objEspFolder = nil end
+	state._objEspCache = {}
+end
+
+local function applyObjectESP(on)
+	removeObjectESP()
+	if not on then return end
+	if not state.objEspFilter or state.objEspFilter == "" then
+		state.objEsp = false
+		sendNotification("Object ESP", "ใส่ชื่อของที่ต้องการหาก่อน เช่น Chest", Color3.fromRGB(255, 160, 0))
+		return
+	end
+
+	local folder = Instance.new("Folder")
+	folder.Name = "Phumipad_ObjectESP"
+	safeParentGui(folder)
+	state._objEspFolder = folder
+	state._objEspCache = {}
+
+	local lastScan = 0
+	state._objEspConn = RunService.Heartbeat:Connect(function()
+		if not state.objEsp then return end
+		local now = os.clock()
+		local myChar = player.Character
+		local root = myChar and (myChar:FindFirstChild("HumanoidRootPart") or myChar.PrimaryPart)
+
+		-- สแกนหาวัตถุใหม่ทุก 2 วินาที (ไม่สแกนทุกเฟรม เพื่อไม่ให้กระตุก)
+		if now - lastScan > 2 then
+			lastScan = now
+			local found = 0
+			for _, obj in ipairs(Workspace:GetDescendants()) do
+				if found > 120 then break end
+				if (obj:IsA("BasePart") or obj:IsA("Model")) and UI.nameMatches(obj.Name, state.objEspFilter) then
+					local part = obj:IsA("BasePart") and obj or (obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart"))
+					if part and not state._objEspCache[obj] and not Players:GetPlayerFromCharacter(obj) then
+						found = found + 1
+						local bb = Instance.new("BillboardGui")
+						bb.Name = obj.Name .. "_OBJ"
+						bb.Adornee = part
+						bb.Size = UDim2.new(0, 190, 0, 34)
+						bb.StudsOffset = Vector3.new(0, 2.4, 0)
+						bb.AlwaysOnTop = true
+						bb.LightInfluence = 0
+						bb.MaxDistance = 5000
+						bb.Parent = folder
+						local lb = Instance.new("TextLabel")
+						lb.Size = UDim2.new(1, 0, 1, 0)
+						lb.BackgroundTransparency = 1
+						lb.TextColor3 = Color3.fromRGB(255, 255, 255)
+						lb.TextStrokeTransparency = 0
+						lb.TextStrokeColor3 = UI.accent()
+						lb.Font = Enum.Font.GothamBold
+						lb.TextSize = 13
+						lb.Text = obj.Name
+						lb.Parent = bb
+						local hl = Instance.new("Highlight")
+						hl.Adornee = obj
+						hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+						hl.FillColor = UI.accent()
+						hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+						hl.FillTransparency = 0.6
+						hl.Parent = folder
+						state._objEspCache[obj] = {bb = bb, lb = lb, hl = hl, part = part}
+					end
+				end
+			end
+		end
+
+		for obj, data in pairs(state._objEspCache) do
+			if not obj.Parent or not data.part or not data.part.Parent then
+				pcall(function() data.bb:Destroy() end)
+				pcall(function() data.hl:Destroy() end)
+				state._objEspCache[obj] = nil
+			elseif root then
+				local d = math.floor((data.part.Position - root.Position).Magnitude)
+				data.lb.Text = string.format("%s  [%d m]", obj.Name, d)
+				data.lb.TextStrokeColor3 = UI.accent()
+				data.hl.FillColor = UI.accent()
+			end
+		end
+	end)
+end
+UI.applyObjectESP = applyObjectESP
+UI.removeObjectESP = removeObjectESP
+
+-- ---------- CLICK TO DELETE ----------
+local function applyClickDelete(on)
+	if state._delConn then state._delConn:Disconnect(); state._delConn = nil end
+	if not on then return end
+	state._delConn = UserInputService.InputBegan:Connect(function(input, gpe)
+		if gpe or not state.clickDelete then return end
+		local isClick = input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch
+		if not isClick then return end
+		if not UserInputService:IsKeyDown(Enum.KeyCode.LeftAlt) and not UserInputService:IsKeyDown(Enum.KeyCode.RightAlt) and not UserInputService.TouchEnabled then
+			return
+		end
+		local cam = Workspace.CurrentCamera
+		if not cam then return end
+		local pos = (input.UserInputType == Enum.UserInputType.Touch) and input.Position or UserInputService:GetMouseLocation()
+		local ray = cam:ViewportPointToRay(pos.X, pos.Y)
+		local params = RaycastParams.new()
+		params.FilterType = Enum.RaycastFilterType.Exclude
+		params.FilterDescendantsInstances = {player.Character}
+		local res = Workspace:Raycast(ray.Origin, ray.Direction * 5000, params)
+		if res and res.Instance then
+			local target = res.Instance
+			if Players:GetPlayerFromCharacter(target.Parent) then
+				sendNotification("Click Delete", "ไม่ลบตัวผู้เล่น", Color3.fromRGB(255, 160, 0))
+				return
+			end
+			table.insert(state.deletedParts, {inst = target, parent = target.Parent})
+			target.Parent = nil
+			sendNotification("Deleted", target.Name .. "  (กู้คืนได้ในแท็บ Util)", UI.accent())
+		end
+	end)
+end
+
+local function restoreDeleted()
+	local n = 0
+	for i = #state.deletedParts, 1, -1 do
+		local d = state.deletedParts[i]
+		if d.inst and d.parent then
+			pcall(function() d.inst.Parent = d.parent end)
+			n = n + 1
+		end
+		table.remove(state.deletedParts, i)
+	end
+	return n
+end
+UI.applyClickDelete = applyClickDelete
+UI.restoreDeleted = restoreDeleted
+
+-- ---------- CHAT LOGGER ----------
+local function launchChatLogger()
+	local existing = (targetContainer and targetContainer:FindFirstChild("Phumipad_ChatLog")) or playerGui:FindFirstChild("Phumipad_ChatLog")
+	if existing then existing.Enabled = not existing.Enabled; return end
+
+	local w = UI.window("Phumipad_ChatLog", "Chat Logger", "💬", 330)
+	local count = UI.banner(w.content, nil, string.format("เก็บข้อความไว้ %d รายการ", #state.chatLog))
+
+	local list = Instance.new("ScrollingFrame")
+	list.Size = UDim2.new(1, 0, 0, 260)
+	list.BackgroundTransparency = 1
+	list.BorderSizePixel = 0
+	list.ScrollBarThickness = 3
+	list.CanvasSize = UDim2.new(0, 0, 0, 0)
+	list.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	list.LayoutOrder = getOrder()
+	list.Parent = w.content
+	UI.bind(list, "ScrollBarImageColor3", "accent")
+	local ll = Instance.new("UIListLayout")
+	ll.SortOrder = Enum.SortOrder.LayoutOrder
+	ll.Padding = UDim.new(0, 5)
+	ll.Parent = list
+
+	local function redraw()
+		for _, c in ipairs(list:GetChildren()) do
+			if c:IsA("Frame") or c:IsA("TextLabel") then c:Destroy() end
+		end
+		count.Text = string.format("เก็บข้อความไว้ %d รายการ", #state.chatLog)
+		local start = math.max(1, #state.chatLog - 80)
+		for i = start, #state.chatLog do
+			local entry = state.chatLog[i]
+			local row = UI.card(list, 0)
+			row.Size = UDim2.new(1, -6, 0, 0)
+			row.AutomaticSize = Enum.AutomaticSize.Y
+			local who = Instance.new("TextLabel")
+			who.Size = UDim2.new(1, -20, 0, 16)
+			who.Position = UDim2.new(0, 10, 0, 6)
+			who.BackgroundTransparency = 1
+			who.Text = string.format("[%s]  %s", entry.time, entry.who)
+			who.Font = Enum.Font.GothamBold
+			who.TextSize = 11.5
+			who.TextXAlignment = Enum.TextXAlignment.Left
+			who.Parent = row
+			UI.bind(who, "TextColor3", "accent")
+			local msg = Instance.new("TextLabel")
+			msg.Size = UDim2.new(1, -20, 0, 0)
+			msg.AutomaticSize = Enum.AutomaticSize.Y
+			msg.Position = UDim2.new(0, 10, 0, 23)
+			msg.BackgroundTransparency = 1
+			msg.Text = entry.msg
+			msg.Font = Enum.Font.GothamMedium
+			msg.TextSize = 12.5
+			msg.TextWrapped = true
+			msg.TextXAlignment = Enum.TextXAlignment.Left
+			msg.Parent = row
+			UI.bind(msg, "TextColor3", "text")
+			local pad = Instance.new("UIPadding")
+			pad.PaddingBottom = UDim.new(0, 8)
+			pad.Parent = row
+		end
+		task.defer(function()
+			list.CanvasPosition = Vector2.new(0, list.AbsoluteCanvasSize.Y)
+		end)
+	end
+
+	UI.buttonPair(w.content, "รีเฟรช", "ghost", redraw, "ล้างบันทึก", "danger", function()
+		state.chatLog = {}
+		redraw()
+	end)
+	UI.button(w.content, "คัดลอกทั้งหมด", "primary", function()
+		local parts = {}
+		for _, e in ipairs(state.chatLog) do
+			table.insert(parts, string.format("[%s] %s: %s", e.time, e.who, e.msg))
+		end
+		local text = table.concat(parts, "\n")
+		if setclipboard then
+			setclipboard(text)
+			sendNotification("Chat Log", "คัดลอกแชตทั้งหมดแล้ว", UI.accent())
+		elseif toclipboard then
+			toclipboard(text)
+			sendNotification("Chat Log", "คัดลอกแชตทั้งหมดแล้ว", UI.accent())
+		end
+	end)
+	redraw()
+end
+UI.launchChatLogger = launchChatLogger
+
 -- ============ TOOL WINDOWS (v3.0 Neo Window Kit - เปลี่ยนตามธีม) ==========
 -- =========================================================================
 local function findToolGui(name)
@@ -5002,14 +5571,14 @@ local function launchVehicleSpeedAdjustScript()
 	local function toggleState()
 		isEnabled = not isEnabled
 		if isEnabled then
-			setStyle("danger", "■  หยุดเร่ง  (F)")
+			setStyle("danger", "หยุดเร่ง  (F)")
 			status.Text = "🟢  กำลังเร่งความเร็ว • แรง " .. tostring(intens)
 		else
-			setStyle("primary", "▶  เริ่มเร่งความเร็ว  (F)")
+			setStyle("primary", "เริ่มเร่งความเร็ว  (F)")
 			status.Text = "นั่งรถก่อน แล้วกด F หรือปุ่มด้านล่าง"
 		end
 	end
-	toggleBtn, setStyle = UI.button(w.content, "▶  เริ่มเร่งความเร็ว  (F)", "primary", toggleState)
+	toggleBtn, setStyle = UI.button(w.content, "เริ่มเร่งความเร็ว  (F)", "primary", toggleState)
 
 	local keyConn = UserInputService.InputBegan:Connect(function(input, gpe)
 		if not gpe and input.KeyCode == Enum.KeyCode.F then toggleState() end
@@ -5113,13 +5682,13 @@ local function launchAutoClickerScript()
 	local function stopClicking()
 		isClicking = false
 		releaseMouse()
-		setStartStyle("primary", "▶  START AUTO CLICK")
+		setStartStyle("primary", "START AUTO CLICK")
 	end
-	startBtn, setStartStyle = UI.button(w.content, "▶  START AUTO CLICK", "primary", function()
+	startBtn, setStartStyle = UI.button(w.content, "START AUTO CLICK", "primary", function()
 		if not isClicking then
 			isClicking = true
 			clickCount = 0
-			setStartStyle("danger", "■  STOP AUTO CLICK")
+			setStartStyle("danger", "STOP AUTO CLICK")
 			task.spawn(function()
 				while isClicking and w.gui.Parent do
 					triggerClick(clickPosition)
@@ -5168,7 +5737,7 @@ local function launchStalkerScript()
 		if _G.StalkConnection then pcall(function() _G.StalkConnection:Disconnect() end); _G.StalkConnection = nil end
 	end
 
-	UI.buttonPair(w.content, "▶  START", "primary", function()
+	UI.buttonPair(w.content, "START", "primary", function()
 		if not selectedUser then
 			sendNotification("Stalker", "เลือกผู้เล่นจากรายชื่อก่อน", Color3.fromRGB(255, 175, 25))
 			return
@@ -5188,7 +5757,7 @@ local function launchStalkerScript()
 				myRoot.CFrame = tRoot.CFrame * CFrame.new(0, 0, 3)
 			end
 		end)
-	end, "■  STOP", "danger", function()
+	end, "STOP", "danger", function()
 		stopStalk()
 		status.Text = selectedUser and ("หยุดแล้ว • เป้าหมาย: " .. selectedUser) or "เป้าหมาย: ยังไม่ได้เลือก"
 	end)
@@ -5301,7 +5870,7 @@ local function launchSpectateScript()
 		startSpectatingTarget(others[idx])
 	end
 
-	UI.buttonPair(w.content, "◀  ก่อนหน้า", "ghost", function() cycle(-1) end, "ถัดไป  ▶", "ghost", function() cycle(1) end)
+	UI.buttonPair(w.content, "<  ก่อนหน้า", "ghost", function() cycle(-1) end, "ถัดไป  >", "ghost", function() cycle(1) end)
 	UI.buttonPair(w.content, "👁  SPECTATE", "primary", function()
 		if selectedTargetPlr then
 			startSpectatingTarget(selectedTargetPlr)
@@ -5363,8 +5932,523 @@ addRefinedToolButton(toolsPage, "Vehicle Speed Adjust", "🏎️", Color3.fromRG
 	launchVehicleSpeedAdjustScript()
 end)
 
+-- 11. Chat Logger (v3.1)
+addRefinedToolButton(toolsPage, "Chat Logger", "💬", Color3.fromRGB(0, 200, 220), function()
+	UI.launchChatLogger()
+end)
+
+-- =========================================================================
+-- ============ v3.1: CUSTOM SCRIPT BUTTONS (ผู้ใช้เพิ่มเมนูเอง) ===========
+-- =========================================================================
+do
+	local ICONS = {"🚀", "⚡", "🎯", "🔥", "💎", "⭐", "🛠", "🎮", "👁", "🧲", "🗝", "💰",
+		"🐾", "🍀", "🧊", "🌙", "☀", "🎲", "🏆", "🔔", "📦", "🧪", "🩸", "🕹"}
+
+	local customHolder = Instance.new("Frame")
+	customHolder.Name = "CustomToolsHolder"
+	customHolder.Size = UDim2.new(1, 0, 0, 0)
+	customHolder.AutomaticSize = Enum.AutomaticSize.Y
+	customHolder.BackgroundTransparency = 1
+	customHolder.LayoutOrder = getOrder()
+	customHolder.Parent = toolsPage
+	local chLayout = Instance.new("UIListLayout")
+	chLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	chLayout.Padding = UDim.new(0, 7)
+	chLayout.Parent = customHolder
+
+	local rebuildCustom
+
+	local function runCustom(entry)
+		local code = entry.code or ""
+		if code == "" then
+			sendNotification("Custom Script", "ยังไม่ได้ใส่ลิงก์หรือโค้ด", Color3.fromRGB(255, 160, 0))
+			return
+		end
+		task.spawn(function()
+			local ok, err = pcall(function()
+				local trimmed = string.match(code, "^%s*(.-)%s*$")
+				if string.match(trimmed, "^https?://") then
+					-- เป็นลิงก์: ดึงมารันให้อัตโนมัติ
+					loadstring(game:HttpGet(trimmed))()
+				else
+					loadstring(trimmed)()
+				end
+			end)
+			if not ok then
+				sendNotification("Custom Script Error", tostring(err), Color3.fromRGB(255, 70, 90))
+				warn("[Phumipad Custom]: " .. tostring(err))
+			end
+		end)
+	end
+
+	-- หน้าต่างตั้งค่า (เพิ่ม / แก้ไข)
+	local function openEditor(index)
+		local entry = index and state.customTools[index] or {name = "", icon = "🚀", code = ""}
+		local isNew = index == nil
+		local w = UI.window("Phumipad_CustomEditor", isNew and "เพิ่มเมนูของคุณ" or "แก้ไขเมนู", "➕", 330)
+
+		local draftIcon = entry.icon or "🚀"
+		local draftName = entry.name or ""
+		local draftCode = entry.code or ""
+
+		UI.banner(w.content, nil, "ตั้งชื่อ เลือกไอคอน แล้วใส่ลิงก์สคริปต์")
+
+		local nameBox = UI.filterRow(w.content, "ชื่อเมนู", draftName, "เช่น Infinite Yield", function(v)
+			draftName = v
+		end)
+
+		local iconLabel = addSectionLabel(w.content, "เลือกไอคอน  •  " .. draftIcon)
+		local iconGrid = Instance.new("Frame")
+		iconGrid.Size = UDim2.new(1, 0, 0, 0)
+		iconGrid.AutomaticSize = Enum.AutomaticSize.Y
+		iconGrid.BackgroundTransparency = 1
+		iconGrid.LayoutOrder = getOrder()
+		iconGrid.Parent = w.content
+		local ig = Instance.new("UIGridLayout")
+		ig.CellSize = UDim2.new(0, 38, 0, 38)
+		ig.CellPadding = UDim2.new(0, 6, 0, 6)
+		ig.SortOrder = Enum.SortOrder.LayoutOrder
+		ig.Parent = iconGrid
+
+		local iconCells = {}
+		local function paintIcons()
+			for ic, cell in pairs(iconCells) do
+				local sel = (ic == draftIcon)
+				cell.btn.BackgroundColor3 = sel and UI.color("accentSoft") or UI.color("surface")
+				cell.st.Color = sel and UI.accent() or UI.color("stroke")
+				cell.st.Transparency = sel and 0 or 0.45
+			end
+			iconLabel.Text = "เลือกไอคอน  •  " .. draftIcon
+		end
+		for i, ic in ipairs(ICONS) do
+			local b = Instance.new("TextButton")
+			b.Text = ic
+			b.TextSize = 18
+			b.Font = Enum.Font.GothamBold
+			b.BorderSizePixel = 0
+			b.AutoButtonColor = false
+			b.LayoutOrder = i
+			b:SetAttribute("PPNoTheme", true)
+			b.Parent = iconGrid
+			UI.corner(b, 10)
+			local st = Instance.new("UIStroke")
+			st.Thickness = 1
+			st.Parent = b
+			local sc = Instance.new("UIScale")
+			sc.Parent = b
+			iconCells[ic] = {btn = b, st = st}
+			b.MouseButton1Click:Connect(function()
+				sc.Scale = 0.8
+				TweenService:Create(sc, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Scale = 1}):Play()
+				draftIcon = ic
+				paintIcons()
+			end)
+		end
+		paintIcons()
+
+		addSectionLabel(w.content, "ลิงก์สคริปต์ หรือโค้ด loadstring")
+		local codeCard = UI.card(w.content, 92)
+		local codeBox = Instance.new("TextBox")
+		codeBox.Size = UDim2.new(1, -20, 1, -16)
+		codeBox.Position = UDim2.new(0, 10, 0, 8)
+		codeBox.BackgroundTransparency = 1
+		codeBox.Text = draftCode
+		codeBox.PlaceholderText = "วางลิงก์ raw ได้เลย เช่น https://raw.githubusercontent.com/.../script.lua"
+		codeBox.Font = Enum.Font.Code
+		codeBox.TextSize = 12
+		codeBox.TextXAlignment = Enum.TextXAlignment.Left
+		codeBox.TextYAlignment = Enum.TextYAlignment.Top
+		codeBox.TextWrapped = true
+		codeBox.MultiLine = true
+		codeBox.ClearTextOnFocus = false
+		codeBox.Parent = codeCard
+		UI.bind(codeBox, "TextColor3", "text")
+		UI.bind(codeBox, "PlaceholderColor3", "sub")
+		codeBox.FocusLost:Connect(function() draftCode = codeBox.Text end)
+
+		UI.button(w.content, "วางจากคลิปบอร์ด", "ghost", function()
+			local ok, txt = pcall(function()
+				if getclipboard then return getclipboard() end
+				if syn and syn.get_clipboard then return syn.get_clipboard() end
+				return nil
+			end)
+			if ok and type(txt) == "string" and txt ~= "" then
+				codeBox.Text = txt
+				draftCode = txt
+				sendNotification("Custom Script", "วางจากคลิปบอร์ดแล้ว", UI.accent())
+			else
+				sendNotification("Custom Script", "executor นี้อ่านคลิปบอร์ดไม่ได้ ให้วางเองในช่อง", Color3.fromRGB(255, 160, 0))
+			end
+		end)
+
+		UI.buttonPair(w.content, "บันทึก", "primary", function()
+			draftName = nameBox.Text
+			draftCode = codeBox.Text
+			if string.match(draftName or "", "^%s*$") then
+				sendNotification("Custom Script", "ตั้งชื่อเมนูก่อน", Color3.fromRGB(255, 160, 0))
+				return
+			end
+			local data = {name = draftName, icon = draftIcon, code = draftCode}
+			if isNew then
+				table.insert(state.customTools, data)
+			else
+				state.customTools[index] = data
+			end
+			rebuildCustom()
+			saveConfig(true)
+			w.close()
+			sendNotification("Custom Script", "บันทึกเมนู \"" .. draftName .. "\" แล้ว", UI.accent())
+		end, isNew and "ยกเลิก" or "ลบเมนูนี้", isNew and "ghost" or "danger", function()
+			if not isNew then
+				table.remove(state.customTools, index)
+				rebuildCustom()
+				saveConfig(true)
+			end
+			w.close()
+		end)
+	end
+
+	rebuildCustom = function()
+		for _, c in ipairs(customHolder:GetChildren()) do
+			if not c:IsA("UIListLayout") then c:Destroy() end
+		end
+		for i, entry in ipairs(state.customTools) do
+			local row = addRefinedToolButton(customHolder, entry.name, entry.icon or "🚀", UI.accent(), function()
+				runCustom(entry)
+			end)
+			-- ปุ่มแก้ไข (เฟือง) มุมขวา
+			local gear = Instance.new("TextButton")
+			gear.Size = UDim2.new(0, 26, 0, 26)
+			gear.Position = UDim2.new(1, -56, 0.5, -13)
+			gear.BackgroundTransparency = 1
+			gear.Text = "⚙"
+			gear.Font = Enum.Font.GothamBold
+			gear.TextSize = 15
+			gear.AutoButtonColor = false
+			gear.ZIndex = 8
+			gear.Parent = row
+			UI.bind(gear, "TextColor3", "sub")
+			gear.MouseButton1Click:Connect(function() openEditor(i) end)
+		end
+		adjustPanelHeight(true)
+	end
+
+	local addBtn = UI.button(toolsPage, "+   เพิ่มเมนูสคริปต์ของคุณเอง", "primary", function()
+		openEditor(nil)
+	end)
+	addBtn.LayoutOrder = getOrder()
+	rebuildCustom()
+end
+
+
 do -- SERVER + SETTINGS TABS (v2.7 FIX: แยก scope ลดจำนวน local ไม่ให้เกินลิมิต 200 ของ Luau)
 -- =========================================================================
+-- =========================================================================
+-- ============ [TAB] AUTOMATION 🤖 (v3.1 Universal Tools) =================
+-- =========================================================================
+local autoPage = registerTab("auto", "Auto", "🤖", false)
+
+do
+	local function nameMatches(objName, filterText)
+		if not filterText or filterText == "" then return true end
+		local lowered = string.lower(objName)
+		for word in string.gmatch(string.lower(filterText), "[^,]+") do
+			word = string.match(word, "^%s*(.-)%s*$")
+			if word ~= "" and string.find(lowered, word, 1, true) then return true end
+		end
+		return false
+	end
+	UI.nameMatches = nameMatches
+
+	local function myRoot()
+		local c = player.Character
+		return c and (c:FindFirstChild("HumanoidRootPart") or c.PrimaryPart)
+	end
+
+	-- ---------- AUTO INTERACT ----------
+	addSectionLabel(autoPage, "🤝  AUTO INTERACT  •  กดปุ่มโต้ตอบรอบตัวอัตโนมัติ")
+	local interactFilterBox
+	local interactCtl = addInputToggleRow(autoPage, "Auto Interact (ระยะ studs)", state.autoInteractRange, state.autoInteract, function(_, render)
+		state.autoInteract = not state.autoInteract
+		render(state.autoInteract)
+		if state.autoInteract then
+			sendNotification("Auto Interact", "กำลังกดปุ่มโต้ตอบรอบตัวอัตโนมัติ", UI.accent())
+		end
+	end, function(v) state.autoInteractRange = math.clamp(v, 1, 500) end)
+	addPresetChips(autoPage, {10, 20, 40, 80, 150}, function(v) interactCtl.setVal(v) end)
+	interactFilterBox = UI.filterRow(autoPage, "กรองชื่อปุ่ม (เว้นว่าง = ทุกปุ่ม)", state.autoInteractFilter, "เช่น Collect, Claim, Buy", function(v)
+		state.autoInteractFilter = v
+	end)
+
+	task.spawn(function()
+		while scriptAlive do
+			if state.autoInteract then
+				local root = myRoot()
+				if root then
+					local range = tonumber(state.autoInteractRange) or 20
+					for _, pr in ipairs(Workspace:GetDescendants()) do
+						if not state.autoInteract then break end
+						if pr:IsA("ProximityPrompt") and pr.Enabled then
+							local part = pr.Parent
+							if part and part:IsA("BasePart") and (part.Position - root.Position).Magnitude <= range then
+								if nameMatches(pr.ObjectText .. " " .. pr.ActionText .. " " .. part.Name, state.autoInteractFilter) then
+									pcall(function() fireproximityprompt(pr) end)
+								end
+							end
+						end
+					end
+				end
+			end
+			task.wait(math.max(tonumber(state.autoInteractDelay) or 0.35, 0.1))
+		end
+	end)
+
+	-- ---------- AUTO COLLECT (MAGNET) ----------
+	addSectionLabel(autoPage, "🧲  AUTO COLLECT  •  ดูด/เก็บของรอบตัว")
+	local collectCtl = addInputToggleRow(autoPage, "Auto Collect (ระยะ studs)", state.autoCollectRange, state.autoCollect, function(_, render)
+		state.autoCollect = not state.autoCollect
+		render(state.autoCollect)
+		if state.autoCollect then
+			sendNotification("Auto Collect", "กำลังเก็บของรอบตัวอัตโนมัติ", UI.accent())
+		end
+	end, function(v) state.autoCollectRange = math.clamp(v, 1, 500) end)
+	addPresetChips(autoPage, {15, 30, 60, 100, 200}, function(v) collectCtl.setVal(v) end)
+	UI.filterRow(autoPage, "กรองชื่อของ (เว้นว่าง = Tool ทุกชิ้น)", state.autoCollectFilter, "เช่น Coin, Gem, Egg", function(v)
+		state.autoCollectFilter = v
+	end)
+	addToggleRow(autoPage, "ดูดของมาหาตัว (Magnet) แทนการเดินไปเก็บ", state.autoCollectMagnet, function(_, render)
+		state.autoCollectMagnet = not state.autoCollectMagnet
+		render(state.autoCollectMagnet)
+	end)
+
+	task.spawn(function()
+		while scriptAlive do
+			if state.autoCollect then
+				local root = myRoot()
+				if root then
+					local range = tonumber(state.autoCollectRange) or 30
+					local filter = state.autoCollectFilter
+					local count = 0
+					for _, obj in ipairs(Workspace:GetDescendants()) do
+						if not state.autoCollect or count > 60 then break end
+						local target = nil
+						if obj:IsA("Tool") and obj:FindFirstChildWhichIsA("BasePart") then
+							target = obj:FindFirstChild("Handle") or obj:FindFirstChildWhichIsA("BasePart")
+						elseif filter ~= "" and obj:IsA("BasePart") and obj.CanTouch then
+							if nameMatches(obj.Name, filter) then target = obj end
+						end
+						if target and nameMatches(obj.Name, filter) then
+							local d = (target.Position - root.Position).Magnitude
+							if d <= range and d > 0.5 then
+								count = count + 1
+								if state.autoCollectMagnet then
+									pcall(function()
+										target.CFrame = root.CFrame
+										if obj:IsA("Tool") then
+											firetouchinterest(target, root, 0)
+											firetouchinterest(target, root, 1)
+										end
+									end)
+								else
+									pcall(function()
+										firetouchinterest(target, root, 0)
+										firetouchinterest(target, root, 1)
+									end)
+								end
+							end
+						end
+					end
+				end
+			end
+			task.wait(math.max(tonumber(state.autoCollectDelay) or 0.4, 0.15))
+		end
+	end)
+
+	-- ---------- AUTO EQUIP / USE TOOL ----------
+	addSectionLabel(autoPage, "⛏️  AUTO TOOL  •  ถือและใช้เครื่องมืออัตโนมัติ")
+	addToggleRow(autoPage, "Auto Equip (หยิบเครื่องมือชิ้นแรกมาถือ)", state.autoEquip, function(_, render)
+		state.autoEquip = not state.autoEquip
+		render(state.autoEquip)
+	end)
+	local useCtl = addInputToggleRow(autoPage, "Auto Use Tool (ครั้ง/วินาที)", state.autoUseRate, state.autoUseTool, function(_, render)
+		state.autoUseTool = not state.autoUseTool
+		render(state.autoUseTool)
+	end, function(v) state.autoUseRate = math.clamp(v, 0.2, 60) end)
+	addPresetChips(autoPage, {1, 3, 5, 10, 20}, function(v) useCtl.setVal(v) end)
+
+	task.spawn(function()
+		while scriptAlive do
+			if state.autoEquip then
+				local char = player.Character
+				local hum = char and char:FindFirstChildOfClass("Humanoid")
+				if hum and char and not char:FindFirstChildOfClass("Tool") then
+					local bp = player:FindFirstChildOfClass("Backpack")
+					local tool = bp and bp:FindFirstChildOfClass("Tool")
+					if tool then pcall(function() hum:EquipTool(tool) end) end
+				end
+			end
+			task.wait(0.6)
+		end
+	end)
+	task.spawn(function()
+		while scriptAlive do
+			if state.autoUseTool then
+				local char = player.Character
+				local tool = char and char:FindFirstChildOfClass("Tool")
+				if tool then pcall(function() tool:Activate() end) end
+				task.wait(1 / math.clamp(tonumber(state.autoUseRate) or 3, 0.2, 60))
+			else
+				task.wait(0.3)
+			end
+		end
+	end)
+
+	-- ---------- WAYPOINT ROUTE ----------
+	addSectionLabel(autoPage, "🗺️  WAYPOINT ROUTE  •  วนตามจุดที่บันทึกไว้ในแท็บ Point")
+	local routeCtl = addInputToggleRow(autoPage, "Run Route (พักจุดละ ? วิ)", state.routeDelay, state.routeRunning, function(_, render)
+		state.routeRunning = not state.routeRunning
+		render(state.routeRunning)
+		if state.routeRunning then
+			sendNotification("Waypoint Route", "เริ่มวนตามจุด Waypoint", UI.accent())
+		end
+	end, function(v) state.routeDelay = math.clamp(v, 0.2, 600) end)
+	addPresetChips(autoPage, {1, 2, 5, 10, 30}, function(v) routeCtl.setVal(v) end)
+
+	task.spawn(function()
+		while scriptAlive do
+			if state.routeRunning then
+				local idx = {}
+				for i in pairs(state.savedPositions) do table.insert(idx, i) end
+				table.sort(idx)
+				if #idx == 0 then
+					sendNotification("Waypoint Route", "ยังไม่มีจุดที่บันทึกไว้ในแท็บ Point", Color3.fromRGB(255, 160, 0))
+					state.routeRunning = false
+				else
+					for _, i in ipairs(idx) do
+						if not state.routeRunning then break end
+						local cf = state.savedPositions[i]
+						local root = myRoot()
+						if cf and root then root.CFrame = cf end
+						task.wait(math.clamp(tonumber(state.routeDelay) or 2, 0.2, 600))
+					end
+				end
+			end
+			task.wait(0.3)
+		end
+	end)
+
+	-- ---------- MACRO RECORDER ----------
+	addSectionLabel(autoPage, "🎬  MACRO  •  อัดการเดินแล้วเล่นซ้ำ")
+	local macroStatus = UI.banner(autoPage, nil, "ยังไม่มีมาโคร")
+	local recConn = nil
+
+	local function updateMacroStatus()
+		local n = #state.macroFrames
+		if state.macroRecording then
+			macroStatus.Text = string.format("🔴  กำลังอัด... %d เฟรม", n)
+		elseif state.macroPlaying then
+			macroStatus.Text = string.format("กำลังเล่นซ้ำ (%d เฟรม)", n)
+		elseif n > 0 then
+			macroStatus.Text = string.format("มีมาโคร %d เฟรม (~%.1f วิ)", n, n * 0.1)
+		else
+			macroStatus.Text = "ยังไม่มีมาโคร"
+		end
+	end
+
+	local function stopRecord()
+		state.macroRecording = false
+		if recConn then pcall(function() recConn:Disconnect() end); recConn = nil end
+		updateMacroStatus()
+	end
+
+	local recBtn, setRecStyle
+	recBtn, setRecStyle = UI.button(autoPage, "เริ่มอัดมาโคร", "primary", function()
+		if state.macroRecording then
+			stopRecord()
+			setRecStyle("primary", "เริ่มอัดมาโคร")
+			sendNotification("Macro", string.format("อัดเสร็จ %d เฟรม", #state.macroFrames), UI.accent())
+		else
+			state.macroPlaying = false
+			state.macroFrames = {}
+			state.macroRecording = true
+			setRecStyle("danger", "หยุดอัด")
+			task.spawn(function()
+				while state.macroRecording and scriptAlive do
+					local root = myRoot()
+					if root then
+						local x, y, z = root.Position.X, root.Position.Y, root.Position.Z
+						local _, ry = root.CFrame:ToEulerAnglesYXZ()
+						table.insert(state.macroFrames, {x, y, z, ry})
+						if #state.macroFrames >= 6000 then
+							stopRecord()
+							setRecStyle("primary", "เริ่มอัดมาโคร")
+							sendNotification("Macro", "อัดครบ 10 นาที หยุดอัตโนมัติ", Color3.fromRGB(255, 160, 0))
+						end
+					end
+					updateMacroStatus()
+					task.wait(0.1)
+				end
+			end)
+		end
+	end)
+
+	UI.buttonPair(autoPage, "เล่นซ้ำ (Play)", "primary", function()
+		if state.macroPlaying then
+			state.macroPlaying = false
+			updateMacroStatus()
+			return
+		end
+		if #state.macroFrames < 2 then
+			sendNotification("Macro", "ยังไม่มีมาโคร กดอัดก่อน", Color3.fromRGB(255, 160, 0))
+			return
+		end
+		stopRecord()
+		state.macroPlaying = true
+		updateMacroStatus()
+		task.spawn(function()
+			while state.macroPlaying and scriptAlive do
+				for _, fr in ipairs(state.macroFrames) do
+					if not state.macroPlaying then break end
+					local root = myRoot()
+					if root then
+						root.CFrame = CFrame.new(fr[1], fr[2], fr[3]) * CFrame.Angles(0, fr[4] or 0, 0)
+					end
+					task.wait(0.1)
+				end
+				if not state.macroLoop then state.macroPlaying = false end
+			end
+			updateMacroStatus()
+		end)
+	end, "ล้างมาโคร", "ghost", function()
+		state.macroPlaying = false
+		state.macroFrames = {}
+		stopRecord()
+		updateMacroStatus()
+	end)
+	addToggleRow(autoPage, "เล่นซ้ำแบบวนลูป (Loop)", state.macroLoop, function(_, render)
+		state.macroLoop = not state.macroLoop
+		render(state.macroLoop)
+	end)
+	updateMacroStatus()
+
+	-- ---------- ADMIN DETECTOR ----------
+	addSectionLabel(autoPage, "🛡️  SAFETY")
+	addToggleRow(autoPage, "แจ้งเตือนเมื่อมีแอดมิน/ทีมงานเข้าเซิร์ฟ", state.adminDetect, function(_, render)
+		state.adminDetect = not state.adminDetect
+		render(state.adminDetect)
+		if state.adminDetect then UI.scanAdmins() end
+	end)
+	addToggleRow(autoPage, "ย้ายเซิร์ฟอัตโนมัติเมื่อเจอแอดมิน", state.adminAutoHop, function(_, render)
+		state.adminAutoHop = not state.adminAutoHop
+		render(state.adminAutoHop)
+	end)
+	addToggleRow(autoPage, "Anti-Kick (กัน Kick ฝั่งเครื่องเรา)", state.antiKick, function(_, render)
+		state.antiKick = not state.antiKick
+		render(state.antiKick)
+		if state.antiKick then UI.enableAntiKick() end
+	end)
+end
+
 -- ================== [TAB 6] SERVER 🌐 (v2.7 NEW) =========================
 -- =========================================================================
 local serverPage = registerTab("server", "Server", "🌐", false)
@@ -5444,6 +6528,7 @@ local function serverHop(mode)
 		hopBusy = false
 	end)
 end
+UI.serverHop = serverHop
 
 -- Server Info Card
 local infoCard = Instance.new("Frame")
@@ -5514,20 +6599,6 @@ end)
 -- ================== [TAB 7] SETTINGS 🛠 (v2.7 + Theme Studio v2.9) =====
 -- =========================================================================
 local settingsPage = registerTab("settings", "Set", "🛠", false)
-
-local function addSectionLabel(parent, text)
-	local l = Instance.new("TextLabel")
-	l.Size = UDim2.new(1, 0, 0, 22)
-	l.BackgroundTransparency = 1
-	l.Text = text
-	l.Font = Enum.Font.GothamBold
-	l.TextSize = 11.5
-	l.TextXAlignment = Enum.TextXAlignment.Left
-	l.LayoutOrder = getOrder()
-	l.Parent = parent
-	UI.bind(l, "TextColor3", "sub")
-	return l
-end
 
 local function addActionButton(parent, text, color, onClick)
 	local b = Instance.new("TextButton")
@@ -5679,18 +6750,27 @@ end
 
 addSectionLabel(settingsPage, "🎨  ACCENT COLOR  •  สีหลักของ UI")
 do
-	local swRow = Instance.new("Frame")
-	swRow.Size = UDim2.new(1, 0, 0, 36)
+	local swRow = Instance.new("ScrollingFrame")
+	swRow.Size = UDim2.new(1, 0, 0, 40)
 	swRow.BackgroundTransparency = 1
+	swRow.BorderSizePixel = 0
+	swRow.ScrollingDirection = Enum.ScrollingDirection.X
+	swRow.ScrollBarThickness = 3
+	swRow.CanvasSize = UDim2.new(0, 0, 0, 0)
+	swRow.AutomaticCanvasSize = Enum.AutomaticSize.X
 	swRow.LayoutOrder = getOrder()
 	swRow.Parent = settingsPage
+	UI.bind(swRow, "ScrollBarImageColor3", "accent")
 	local swLayout = Instance.new("UIListLayout")
 	swLayout.FillDirection = Enum.FillDirection.Horizontal
-	swLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 	swLayout.VerticalAlignment = Enum.VerticalAlignment.Center
 	swLayout.SortOrder = Enum.SortOrder.LayoutOrder
-	swLayout.Padding = UDim.new(0, 7)
+	swLayout.Padding = UDim.new(0, 8)
 	swLayout.Parent = swRow
+	local swPad = Instance.new("UIPadding")
+	swPad.PaddingLeft = UDim.new(0, 4)
+	swPad.PaddingRight = UDim.new(0, 4)
+	swPad.Parent = swRow
 
 	local swatches = {}
 	local function refreshSw()
@@ -5704,7 +6784,7 @@ do
 	end
 	for i, col in ipairs(UI.ACCENTS) do
 		local b = Instance.new("TextButton")
-		b.Size = UDim2.new(0, 26, 0, 26)
+		b.Size = UDim2.new(0, 30, 0, 30)
 		b.BackgroundColor3 = UI.rgb(col)
 		b.BorderSizePixel = 0
 		b.Text = ""
@@ -5748,6 +6828,13 @@ end, function(v)
 	UI.apply(true)
 end, function(v) return string.format("%d%%", math.floor(v + 0.5)) end, false)
 
+addSlider(settingsPage, "🎨 ระดับการผสมสีลงพาแนล (Tint)", 0, 100, function()
+	return math.floor((tonumber(state.themeTint) or 0) * 100 + 0.5)
+end, function(v)
+	state.themeTint = math.clamp(v / 100, 0, 1)
+	UI.apply(true)
+end, function(v) return string.format("%d%%", math.floor(v + 0.5)) end, false)
+
 local baseLabel = addSectionLabel(settingsPage, "🌓  BASE THEME  •  " .. tostring(state.themeBase))
 addPresetChips(settingsPage, UI.BASE_ORDER, function(v)
 	state.themeBase = v
@@ -5755,7 +6842,7 @@ addPresetChips(settingsPage, UI.BASE_ORDER, function(v)
 	UI.apply()
 end)
 
-local patternLabel = addSectionLabel(settingsPage, "🔳  PATTERN  •  " .. tostring(state.uiPattern) .. "   (✦ = เคลื่อนไหว)")
+local patternLabel = addSectionLabel(settingsPage, "🔳  PATTERN  •  " .. tostring(state.uiPattern) .. "   (สีฟ้า = เคลื่อนไหว)")
 do
 	local grid = Instance.new("Frame")
 	grid.Size = UDim2.new(1, 0, 0, 0)
@@ -5775,7 +6862,7 @@ do
 			local sel = (state.uiPattern == name)
 			c.btn.BackgroundColor3 = sel and UI.color("accentSoft") or UI.color("surface")
 			c.btn.BackgroundTransparency = sel and 0 or UI.trans("glass")
-			c.btn.TextColor3 = sel and Color3.fromRGB(255, 255, 255) or UI.color("sub")
+			c.btn.TextColor3 = sel and Color3.fromRGB(255, 255, 255) or (UI.ANIMATED_PATTERNS[name] and UI.accent() or UI.color("sub"))
 			c.stroke.Color = sel and UI.accent() or UI.color("stroke")
 			c.stroke.Transparency = sel and 0 or 0.4
 		end
@@ -5783,7 +6870,7 @@ do
 	for i, name in ipairs(UI.PATTERNS) do
 		local b = Instance.new("TextButton")
 		b.BorderSizePixel = 0
-		b.Text = (UI.ANIMATED_PATTERNS[name] and "✦ " or "") .. name
+		b.Text = name
 		b.Font = Enum.Font.GothamBold
 		b.TextSize = 11.5
 		b.TextTruncate = Enum.TextTruncate.AtEnd
@@ -5803,7 +6890,7 @@ do
 			sc.Scale = 0.85
 			TweenService:Create(sc, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Scale = 1}):Play()
 			state.uiPattern = name
-			patternLabel.Text = "🔳  PATTERN  •  " .. name .. "   (✦ = เคลื่อนไหว)"
+			patternLabel.Text = "🔳  PATTERN  •  " .. name .. "   (สีฟ้า = เคลื่อนไหว)"
 			paintCells()
 			UI.buildPattern()
 		end)
@@ -5823,14 +6910,33 @@ addToggleRow(settingsPage, "สีเปลี่ยนตามแท็บ (Pe
 	render(state.themePerTab)
 	UI.apply(true)
 end)
+addToggleRow(settingsPage, "สีรุ้งวิ่ง (Rainbow Accent)", state.themeRainbow, function(_, render)
+	state.themeRainbow = not state.themeRainbow
+	render(state.themeRainbow)
+	if not state.themeRainbow then UI.apply() end
+end)
+addToggleRow(settingsPage, "ไฟเรืองที่หัวสวิตช์ (Knob Glow)", state.themeKnobGlow, function(_, render)
+	state.themeKnobGlow = not state.themeKnobGlow
+	render(state.themeKnobGlow)
+end)
+
+addActionButton(settingsPage, "⭐ ตั้งธีมนี้เป็นค่าเริ่มต้น (ทุกเกม)", Color3.fromRGB(255, 215, 70), function(b)
+	if UI.saveDefaultTheme() then
+		sendNotification("Default Theme", "ตั้งธีมนี้เป็นค่าเริ่มต้นของทุกเกมแล้ว", UI.accent())
+	else
+		sendNotification("Default Theme", "executor ไม่รองรับการบันทึกไฟล์", Color3.fromRGB(255, 80, 80))
+	end
+end)
 addActionButton(settingsPage, "↺ คืนค่าธีมเริ่มต้น (Reset Theme)", Color3.fromRGB(255, 175, 60), function()
 	state.themeAccent = {0, 200, 255}
 	state.themeBase = "Dark"
 	state.uiTransparency = 0.06
 	state.uiPattern = "Dots"
+	state.themeTint = 0
 	state.themePerTab = false
+	state.themeRainbow = false
 	baseLabel.Text = "🌓  BASE THEME  •  Dark"
-	patternLabel.Text = "🔳  PATTERN  •  Dots   (✦ = เคลื่อนไหว)"
+	patternLabel.Text = "🔳  PATTERN  •  Dots   (สีฟ้า = เคลื่อนไหว)"
 	UI.apply()
 	sendNotification("Theme Reset", "คืนค่าธีมเริ่มต้นแล้ว", UI.accent())
 end)
@@ -5843,6 +6949,59 @@ addPresetChips(settingsPage, {0.8, 0.9, 1, 1.1, 1.25}, function(val)
 	scaleLabel.Text = string.format("UI SCALE  •  ตอนนี้ %.2fx", val)
 	adjustPanelHeight(true)
 end)
+
+-- v3.1: ตรวจความเข้ากันได้ของ Executor
+addSectionLabel(settingsPage, "🧪  EXECUTOR COMPATIBILITY")
+do
+	local checks = {
+		{"writefile / readfile", "บันทึกค่าและธีม", function() return type(writefile) == "function" and type(readfile) == "function" end},
+		{"game:HttpGet", "Server Hop / สคริปต์ภายนอก", function() local ok = pcall(function() return game.HttpGet end) return ok end},
+		{"fireproximityprompt", "Instant / Auto Interact", function() return type(fireproximityprompt) == "function" end},
+		{"firetouchinterest", "Auto Collect", function() return type(firetouchinterest) == "function" end},
+		{"setfpscap", "จำกัด FPS ตอนประหยัดแบต", function() return type(setfpscap) == "function" end},
+		{"hookmetamethod", "Anti-Kick", function() return type(hookmetamethod) == "function" end},
+		{"setclipboard", "ปุ่มคัดลอกต่างๆ", function() return type(setclipboard) == "function" or type(toclipboard) == "function" end},
+		{"gethui", "ซ่อน UI จากเกม", function() return type(gethui) == "function" end},
+	}
+	local okCount = 0
+	for _, c in ipairs(checks) do
+		local pass = false
+		pcall(function() pass = c[3]() and true or false end)
+		if pass then okCount = okCount + 1 end
+		local row = UI.card(settingsPage, 40)
+		local dot = Instance.new("Frame")
+		dot.Size = UDim2.new(0, 10, 0, 10)
+		dot.Position = UDim2.new(0, 14, 0.5, -5)
+		dot.BackgroundColor3 = pass and Color3.fromRGB(0, 220, 130) or Color3.fromRGB(255, 80, 95)
+		dot.BorderSizePixel = 0
+		dot:SetAttribute("PPNoTheme", true)
+		dot.Parent = row
+		UI.corner(dot, "full")
+		local l = Instance.new("TextLabel")
+		l.Size = UDim2.new(1, -46, 0, 16)
+		l.Position = UDim2.new(0, 32, 0, 5)
+		l.BackgroundTransparency = 1
+		l.Text = c[1]
+		l.Font = Enum.Font.GothamBold
+		l.TextSize = 12
+		l.TextXAlignment = Enum.TextXAlignment.Left
+		l.Parent = row
+		UI.bind(l, "TextColor3", pass and "text" or "sub")
+		local d = Instance.new("TextLabel")
+		d.Size = UDim2.new(1, -46, 0, 14)
+		d.Position = UDim2.new(0, 32, 0, 21)
+		d.BackgroundTransparency = 1
+		d.Text = (pass and "ใช้ได้ • " or "ไม่รองรับ • ") .. c[2]
+		d.Font = Enum.Font.GothamMedium
+		d.TextSize = 10.5
+		d.TextXAlignment = Enum.TextXAlignment.Left
+		d.TextTruncate = Enum.TextTruncate.AtEnd
+		d.Parent = row
+		UI.bind(d, "TextColor3", "sub")
+	end
+	local sum = addSectionLabel(settingsPage, string.format("รองรับ %d / %d อย่าง", okCount, #checks))
+	sum.TextSize = 12
+end
 
 -- Menu Hotkey
 addSectionLabel(settingsPage, "MENU HOTKEY (PC)")
@@ -5860,7 +7019,7 @@ keyBtn = addActionButton(settingsPage, "⌨ ปุ่มเปิด/ปิด�
 			state.menuKey = input.KeyCode.Name
 		end
 		keyBtn.Text = "⌨ ปุ่มเปิด/ปิดเมนู: " .. tostring(state.menuKey)
-		subTitle.Text = "v3.0 Neo Glass • " .. tostring(state.menuKey)
+		subTitle.Text = "v3.1 Universal • " .. tostring(state.menuKey)
 		task.defer(function() state._capturingKey = false end)
 	end)
 end)
@@ -5982,7 +7141,17 @@ local function addPatchLogCard(versionStr, dateStr, badgeType, badgeColor, bulle
 	end
 end
 
-addPatchLogCard("v3.0 PRO", "Latest Update", "NEW", Color3.fromRGB(0, 240, 200), {
+addPatchLogCard("v3.1 PRO", "Latest Update", "NEW", Color3.fromRGB(0, 240, 200), {
+	"[NEW] แท็บ 🤖 Auto: Auto Interact, Auto Collect (Magnet), Auto Equip/Use Tool, Waypoint Route, Macro Recorder",
+	"[NEW] ปุ่ม '+ เพิ่มเมนูสคริปต์ของคุณเอง' ในแท็บ Tools - ตั้งชื่อ เลือกไอคอน ใส่ลิงก์ loadstring เองได้ ไม่ต้องแก้สคริปต์",
+	"[NEW] Object ESP หาของตามชื่อ, Click Delete ลบสิ่งกีดขวาง (กู้คืนได้), Chat Logger, Admin Detector, Anti-Kick",
+	"[NEW] ตรวจความเข้ากันได้ของ executor ในแท็บ Set บอกว่าฟีเจอร์ไหนใช้ได้หรือไม่ได้",
+	"[NEW] ธีม: แถบสีเลื่อนได้ 22 สี, สไลเดอร์ผสมสีลงพาแนล (Tint), สีรุ้งวิ่ง, ไฟเรืองหัวสวิตช์, ปุ่มตั้งเป็นค่าเริ่มต้นทุกเกม",
+	"[UI] ออกแบบหน้า Battery Saver ใหม่ และทำให้การพับ/กางหน้าต่างลื่นขึ้น",
+	"[FIX] แก้สัญลักษณ์ที่ขึ้นเป็นสี่เหลี่ยม (ปุ่ม X, ปุ่ม COPY, ปุ่มลบ Waypoint, ไอคอนใน Pattern) และชื่อเกมอ่านชัดขึ้น"
+})
+
+addPatchLogCard("v3.0 PRO", "Previous Update", "UPDATE", Color3.fromRGB(0, 195, 255), {
 	"[UI] หน้าต่างเครื่องมือทั้ง 5 ออกแบบใหม่ + เปลี่ยนตามธีม: Auto Clicker, Spectate, Stalker, Player Teleport, Vehicle Speed",
 	"[UI] รายชื่อผู้เล่นมีรูปโปรไฟล์ ระยะทาง ช่องค้นหา และเครื่องหมายเลือก / Spectate มีปุ่ม ◀ ▶ สลับคน / Auto Clicker นับจำนวนคลิก",
 	"[NEW] ลวดลายพื้นหลังเพิ่มเป็น 20 แบบ (เคลื่อนไหว 16 แบบ) เช่น Matrix, Snow, Bubbles, Sakura, Equalizer, Meteor, Orbit",
@@ -5990,7 +7159,7 @@ addPatchLogCard("v3.0 PRO", "Latest Update", "NEW", Color3.fromRGB(0, 240, 200),
 	"[UI] ตัวอักษรชื่อเมนูใหญ่ขึ้น อ่านง่ายขึ้น และหน้าต่างกว้างขึ้นเป็น 330"
 })
 
-addPatchLogCard("v2.9 PRO", "Previous Update", "UPDATE", Color3.fromRGB(0, 195, 255), {
+addPatchLogCard("v2.9 PRO", "Older Update", "UPDATE", Color3.fromRGB(110, 140, 200), {
 	"[UI] ออกแบบ Panel ใหม่ทั้งหมดสไตล์ Neo-Glass: การ์ดโค้งมน, ขอบเรืองแสงไล่สีหมุนได้, หัวข้อตัวอักษรเงาวิ่ง",
 	"[UI] แท็บแบบ Segmented พร้อมขีดใต้เรืองแสง เลื่อนตามแท็บที่เลือก และหน้าเลื่อนเข้าแบบนุ่ม",
 	"[FX] เอฟเฟกต์ระลอกน้ำเมื่อแตะ, สวิตช์ไล่สีพร้อมแถบไฟด้านซ้ายเมื่อเปิด, ปุ่มลัดเด้งได้, หน้าต่างเปิด/ปิดแบบเด้ง",
@@ -6045,7 +7214,7 @@ switchTab("move")
 task.spawn(function()
 	task.wait(0.08)
 	adjustPanelHeight(false)
-	sendNotification("Phumipad Pro v3.0", "แตะ ⓘ ข้างชื่อเมนูเพื่อดูวิธีใช้", Color3.fromRGB(0, 225, 255))
+	sendNotification("Phumipad Pro v3.1", "เพิ่มแท็บ Auto และปุ่มสคริปต์ของคุณเอง", Color3.fromRGB(0, 225, 255))
 	if configLoaded then
 		sendNotification("Config Loaded", "โหลดค่าที่บันทึกไว้ของเกมนี้แล้ว", Color3.fromRGB(0, 210, 130))
 	end
@@ -6072,6 +7241,10 @@ do
 	if state.fpsHudEnabled  then try(toggleFpsHud, true) end
 	if state.fpsBoostLevel > 0 then task.spawn(applyFPSBooster, state.fpsBoostLevel) end
 	if state.tracersEnabled then try(applyTracers, true) end
+	if state.objEsp then try(UI.applyObjectESP, true) end
+	if state.clickDelete then try(UI.applyClickDelete, true) end
+	if state.antiKick then try(UI.enableAntiKick) end
+	if state.adminDetect then try(UI.scanAdmins) end
 	if state.fullBright     then try(applyFullBright, true) end
 	if state.timeLockEnabled then try(applyTimeLock, true) end
 	if state.fovEnabled     then try(applyFOV, true) end
@@ -6145,12 +7318,41 @@ table.insert(globalConns, UserInputService.InputBegan:Connect(function(input, gp
 	end
 end))
 
--- v2.7: แจ้งเตือนผู้เล่นเข้า/ออก
+-- v2.7: แจ้งเตือนผู้เล่นเข้า/ออก + v3.1 ตรวจแอดมิน
 table.insert(globalConns, Players.PlayerAdded:Connect(function(p)
 	if state.joinLeaveNotify then
-		sendNotification("➕ Player Joined", string.format("%s (@%s)", p.DisplayName, p.Name), Color3.fromRGB(0, 210, 130))
+		sendNotification("Player Joined", string.format("%s (@%s)", p.DisplayName, p.Name), Color3.fromRGB(0, 210, 130))
+	end
+	if state.adminDetect then
+		task.delay(1, function() pcall(UI.scanAdmins) end)
 	end
 end))
+
+-- v3.1: Chat Logger - เก็บข้อความแชตทุกคน (รวมที่ถูกลบภายหลัง)
+do
+	local function logChat(who, msg)
+		if not state.chatLogging then return end
+		table.insert(state.chatLog, {time = os.date("%H:%M:%S"), who = who, msg = msg})
+		if #state.chatLog > 400 then table.remove(state.chatLog, 1) end
+	end
+	local function hookPlayerChat(p)
+		table.insert(globalConns, p.Chatted:Connect(function(msg)
+			logChat(p.DisplayName or p.Name, msg)
+		end))
+	end
+	for _, p in ipairs(Players:GetPlayers()) do pcall(hookPlayerChat, p) end
+	table.insert(globalConns, Players.PlayerAdded:Connect(function(p) pcall(hookPlayerChat, p) end))
+	-- รองรับ TextChatService ของเกมรุ่นใหม่
+	pcall(function()
+		local TCS = game:GetService("TextChatService")
+		if TCS and TCS.OnIncomingMessage ~= nil then
+			table.insert(globalConns, TCS.MessageReceived:Connect(function(m)
+				local who = (m.TextSource and Players:GetPlayerByUserId(m.TextSource.UserId)) or nil
+				if not who then logChat("System", m.Text or "") end
+			end))
+		end
+	end)
+end
 table.insert(globalConns, Players.PlayerRemoving:Connect(function(p)
 	if state.joinLeaveNotify and p ~= player then
 		sendNotification("➖ Player Left", string.format("%s (@%s)", p.DisplayName, p.Name), Color3.fromRGB(255, 90, 105))
@@ -6194,6 +7396,16 @@ local function fullCleanup()
 	if state.tpWalkEnabled  then applyTPWalk(false) end
 	if state.fpsBoostLevel > 0 then applyFPSBooster(0) end
 	if state.tracersEnabled then applyTracers(false) end
+	if state.objEsp then UI.removeObjectESP() end
+	if state._delConn then pcall(function() state._delConn:Disconnect() end) end
+	pcall(UI.restoreDeleted) -- คืนวัตถุที่ลบด้วย Click Delete ก่อนปิดสคริปต์
+	state.autoInteract = false
+	state.autoCollect = false
+	state.autoEquip = false
+	state.autoUseTool = false
+	state.routeRunning = false
+	state.macroRecording = false
+	state.macroPlaying = false
 	if state.fullBright     then applyFullBright(false) end
 	if state.timeLockEnabled then applyTimeLock(false) end
 	if state.antiRagdoll    then applyAntiRagdoll(false) end
@@ -6237,7 +7449,10 @@ local function fullCleanup()
 		"Phumipad_FPS_Ping_Monitor",
 		"Phumipad_Toast_Notifications",
 		"Phumipad_TapTP",
-		"Phumipad_Tracers"
+		"Phumipad_Tracers",
+		"Phumipad_ObjectESP",
+		"Phumipad_ChatLog",
+		"Phumipad_CustomEditor"
 	}
 	for _, uiName in ipairs(subUIs) do
 		pcall(function()
@@ -6258,30 +7473,34 @@ closeBtn.MouseButton1Click:Connect(function()
 	fullCleanup()
 end)
 
--- ปุ่ม '-': พับเก็บ/กางหน้าต่าง (Collapse/Fold Panel)
+-- ปุ่ม '-': พับเก็บ/กางหน้าต่าง (Collapse/Fold Panel) - v3.1 ลื่นขึ้น
+local foldTween = nil
 local function toggleFold()
 	state.isFolded = not state.isFolded
+	if foldTween then foldTween:Cancel() end
+	local ti = TweenInfo.new(0.34, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
 	if state.isFolded then
-		tabBar.Visible = false
-		scroll.Visible = false
-		resizeGrip.Visible = false
 		miniBtn.Text = "+"
-		TweenService:Create(f, TweenInfo.new(0.22, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-			Size = UDim2.new(0, f.Size.X.Offset, 0, 56)
-		}):Play()
-	else
-		miniBtn.Text = "-"
-		local restoreH = state.savedExpandedHeight or 360
-		TweenService:Create(f, TweenInfo.new(0.22, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-			Size = UDim2.new(0, f.Size.X.Offset, 0, restoreH)
-		}):Play()
-		task.delay(0.12, function()
-			if not state.isFolded then
-				tabBar.Visible = true
-				scroll.Visible = true
-				resizeGrip.Visible = true
+		-- ค่อยๆ จางเนื้อหาออกก่อน แล้วย่อ (f มี ClipsDescendants จึงไม่กระตุก)
+		TweenService:Create(tabBar, TweenInfo.new(0.12), {BackgroundTransparency = 1}):Play()
+		resizeGrip.Visible = false
+		foldTween = TweenService:Create(f, ti, {Size = UDim2.new(0, f.Size.X.Offset, 0, 56)})
+		foldTween:Play()
+		foldTween.Completed:Connect(function()
+			if state.isFolded then
+				tabBar.Visible = false
+				scroll.Visible = false
 			end
 		end)
+	else
+		miniBtn.Text = "-"
+		tabBar.Visible = true
+		scroll.Visible = true
+		resizeGrip.Visible = true
+		local restoreH = state.savedExpandedHeight or 360
+		foldTween = TweenService:Create(f, ti, {Size = UDim2.new(0, f.Size.X.Offset, 0, restoreH)})
+		foldTween:Play()
+		TweenService:Create(tabBar, TweenInfo.new(0.3), {BackgroundTransparency = UI.trans("glass")}):Play()
 	end
 end
 miniBtn.MouseButton1Click:Connect(toggleFold)
